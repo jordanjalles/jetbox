@@ -2,12 +2,9 @@
 
 Tiny local coding agent + sample package, built to run with Ollama on Windows. It includes:
 
-- **Four agent implementations**:
-  - `agent.py` - Basic agent with flat context and simple deduplication
-  - `agent_enhanced.py` - Enhanced agent with hierarchical context manager
-  - `agent_fast.py` - ⚡ Optimized for speed (2.5x faster, various models)
-  - `agent_quality.py` - ⭐ **Optimized for quality - 1.7x faster with gpt-oss:20b** (recommended)
-  - `agent_ultra.py` - Experimental maximum speed (2.9x faster)
+- **Two production-ready agents** (both use gpt-oss:20b):
+  - `agent_enhanced.py` - Enhanced agent with hierarchical context manager (baseline)
+  - `agent_quality.py` - ⭐ **Optimized agent - 1.7x faster** (recommended)
 - **Hierarchical context manager** (`context_manager.py`) - Crash-resilient task tracking with loop detection
 - **Performance optimizations** - Probe caching, parallel execution, model selection (see `OPTIMIZATION_SUMMARY.md`)
 - A tiny demo package `mathx` with `add(a, b)`, `multiply(a, b)` and comprehensive tests
@@ -61,11 +58,7 @@ ollama list  # Verify model is available
 2) Run the optimized quality agent (1.7x faster with professional code quality):
 
 ```bash
-# Quality mode with gpt-oss:20b (recommended - best balance)
 python agent_quality.py "Create mathx package with add(a,b) and multiply(a,b), add tests, run ruff and pytest."
-
-# Fast mode with llama3.2:3b (for rapid prototyping)
-OLLAMA_MODEL=llama3.2:3b python agent_fast.py "Create mathx package..."
 ```
 
 The quality agent features:
@@ -223,36 +216,30 @@ See `agent_integration.py` for:
 
 ## Performance Optimizations
 
-The fast agent (`agent_fast.py`) includes comprehensive performance optimizations:
+The quality agent (`agent_quality.py`) includes comprehensive performance optimizations while maintaining gpt-oss:20b code quality:
 
 ### Optimization Highlights
 
 | Optimization | Savings | Description |
 |--------------|---------|-------------|
-| Model Selection | 4,340ms/round | Use llama3.2:3b (18x faster than gpt-oss:20b) |
+| LLM Warm-up | 9,200ms first call | Pre-warm model on startup (98.4% reduction) |
 | Probe Caching | 250-350ms/round | Cache results for 3s, invalidate on file writes |
 | Parallel Execution | 150ms/probe | Run ruff + pytest concurrently |
 | Smart Skipping | 280ms | Skip pytest if no test directory |
 
 ### Speed Comparison
 
-| Agent | Model | Avg Round | Total (10 rounds) | Speedup |
-|-------|-------|-----------|-------------------|---------|
-| Baseline | gpt-oss:20b | 1000ms | 10.0s | 1.0x |
-| Fast | gpt-oss:20b | 625ms | 6.3s | 1.6x faster |
-| **Fast** | **llama3.2:3b** | **408ms** | **4.1s** | **2.5x faster** |
+| Agent | Avg Round | Total (10 rounds) | Speedup |
+|-------|-----------|-------------------|---------|
+| Baseline (agent_enhanced.py) | 1000ms | 10.0s | 1.0x |
+| **Optimized (agent_quality.py)** | **580ms** | **5.8s** | **1.7x faster** |
 
 ### Detailed Documentation
 
 - `OPTIMIZATION_SUMMARY.md` - Complete optimization analysis
-- `PERFORMANCE_OPTIMIZATIONS.md` - Strategy and implementation details
-- `SPEED_TEST_RESULTS.md` - Benchmark results
+- `LLM_WARMUP_FINDINGS.md` - LLM warm-up deep dive (9.2s savings)
+- `FINAL_PERFORMANCE_COMPARISON.md` - Full performance comparison
 - `profile_*.py` - Profiling tools
-
-### Quality vs Speed Trade-off
-
-- **llama3.2:3b**: ⚡⚡⚡⚡⚡ speed, ★★☆☆☆ quality - Best for rapid prototyping
-- **gpt-oss:20b**: ⚡⚡☆☆☆ speed, ★★★★★ quality - Best for production code
 
 ## Configuration
 

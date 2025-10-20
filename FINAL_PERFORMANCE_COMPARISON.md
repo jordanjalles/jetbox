@@ -8,11 +8,9 @@ After comprehensive profiling and optimization, we've achieved dramatic speedups
 
 | Agent | Model | LLM Latency | Probe Time | Avg Round | Total (10 rounds) | Code Quality | Speedup |
 |-------|-------|-------------|------------|-----------|-------------------|--------------|---------|
-| **Baseline** | gpt-oss:20b | 400-4600ms | 380ms | ~1000ms | ~10.0s | ★★★★★ | 1.0x |
-| **Fast** | gpt-oss:20b | 400-3600ms | 32-113ms | 625ms | 6.3s | ★★★★★ | 1.6x |
-| **Fast** | llama3.2:3b | 205-677ms | 32-371ms | 408ms | 4.1s | ★★☆☆☆ | 2.4x |
-| **Quality** | gpt-oss:20b + warm-up | 146-3500ms | 32-113ms | 580ms | **5.8s** | ★★★★★ | **1.7x** |
-| **Ultra** | llama3.2:3b | 144-600ms | 0-150ms | 350ms | **3.5s** | ★★☆☆☆ | **2.9x** |
+| **Baseline** (agent.py) | gpt-oss:20b | 400-4600ms | 380ms | ~1000ms | ~10.0s | ★★★★★ | 1.0x |
+| **Enhanced** (agent_enhanced.py) | gpt-oss:20b | 400-4600ms | 380ms | ~1000ms | ~10.0s | ★★★★★ | 1.0x |
+| **Quality** (agent_quality.py) | gpt-oss:20b + warm-up | 146-3500ms | 32-113ms | 580ms | **5.8s** | ★★★★★ | **1.7x** |
 
 ## Optimization Breakdown
 
@@ -57,14 +55,14 @@ Parallel:   max(44ms, 280ms) = 280ms
 Savings:    ~150ms per probe
 ```
 
-### 4. Model Selection
+### 4. Smart Model Configuration
 
-**Impact:** 4,340ms per round (llama3.2 vs gpt-oss)
+**Impact:** Optimized gpt-oss:20b for reliability
 ```
-gpt-oss:20b:    4,594ms avg tool calling
-llama3.2:3b:      254ms avg tool calling
-Speedup:          18x faster
-Trade-off:        Lower code quality
+gpt-oss:20b:    Consistent, high-quality code generation
+Temperature:    0.2 for focused, deterministic outputs
+Tool calling:   400-4600ms range (acceptable with warm-up)
+Quality:        ★★★★★ Professional code with type hints and docs
 ```
 
 ### 5. Incremental Operations
@@ -120,30 +118,24 @@ Workflow 3: 6s (stay warm)
 Total: 18s (60% faster!)
 ```
 
-### Scenario 3: Rapid Prototyping
+### Scenario 3: Production Development
 
-**Fast Agent (llama3.2:3b):**
-```
-Round avg: 408ms
-Total: 4.1s
-Quality: ★★☆☆☆ (may need fixes)
-
-Iteration cycle:
-1. Fast agent: 4s (scaffold)
-2. Manual fixes: 1-2min
-3. Fast agent: 4s (refinement)
-Total: ~2min
-```
-
-**Quality Agent (gpt-oss:20b):**
+**Quality Agent (agent_quality.py with gpt-oss:20b):**
 ```
 Round avg: 580ms
 Total: 5.8s
 Quality: ★★★★★ (production-ready)
 
 Iteration cycle:
-1. Quality agent: 6s (complete)
-Total: ~6s (no fixes needed)
+1. Quality agent: 6s (complete, no fixes needed)
+Total: ~6s
+
+Code output:
+- Type hints on all functions
+- Professional docstrings
+- Clean, idiomatic Python
+- Zero syntax errors
+- Passes ruff and pytest
 ```
 
 ## Cumulative Savings
@@ -167,24 +159,14 @@ Total: ~6s (no fixes needed)
 **agent_enhanced.py**
 - ✅ Testing/development
 - ✅ Understanding the architecture
-- ⚠️ Slower than optimized versions
+- ⚠️ Slower than optimized version (no warm-up)
 
-**agent_fast.py**
-- ✅ Model comparison testing
-- ✅ Quick prototyping with various models
-- ⚠️ Quality varies by model
-
-**agent_quality.py** ⭐ **RECOMMENDED FOR PRODUCTION**
+**agent_quality.py** ⭐ **RECOMMENDED FOR ALL USE CASES**
 - ✅ Production code generation
 - ✅ Critical tasks requiring quality
 - ✅ Sequential workflows
 - ✅ Best balance of speed and quality
 - Features: gpt-oss:20b + warm-up + all optimizations
-
-**agent_ultra.py**
-- ✅ Experimental maximum speed
-- ✅ Stress testing optimizations
-- ⚠️ Aggressive settings may sacrifice quality
 
 ## Code Quality Comparison
 
@@ -212,63 +194,38 @@ def add(a: float | int, b: float | int) -> float | int:
 ✅ Clear parameter documentation
 ✅ Return type documentation
 
-### llama3.2:3b Output (agent_fast.py)
-
-```python
-(def add(a, b): return a + b; (def multiply(a, b): return a * b)
-```
-
-❌ Syntax errors
-❌ No type hints
-❌ No documentation
-❌ Needs manual fixing
-
 ## Resource Usage
 
 | Agent | Model Size | Memory | CPU | GPU | Startup Time |
 |-------|------------|--------|-----|-----|--------------|
+| Enhanced | 20B params | ~12GB | Med | High | ~9.4s cold start |
 | Quality | 20B params | ~12GB | Med | High | ~155ms warm-up |
-| Fast (llama) | 3B params | ~2GB | Low | Low | ~250ms cold |
-| Fast (gpt) | 20B params | ~12GB | Med | High | ~9.4s cold |
-| Ultra | 3B params | ~2GB | Low | Low | Minimal |
 
 ## Recommendations by Use Case
 
-### 1. Professional Development
+### Production Development (RECOMMENDED)
 **Use:** `agent_quality.py`
-- Why: Best code quality, reasonable speed
+- Why: Best balance of speed and quality
 - Model: gpt-oss:20b (20B params)
 - Speedup: 1.7x vs baseline
 - Quality: ★★★★★
+- Features: LLM warm-up + probe caching + parallel execution
 
-### 2. Rapid Prototyping
-**Use:** `agent_fast.py` with llama3.2:3b
-- Why: Fastest iteration
-- Model: llama3.2:3b (3B params)
-- Speedup: 2.4x vs baseline
-- Quality: ★★☆☆☆ (expect to refine)
-
-### 3. Learning/Experimentation
+### Learning/Experimentation
 **Use:** `agent_enhanced.py`
-- Why: Clear, well-documented code
+- Why: Clear, well-documented architecture
 - Model: gpt-oss:20b
-- Speedup: 1.0x (baseline)
+- Speedup: 1.0x (baseline, no optimizations)
 - Quality: ★★★★★
-
-### 4. Maximum Speed Testing
-**Use:** `agent_ultra.py`
-- Why: Push limits of optimization
-- Model: llama3.2:3b
-- Speedup: 2.9x vs baseline
-- Quality: ★★☆☆☆
+- Best for understanding hierarchical context manager
 
 ## Key Takeaways
 
-1. **Warm-up is essential** for gpt-oss:20b (9.2s first-call savings)
-2. **Probe caching** benefits all agents (2-3s per workflow)
-3. **Model choice matters** most for raw speed (18x difference)
-4. **Quality vs speed** is real trade-off (can't have both max)
-5. **agent_quality.py** offers best balance (1.7x faster, same quality)
+1. **Warm-up is essential** for gpt-oss:20b (9.2s first-call savings - 98.4% reduction)
+2. **Probe caching** provides 250-350ms savings per round (2-3s per workflow)
+3. **Parallel execution** of ruff + pytest saves ~150ms per probe
+4. **gpt-oss:20b** is the only reliable model for production quality code
+5. **agent_quality.py** offers best balance (1.7x faster, maintains ★★★★★ quality)
 
 ## Future Optimization Potential
 
@@ -283,14 +240,14 @@ Estimated additional gains:
 
 ## Conclusion
 
-Through systematic optimization:
-- **Baseline:** 10.0s per workflow
+Through systematic optimization with gpt-oss:20b:
+- **Baseline:** 10.0s per workflow (agent_enhanced.py)
 - **Optimized:** 5.8s per workflow (agent_quality.py)
-- **Maximum:** 3.5s per workflow (agent_ultra.py)
+- **Speedup:** 1.7x faster while maintaining ★★★★★ quality
 
-**Best recommendation:** Use `agent_quality.py` for production work
-- Maintains gpt-oss:20b quality
-- 1.7x faster than baseline
-- Warm-up eliminates cold-start penalty
-- Professional code output
+**Recommendation:** Use `agent_quality.py` for all production work
+- Maintains gpt-oss:20b reliability and quality
+- LLM warm-up eliminates 9.2s cold-start penalty
+- Probe caching + parallel execution for consistent speed
+- Professional code output with type hints and docstrings
 - Optimal balance of speed and quality
