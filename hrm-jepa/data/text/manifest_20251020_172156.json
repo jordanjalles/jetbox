@@ -1,0 +1,26 @@
+{
+  "dataset_file": "data/text/synthetic_text_20251020_172156.jsonl",
+  "num_samples": 20,
+  "categories": [
+    "arithmetic",
+    "word_problems",
+    "logic",
+    "common_sense",
+    "analogy"
+  ],
+  "inconsistent_ratio": 0.2,
+  "model": "gpt-oss:20b",
+  "seed": 42,
+  "timestamp": "20251020_172156",
+  "statistics": {
+    "consistent": 18,
+    "inconsistent": 2,
+    "categories": {
+      "arithmetic": 3,
+      "word_problems": 5,
+      "logic": 5,
+      "common_sense": 4,
+      "analogy": 3
+    }
+  }
+}
