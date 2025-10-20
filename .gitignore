@@ -1,0 +1,11 @@
+# Byte-compiled / cache / logs
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+agent.log
+agent_ledger.log
+
+# Virtual envs (common)
+.venv/
+venv/
+
