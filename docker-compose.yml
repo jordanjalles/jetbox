@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  jetbox:
+    build: .
+    container_name: jetbox
+    volumes:
+      # Mount current directory to persist changes
+      - .:/workspace
+      # Mount Ollama models cache (optional, saves re-downloading)
+      - ollama-models:/root/.ollama
+    environment:
+      # Use host's Ollama instance (recommended for model sharing)
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      # Or set specific model
+      - OLLAMA_MODEL=gpt-oss:20b
+    # Use host network to connect to Ollama on host machine
+    network_mode: bridge
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+
+volumes:
+  ollama-models:

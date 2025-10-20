@@ -1,0 +1,12 @@
+{
+  "name": "codex-sandbox",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "vscode",
+  "overrideCommand": false,
+  "customizations": {
+    "vscode": {
+      "extensions": []
+    }
+  }
+}
