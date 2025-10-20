@@ -20,7 +20,7 @@ class JEPACore(nn.Module):
 
     def __init__(
         self,
-        vision_encoder: VisionViT,
+        vision_encoder: VisionViT | None,
         text_encoder: TextTransformer,
         latent_dim: int = 512,
         predictor_depth: int = 4,
@@ -29,7 +29,7 @@ class JEPACore(nn.Module):
         """Initialize JEPA core.
 
         Args:
-            vision_encoder: Vision encoder (ViT)
+            vision_encoder: Vision encoder (ViT), None for text-only mode
             text_encoder: Text encoder (Transformer)
             latent_dim: Dimension of joint latent space
             predictor_depth: Number of predictor transformer layers
@@ -39,6 +39,7 @@ class JEPACore(nn.Module):
         self.vision_encoder = vision_encoder
         self.text_encoder = text_encoder
         self.latent_dim = latent_dim
+        self.text_only = vision_encoder is None
 
         # Predictor: predicts target latents from context latents
         predictor_layer = nn.TransformerEncoderLayer(
@@ -77,6 +78,9 @@ class JEPACore(nn.Module):
         Returns:
             Vision latents of shape (batch, latent_dim)
         """
+        if self.text_only:
+            raise ValueError("Vision encoder not available in text-only mode")
+
         z_vision = self.vision_encoder(images)
         z_vision = self.vision_proj(z_vision)
         # L2 normalize for contrastive learning
