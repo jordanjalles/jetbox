@@ -1,0 +1,71 @@
+
+============================================================
+JETBOX AGENT PERFORMANCE BENCHMARK
+============================================================
+
+Goal: Create mathx package with add(a,b) and multiply(a,b), add tests, run ruff and pytest.
+
+Running 5 test configurations...
+
+[1/5] Testing agent_fast.py with llama3.2:3b...
+
+============================================================
+Testing: agent_fast.py with llama3.2:3b
+============================================================
+  ✗ Completed in 0.0s
+  Files created: 0/3
+
+[2/5] Testing agent_fast.py with qwen2.5-coder:3b...
+
+============================================================
+Testing: agent_fast.py with qwen2.5-coder:3b
+============================================================
+  ✗ Completed in 0.0s
+  Files created: 0/3
+
+[3/5] Testing agent_fast.py with qwen2.5-coder:7b...
+
+============================================================
+Testing: agent_fast.py with qwen2.5-coder:7b
+============================================================
+  ✗ Completed in 0.0s
+  Files created: 0/3
+
+[4/5] Testing agent_fast.py with gpt-oss:20b...
+
+============================================================
+Testing: agent_fast.py with gpt-oss:20b
+============================================================
+  ✗ Completed in 0.0s
+  Files created: 0/3
+
+[5/5] Testing agent_enhanced.py with gpt-oss:20b...
+
+============================================================
+Testing: agent_enhanced.py with gpt-oss:20b
+============================================================
+  ✗ Completed in 0.0s
+  Files created: 0/3
+
+============================================================
+BENCHMARK RESULTS SUMMARY
+============================================================
+
+Script               Model                  Time  Files Status
+------------------------------------------------------------
+agent_fast           llama3.2:3b            0.0s   0/3 ✗
+agent_fast           qwen2.5-coder:3b       0.0s   0/3 ✗
+agent_fast           qwen2.5-coder:7b       0.0s   0/3 ✗
+agent_fast           gpt-oss:20b            0.0s   0/3 ✗
+agent_enhanced       gpt-oss:20b            0.0s   0/3 ✗
+
+============================================================
+SPEED RANKING (fastest first)
+============================================================
+  1. agent_fast      llama3.2:3b           0.0s
+  2. agent_fast      qwen2.5-coder:3b      0.0s
+  3. agent_fast      qwen2.5-coder:7b      0.0s
+  4. agent_fast      gpt-oss:20b           0.0s
+  5. agent_enhanced  gpt-oss:20b           0.0s
+
+Detailed results saved to: benchmark_results.json
