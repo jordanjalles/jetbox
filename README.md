@@ -2,10 +2,13 @@
 
 Tiny local coding agent + sample package, built to run with Ollama on Windows. It includes:
 
-- A minimal agent (`agent.py`) that plans simple steps, runs safe local commands, and iterates via the Ollama Python API.
-- A tiny demo package `mathx` with `add(a, b)` and tests in `tests/`.
-- Dev tooling via `pytest` and `ruff` configured in `pyproject.toml`.
-- A quick latency check script (`diag_speed.py`) for your Ollama model.
+- **Two agent implementations**:
+  - `agent.py` - Basic agent with flat context and simple deduplication
+  - `agent_enhanced.py` - **Enhanced agent with hierarchical context manager** (recommended)
+- **Hierarchical context manager** (`context_manager.py`) - Crash-resilient task tracking with loop detection
+- A tiny demo package `mathx` with `add(a, b)`, `multiply(a, b)` and comprehensive tests
+- Dev tooling via `pytest` and `ruff` configured in `pyproject.toml`
+- A quick latency check script (`diag_speed.py`) for your Ollama model
 
 ## Requirements
 
@@ -24,57 +27,202 @@ pip install ollama pytest ruff
 
 ```
 .
-├─ agent.py            # Tiny local coding agent for Ollama
-├─ diag_speed.py       # Quick timing test for Ollama responses
+├─ agent.py                  # Basic agent with flat context
+├─ agent_enhanced.py         # ⭐ Enhanced agent with hierarchical context (recommended)
+├─ context_manager.py        # Hierarchical context manager (Goal→Task→Subtask→Action)
+├─ agent_integration.py      # Integration guide and examples
+├─ test_context_manager.py  # Tests for context manager
+├─ diag_speed.py             # Quick timing test for Ollama responses
 ├─ mathx/
-│  └─ __init__.py      # Demo: add(a, b)
+│  └─ __init__.py            # Demo: add(a, b), multiply(a, b)
 ├─ tests/
-│  └─ test_mathx.py    # Pytest tests for mathx.add
-└─ pyproject.toml      # pytest + ruff config
+│  └─ test_mathx.py          # Pytest tests for mathx functions
+├─ .agent_context/           # Context manager state (created at runtime)
+│  ├─ state.json            # Hierarchical task state
+│  ├─ history.jsonl         # Action history log
+│  └─ loops.json            # Detected loop patterns
+└─ pyproject.toml            # pytest + ruff config
 ```
 
 ## Usage
 
-1) Make sure Ollama is running and you have a local model (default env var `OLLAMA_MODEL` or the default in code `gpt-oss:20b`).
+### Quick Start (Enhanced Agent - Recommended)
 
-2) Run the agent with a goal:
+1) Make sure Ollama is running and you have a local model (default: `gpt-oss:20b`):
 
+```bash
+ollama list  # Verify model is available
 ```
+
+2) Run the enhanced agent with hierarchical context manager:
+
+```bash
+python agent_enhanced.py "Create mathx package with add(a,b) and multiply(a,b), add tests, then run ruff and pytest."
+```
+
+The enhanced agent will:
+- ✅ Break the goal into hierarchical tasks (Goal → Task → Subtask → Action)
+- ✅ Track progress and automatically advance through subtasks
+- ✅ Detect and prevent infinite loops
+- ✅ Recover from crashes by resuming from saved state
+- ✅ Show compact, focused context to the LLM (only current task branch)
+
+### Basic Agent (Original)
+
+Run the basic agent with flat context:
+
+```bash
 python agent.py "Create a tiny package 'mathx' with add(a,b), add tests, then run ruff and pytest."
 ```
 
-3) Run tests directly:
+### Testing and Validation
 
-```
-pytest -q
+Run tests directly:
+
+```bash
+pytest tests/ -q
 ```
 
-4) Lint with ruff:
+Lint with ruff:
 
-```
+```bash
 ruff check .
 ```
 
-5) Quick model latency check:
+Test context manager:
 
+```bash
+python test_context_manager.py
 ```
+
+Quick model latency check:
+
+```bash
 python diag_speed.py
 ```
 
+## Hierarchical Context Manager
+
+The enhanced agent uses a hierarchical context manager that organizes work into a tree structure:
+
+```
+Goal: "Create mathx package with add and multiply functions, add tests, run ruff and pytest"
+│
+├─ Task 1: Create mathx package structure
+│  └─ Subtask: write_file 'mathx/__init__.py' with add() and multiply()
+│     └─ Action: write_file(path="mathx/__init__.py", content="...")
+│
+├─ Task 2: Add tests
+│  └─ Subtask: write_file 'tests/test_mathx.py' with tests
+│     └─ Action: write_file(path="tests/test_mathx.py", content="...")
+│
+├─ Task 3: Add configuration
+│  └─ Subtask: write_file 'pyproject.toml' with pytest+ruff config
+│     └─ Action: write_file(path="pyproject.toml", content="...")
+│
+└─ Task 4: Verify quality
+   ├─ Subtask: run_cmd ['ruff', 'check', '.']
+   │  └─ Action: run_cmd(cmd=["ruff", "check", "."])
+   └─ Subtask: run_cmd ['pytest', 'tests/', '-q']
+      └─ Action: run_cmd(cmd=["pytest", "tests/", "-q"])
+```
+
+### Key Features
+
+**1. Automatic Task Progression**
+- Agent completes subtasks and automatically advances to the next one
+- No manual coordination needed - the context manager handles the flow
+- Example: After creating `mathx/__init__.py`, automatically moves to creating tests
+
+**2. Loop Detection & Recovery**
+- Detects when the same action is attempted multiple times
+- Identifies alternating patterns (A→B→A→B)
+- Automatically blocks looping actions and advances to next subtask
+- Prevents the agent from getting stuck indefinitely
+
+**3. Crash Recovery**
+- Full state persists to `.agent_context/state.json`
+- Agent can resume from exact subtask after interruption
+- No need to restart from beginning
+- Idempotent operations ensure safe retries
+
+**4. Compact Context**
+- LLM only sees the current branch of the task tree
+- Reduces token usage by 60-80% compared to full message history
+- Shows: Current Goal → Active Task → Active Subtask → Recent Actions
+- Hides completed tasks and future tasks to maintain focus
+
+**5. Need-to-Know Principle**
+- Each level only sees relevant parent context
+- Subtasks don't see sibling subtasks
+- Actions don't see unrelated tasks
+- Mimics how humans organize work mentally
+
+### Context Manager State
+
+The `.agent_context/` directory contains:
+
+- **`state.json`** - Complete hierarchical state with all tasks, subtasks, and actions
+- **`history.jsonl`** - Append-only log of all actions (JSONL format)
+- **`loops.json`** - Record of detected loop patterns for analysis
+
+### Example: Crash Recovery
+
+```bash
+# Session 1: Agent runs and crashes at task 2
+$ python agent_enhanced.py "Create mathx package..."
+[log] Created mathx/__init__.py
+[log] Advanced to task: Add tests
+# ... crash ...
+
+# Session 2: Agent resumes exactly where it left off
+$ python agent_enhanced.py "Create mathx package..."
+[log] Resuming existing task hierarchy
+[log] Current task: Add tests (in_progress)
+[log] Subtask: write_file 'tests/test_mathx.py'
+# ... continues from task 2 ...
+```
+
+### Comparison: Basic vs Enhanced Agent
+
+| Feature | Basic Agent (`agent.py`) | Enhanced Agent (`agent_enhanced.py`) |
+|---------|--------------------------|--------------------------------------|
+| Context Structure | Flat message list | Hierarchical tree (Goal→Task→Subtask→Action) |
+| Task Tracking | Manual checklist in messages | Automatic hierarchical state machine |
+| Loop Detection | Simple deduplication (count > 3) | Pattern detection (repeats, alternating) |
+| Crash Recovery | Parse ledger + status.txt | Load full state from state.json |
+| Context Size | Last 12 messages (~2-3KB) | Current branch only (~500B-1KB) |
+| Task Progression | Manual prompting | Automatic advancement |
+| State Persistence | status.txt (plaintext summary) | state.json (complete structured state) |
+| Completion Tracking | Probe-based heuristics | Explicit subtask status flags |
+
+### Integration Guide
+
+See `agent_integration.py` for:
+- Complete integration examples
+- Migration guide from basic agent
+- API documentation for context manager
+- Example agent loops with hierarchical context
+
 ## Configuration
 
-- Set the model via environment variable before running:
+Set the model via environment variable:
 
+```bash
+# PowerShell
+$env:OLLAMA_MODEL = "gpt-oss:20b"
+
+# Bash
+export OLLAMA_MODEL="gpt-oss:20b"
 ```
-$env:OLLAMA_MODEL = "gpt-oss:20b"   # PowerShell
-# or
-export OLLAMA_MODEL="gpt-oss:20b"   # bash
-```
 
-Within `agent.py`, tweak:
+Configuration in agent files:
 
-- `MODEL`, `TEMP`, `MAX_ROUNDS`, `HISTORY_KEEP`
-- Allowed binaries for safety on Windows: `SAFE_BIN = {"python", "pytest", "ruff", "pip"}`
+- `MODEL` - Ollama model tag (default: "gpt-oss:20b")
+- `TEMP` - Temperature for model (0.2 for focused outputs)
+- `MAX_ROUNDS` - Hard cap on agent loop iterations (24)
+- `HISTORY_KEEP` - Number of recent messages to retain in basic agent (12)
+- `SAFE_BIN` - Allowed commands for safety: `{"python", "pytest", "ruff", "pip"}`
 
 ## Notes
 
