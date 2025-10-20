@@ -1,0 +1,9 @@
+[tool.ruff]
+# Basic configuration for Ruff linter
+line-length = 88
+select = ["E", "F", "W", "C90"]
+ignore = ["E501"]  # ignore line length violations
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+# Use default test discovery
