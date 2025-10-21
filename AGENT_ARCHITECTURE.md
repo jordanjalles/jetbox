@@ -51,17 +51,19 @@ Goal (user request)
 **Loop Flow**:
 ```
 1. Initialize ContextManager with goal
-2. Decompose goal into tasks (if new)
-3. For each round (up to MAX_ROUNDS):
+2. Initialize StatusDisplay for progress tracking
+3. Decompose goal into tasks (if new)
+4. For each round (up to MAX_ROUNDS):
    a. Update probe state (filesystem facts)
-   b. Check if all tasks complete → exit
-   c. Build context (system + current task + last 5 messages)
-   d. Call LLM with tools
-   e. If tool calls → execute and record
-   f. If mark_subtask_complete → advance task
-   g. If goal_complete → exit
-   h. If no tool calls → final answer, exit
-4. If max rounds hit → stop with status
+   b. Display status (hierarchical task view, progress, stats)
+   c. Check if all tasks complete → exit
+   d. Build context (system + current task + last 5 messages)
+   e. Call LLM with tools (record timing)
+   f. If tool calls → execute, record, track stats
+   g. If mark_subtask_complete → advance task
+   h. If goal_complete → exit
+   i. If no tool calls → final answer, exit
+5. If max rounds hit → stop with status
 ```
 
 ### context_manager.py (State Management)
@@ -88,11 +90,38 @@ Goal (user request)
 - Blocks after 3 identical attempts
 - Detects alternating patterns (A-B-A-B)
 - Stores blocked actions to prevent retry
+- Triggers callback to StatusDisplay when loop detected
 
 **State Persistence**:
 - `.agent_context/state.json` - Full hierarchical state
 - `.agent_context/history.jsonl` - Action log
 - `.agent_context/loops.json` - Detected loops
+- `.agent_context/stats.json` - Performance statistics (via StatusDisplay)
+
+### status_display.py (Progress Visibility)
+
+**Purpose**: Provides real-time visibility into agent progress and performance
+
+**Key Classes**:
+- `PerformanceStats` - Tracks metrics (LLM timing, tokens, success rates)
+- `StatusDisplay` - Renders hierarchical status with progress bars
+
+**Key Functions**:
+- `render(round_no)` - Full status display with hierarchy, progress, stats, activity
+- `render_compact()` - One-line summary (Task X/Y | Subtask A/B | ✓N% | time)
+- `record_llm_call(duration, messages)` - Track LLM performance
+- `record_action(success)` - Track tool action results
+- `record_subtask_complete(success)` - Track subtask completions
+- `record_loop()` - Increment loop detection counter
+
+**Display Features**:
+- Hierarchical task tree with visual status icons (⟳ ✓ ✗ ⊗ ○)
+- Progress bars for tasks, subtasks, and success rate
+- Performance metrics (avg LLM time, avg subtask time, token estimates)
+- Recent activity log with success/failure indicators
+- Error messages from probe state
+
+**See [STATUS_DISPLAY.md](STATUS_DISPLAY.md) for complete documentation**
 
 ### Tools Available
 
@@ -255,11 +284,12 @@ Prevents infinite loops like:
 - `SAFE_BIN` - Whitelisted commands: `{"python", "pytest", "ruff", "pip"}`
 
 ### File Locations
-- `agent.log` - Runtime log (agent_v2.log currently)
+- `agent_v2.log` - Runtime log with timestamps
 - `agent_ledger.log` - Action trace (WRITE/CMD/ERROR/TRIED)
 - `.agent_context/state.json` - Full state (crash recovery)
 - `.agent_context/history.jsonl` - Action history
 - `.agent_context/loops.json` - Detected loops
+- `.agent_context/stats.json` - Performance statistics
 
 ## Example Walkthrough: "Write Hello World"
 

@@ -132,6 +132,7 @@ class ContextManager:
         self.state = ContextState()
         self.action_history: list[Action] = []
         self.loop_detector = LoopDetector()
+        self.loop_callback = None  # Optional callback for loop detection
         self._ensure_dirs()
 
     def _ensure_dirs(self) -> None:
@@ -232,6 +233,8 @@ class ContextManager:
             self.state.loop_counts[sig] = self.state.loop_counts.get(sig, 0) + 1
             self._save_state()
             self._log_loop(action)
+            if self.loop_callback:
+                self.loop_callback()  # Notify status display
             return False
 
         # Record action

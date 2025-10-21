@@ -35,6 +35,9 @@ python agent.py "Your task description here"
 
 # Check Ollama latency
 python diag_speed.py
+
+# Demo the status display
+python test_status_display.py
 ```
 
 ### Configuration
@@ -60,19 +63,32 @@ export OLLAMA_MODEL="gpt-oss:20b"
 ### Core Components
 
 **agent.py** (main agent loop):
-- `probe_state()` - Verifies filesystem state, runs ruff and pytest without asking the LLM
-- `plan_next()` - Generates concrete backward-chaining checklist from current state
-- `dispatch()` - Executes tool calls with deduplication (skips after 3 identical calls)
-- `_prune_history()` - Keeps message context compact (last `HISTORY_KEEP` messages + system + last user)
-- `_ledger_summary()` - Compresses `agent_ledger.log` into a 1-2 line recap
-- `_status_lines()` - Formats status snapshot as plaintext (Goal/Status/Active/Next/Notes)
+- `probe_state_generic()` - Verifies filesystem state without goal-specific assumptions
+- `build_context()` - Constructs context with system prompt + current task info + recent messages
+- `dispatch()` - Executes tool calls with structured error handling
+- Main loop displays status, calls LLM, executes tools, tracks performance
 
-**Tool whitelist** (agent.py:21): Only `python`, `pytest`, `ruff`, and `pip` commands are allowed for Windows safety. All other commands are rejected.
+**context_manager.py** (hierarchical context management):
+- `ContextManager` - Manages Goal → Task → Subtask → Action hierarchy
+- `LoopDetector` - Detects repeated action patterns (infinite loops)
+- Automatic state persistence to `.agent_context/state.json`
+- Loop detection with configurable thresholds
+
+**status_display.py** (progress visibility):
+- `StatusDisplay` - Renders hierarchical task display with progress bars
+- `PerformanceStats` - Tracks LLM timing, tokens, success rates, loop counts
+- Real-time status updates at each agent round
+- Statistics persist to `.agent_context/stats.json`
+- **See [STATUS_DISPLAY.md](STATUS_DISPLAY.md) for complete documentation**
+
+**Tool whitelist** (agent.py:29): Only `python`, `pytest`, `ruff`, and `pip` commands are allowed for Windows safety. All other commands are rejected.
 
 **Status artifacts**:
-- `agent_ledger.log` - Append-only trace of WRITE/CMD/ERROR/TRIED actions (audit trail)
-- `agent.log` - Human-readable runtime log
-- `status.txt` - Compact snapshot (Goal/Status/Active/Next/Notes format) for crash recovery
+- `.agent_context/state.json` - Hierarchical task state (Goal/Task/Subtask/Action)
+- `.agent_context/history.jsonl` - Action history (append-only)
+- `.agent_context/stats.json` - Performance statistics
+- `agent_ledger.log` - Append-only trace of WRITE/CMD/ERROR actions (audit trail)
+- `agent_v2.log` - Human-readable runtime log
 
 ### Context Management Strategy
 
@@ -91,20 +107,48 @@ All tools in `agent.py` are tolerant of edge cases:
 - `write_file()` - Creates parent directories automatically
 - `run_cmd()` - Enforces whitelist, captures output, logs to ledger, returns structured dict
 
-## Key Constants (agent.py:12-22)
+## Key Constants (agent.py:23-29)
 
 - `MODEL` - Ollama model tag (default: "gpt-oss:20b", override with `OLLAMA_MODEL` env var)
 - `TEMP` - Temperature for model (0.2 for focused outputs)
 - `MAX_ROUNDS` - Hard cap on agent loop iterations (24)
-- `HISTORY_KEEP` - Number of recent messages to retain in context (12)
+- `HISTORY_KEEP` - Number of recent message exchanges to retain (5)
 - `SAFE_BIN` - Whitelisted commands: `{"python", "pytest", "ruff", "pip"}`
 
-## Target Files (agent.py:120-124)
+## Status Display
 
-The agent probes these specific files to determine task completion:
-- `mathx/__init__.py` - Package entry point
-- `tests/test_mathx.py` - Test file
-- `pyproject.toml` - Build and tool configuration
+The agent includes a comprehensive status display system showing:
+
+- **Hierarchical task view**: Goal → Task → Subtask with visual status icons
+- **Progress bars**: Task completion, subtask completion, success rate
+- **Performance metrics**: LLM timing, token usage, action counts, loop detection
+- **Recent activity**: Last actions and errors with success/failure indicators
+
+Example output:
+```
+GOAL: Create a Python calculator package
+
+TASKS (1/3 completed):
+  ► ⟳ Create calculator package structure
+    SUBTASKS:
+        ✓ Write calculator/__init__.py
+      ► ⟳ Write calculator/advanced.py
+        ○ Write pyproject.toml
+    ○ Write comprehensive tests
+
+PROGRESS:
+  Tasks:    [█████░░░░░░░░░░░░░░░] 33%
+  Subtasks: [████████░░░░░░░░░░░░] 43%
+  Success:  92%
+
+PERFORMANCE:
+  Avg LLM call:      2.15s
+  Avg subtask time:  1m 30s
+  Actions executed:  25
+  Tokens (est):      3,500
+```
+
+For complete documentation, see [STATUS_DISPLAY.md](STATUS_DISPLAY.md)
 
 ## Ruff Configuration (pyproject.toml:1-5)
 
@@ -133,12 +177,16 @@ Pytest runs in quiet mode by default (`-q`). Test discovery follows standard con
 ## Recovery and Resumability
 
 On startup, the agent:
-1. Reads `status.txt` if present (last known state)
+1. Loads `.agent_context/state.json` if present (last known task hierarchy)
 2. Probes current filesystem and tool outputs
-3. Reconstructs minimal checklist from probe results
+3. Resumes from the last in-progress subtask
 4. Continues from where it left off
 
-If status.txt is missing, the agent falls back to compressing the tail of `agent_ledger.log`.
+The agent is designed to be crash-resilient:
+- All state persisted to plaintext JSON files
+- Action history append-only in `.agent_context/history.jsonl`
+- Performance stats preserved in `.agent_context/stats.json`
+- No databases - everything human-inspectable
 
 ## Development Patterns
 

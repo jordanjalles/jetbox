@@ -11,6 +11,7 @@ from typing import Any
 
 from ollama import chat
 from context_manager import ContextManager
+from status_display import StatusDisplay
 
 # Fix Windows console encoding for Unicode characters
 if sys.platform == "win32":
@@ -386,6 +387,10 @@ def main() -> None:
     _ctx = ContextManager()
     _ctx.load_or_init(goal)
 
+    # Initialize status display
+    status = StatusDisplay(_ctx)
+    _ctx.loop_callback = status.record_loop  # Wire up loop detection callback
+
     # If new goal, decompose into tasks
     if not _ctx.state.goal or not _ctx.state.goal.tasks:
         tasks_data = decompose_goal(goal)
@@ -418,11 +423,16 @@ def main() -> None:
         probe = probe_state_generic()
         _ctx.update_probe_state(probe)
 
+        # Display status at start of round
+        print("\n" + status.render(round_no))
+        print()  # Add spacing
+
         # Check if goal is complete
         if (_ctx.state.goal and
             _ctx.state.current_task_idx >= len(_ctx.state.goal.tasks)):
             print("\n=== Agent Complete ===")
             print(f"Goal achieved: {goal}")
+            print(status.render_compact())
             if probe["files_exist"]:
                 print(f"Files created: {', '.join(probe['files_exist'])}")
             return
@@ -441,7 +451,9 @@ def main() -> None:
             options={"temperature": TEMP},
             stream=False,
         )
-        log(f"ROUND {round_no}: chat() {time.time() - t0:.2f}s")
+        llm_duration = time.time() - t0
+        status.record_llm_call(llm_duration, len(context))
+        log(f"ROUND {round_no}: chat() {llm_duration:.2f}s")
 
         msg = resp["message"]
         calls = msg.get("tool_calls") or []
@@ -472,10 +484,16 @@ def main() -> None:
                         # Don't let record_action fail - just log if it does
                         try:
                             _ctx.record_action(tool_name, args_dict, result_status, error_msg)
+                            status.record_action(result_status == "success")
                         except Exception as record_err:
                             log(f"Failed to record action: {record_err}")
                     except Exception as parse_err:
                         log(f"Failed to parse args for recording: {parse_err}")
+                else:
+                    # Record subtask completion
+                    if isinstance(tool_result, dict):
+                        success = tool_result.get("status") in ["subtask_advanced", "task_advanced", "goal_complete"]
+                        status.record_subtask_complete(success)
 
                 # Add tool result to messages
                 messages.append({
