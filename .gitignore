@@ -3,7 +3,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 agent.log
+agent_v2.log
 agent_ledger.log
+
+# Agent runtime state
+.agent_context/
 
 # Virtual envs (common)
 .venv/

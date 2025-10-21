@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Jetbox is a minimal local-first coding agent that runs with Ollama on Windows. The agent operates in short timeboxes, is designed to be crash-resilient, and follows a verify-first, work-backward approach to completing tasks.
+Jetbox is a minimal local-first coding agent that runs with Ollama on Windows. The agent uses hierarchical context management to complete tasks autonomously, avoiding infinite loops through explicit task completion signaling.
+
+**For detailed architecture documentation, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)**
 
 ## Development Commands
 
