@@ -15,6 +15,8 @@ from typing import Any
 import torch
 from ollama import chat
 
+from core.uncertainty import UncertaintyDetector
+
 
 class LLMWrapper:
     """Wrapper for gpt-oss:20b via Ollama."""
@@ -87,6 +89,7 @@ class HRMJEPALLMPipeline:
         jepa_core: torch.nn.Module,
         hrm_reasoner: torch.nn.Module,
         llm_wrapper: LLMWrapper,
+        uncertainty_detector: UncertaintyDetector | None = None,
     ) -> None:
         """Initialize pipeline.
 
@@ -94,14 +97,18 @@ class HRMJEPALLMPipeline:
             jepa_core: JEPA text encoder
             hrm_reasoner: HRM reasoning module
             llm_wrapper: LLM wrapper (gpt-oss:20b)
+            uncertainty_detector: Optional uncertainty detector
         """
         self.jepa = jepa_core
         self.hrm = hrm_reasoner
         self.llm = llm_wrapper
+        self.uncertainty_detector = uncertainty_detector
 
         # Set to eval mode
         self.jepa.eval()
         self.hrm.eval()
+        if self.uncertainty_detector is not None:
+            self.uncertainty_detector.eval()
 
     def _latent_to_prompt_context(self, latent: torch.Tensor) -> str:
         """Convert latent representation to text context for LLM.
@@ -179,6 +186,15 @@ class HRMJEPALLMPipeline:
                 system_prompt=system_prompt,
             )
 
+            # Stage 5: Uncertainty detection (if enabled)
+            uncertainty_analysis = None
+            if self.uncertainty_detector is not None:
+                consistency_score = hrm_outputs.get("consistency_score", 0.5)
+                uncertainty_analysis = self.uncertainty_detector(
+                    hrm_outputs,
+                    consistency_score,
+                )
+
         return {
             "text_latent": text_latent,
             "hrm_output": hrm_outputs,
@@ -190,6 +206,7 @@ class HRMJEPALLMPipeline:
             },
             "consistency_score": hrm_outputs.get("consistency_score"),
             "is_inconsistent": hrm_outputs.get("is_inconsistent"),
+            "uncertainty_analysis": uncertainty_analysis,
         }
 
 
@@ -289,12 +306,14 @@ class ComparisonFramework:
 def create_text_only_pipeline(
     latent_dim: int = 512,
     model: str = "gpt-oss:20b",
+    enable_uncertainty: bool = True,
 ) -> tuple[HRMJEPALLMPipeline, LLMWrapper]:
     """Create text-only HRM-JEPA-LLM pipeline.
 
     Args:
         latent_dim: Latent dimension
         model: Ollama model name
+        enable_uncertainty: Whether to enable uncertainty detection
 
     Returns:
         Tuple of (pipeline, baseline_llm) for comparison
@@ -302,6 +321,7 @@ def create_text_only_pipeline(
     from core.encoders import create_text_transformer_lite
     from core.hrm import create_hrm_lite
     from core.jepa_core import JEPACore
+    from core.uncertainty import UncertaintyDetector
 
     # Create text-only JEPA (no vision encoder)
     text_encoder = create_text_transformer_lite(latent_dim=latent_dim)
@@ -314,11 +334,18 @@ def create_text_only_pipeline(
     # Create HRM
     hrm_reasoner = create_hrm_lite(latent_dim=latent_dim)
 
+    # Create uncertainty detector
+    uncertainty_detector = None
+    if enable_uncertainty:
+        uncertainty_detector = UncertaintyDetector(latent_dim=latent_dim)
+
     # Create LLM wrappers
     llm_wrapper = LLMWrapper(model=model)
     baseline_llm = LLMWrapper(model=model)
 
     # Create pipeline
-    pipeline = HRMJEPALLMPipeline(jepa_core, hrm_reasoner, llm_wrapper)
+    pipeline = HRMJEPALLMPipeline(
+        jepa_core, hrm_reasoner, llm_wrapper, uncertainty_detector
+    )
 
     return pipeline, baseline_llm
