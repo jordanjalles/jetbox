@@ -12,6 +12,8 @@ from typing import Any
 from ollama import chat
 from context_manager import ContextManager
 from status_display import StatusDisplay
+from workspace_manager import WorkspaceManager
+from completion_detector import analyze_llm_response
 
 # Fix Windows console encoding for Unicode characters
 if sys.platform == "win32":
@@ -99,35 +101,74 @@ def probe_state_generic() -> dict[str, Any]:
 # Tools
 # ----------------------------
 def list_dir(path: str | None = ".", **kwargs) -> list[str]:
-    """List files (non-recursive)."""
-    p = path or "."
+    """List files (non-recursive, workspace-aware)."""
+    global _workspace
+
+    # Resolve path through workspace if available
+    if _workspace:
+        resolved_path = _workspace.resolve_path(path or ".")
+    else:
+        resolved_path = Path(path or ".")
+
     try:
-        return sorted(os.listdir(p))
+        return sorted(os.listdir(resolved_path))
     except FileNotFoundError as e:
         return [f"__error__: {e}"]
 
 def read_file(path: str, max_bytes: int = 200_000) -> str:
-    """Read a text file (truncated)."""
-    with open(path, encoding="utf-8", errors="replace") as f:
+    """Read a text file (truncated, workspace-aware)."""
+    global _workspace
+
+    # Resolve path through workspace if available
+    if _workspace:
+        resolved_path = _workspace.resolve_path(path)
+    else:
+        resolved_path = Path(path)
+
+    with open(resolved_path, encoding="utf-8", errors="replace") as f:
         return f.read(max_bytes)
 
 def write_file(path: str, content: str, create_dirs: bool = True) -> str:
-    """Write/overwrite a text file."""
+    """Write/overwrite a text file (workspace-aware)."""
+    global _workspace
+
+    # Resolve path through workspace if available
+    if _workspace:
+        resolved_path = _workspace.resolve_path(path)
+        _workspace.track_file(path)  # Track file creation
+        display_path = _workspace.relative_path(resolved_path)
+    else:
+        resolved_path = Path(path)
+        display_path = path
+
     if create_dirs:
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+        os.makedirs(os.path.dirname(resolved_path) or ".", exist_ok=True)
+    with open(resolved_path, "w", encoding="utf-8") as f:
         f.write(content)
-    _ledger_append("WRITE", path)
-    return f"Wrote {len(content)} chars to {path}"
+    _ledger_append("WRITE", str(resolved_path))
+    return f"Wrote {len(content)} chars to {display_path}"
 
 def run_cmd(cmd: list[str], timeout_sec: int = 60) -> dict[str, Any]:
-    """Run a whitelisted command: first token must be in SAFE_BIN."""
+    """Run a whitelisted command (workspace-aware): first token must be in SAFE_BIN."""
+    global _workspace
+
     if not cmd or cmd[0] not in SAFE_BIN:
         err = f"Command not allowed: {cmd!r}. Use only {sorted(SAFE_BIN)}."
         _ledger_append("ERROR", err)
         return {"error": err}
+
+    # Determine working directory
+    cwd = str(_workspace.workspace_dir) if _workspace else None
+
+    # Set up environment with PYTHONPATH for workspace
+    env = os.environ.copy()
+    if _workspace and cwd:
+        # Add workspace directory to PYTHONPATH for pytest imports
+        if "pytest" in cmd or "python" in cmd:
+            env["PYTHONPATH"] = cwd
+
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec)
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec, cwd=cwd, env=env)
         out = {
             "returncode": p.returncode,
             "stdout": p.stdout[-50_000:],
@@ -145,8 +186,9 @@ def run_cmd(cmd: list[str], timeout_sec: int = 60) -> dict[str, Any]:
         _ledger_append("ERROR", f"run_cmd exception: {e}")
         return {"error": str(e)}
 
-# Global context manager reference
+# Global context manager and workspace manager references
 _ctx: ContextManager | None = None
+_workspace: WorkspaceManager | None = None
 
 def mark_subtask_complete(success: bool = True, reason: str = "") -> dict[str, Any]:
     """
@@ -375,13 +417,17 @@ def dispatch(call: dict[str, Any]) -> dict[str, Any]:
 # Main loop
 # ----------------------------
 def main() -> None:
-    global _ctx
+    global _ctx, _workspace
 
     goal = "Write a hello world script"
     if len(sys.argv) > 1:
         goal = " ".join(sys.argv[1:])
 
     log(f"Starting agent with goal: {goal}")
+
+    # Initialize workspace manager (isolated directory for this goal)
+    _workspace = WorkspaceManager(goal)
+    log(f"Workspace: {_workspace.workspace_dir}")
 
     # Initialize context manager
     _ctx = ContextManager()
@@ -465,6 +511,11 @@ def main() -> None:
             # Add assistant message with tool calls
             messages.append(msg)
 
+            # Analyze LLM response for completion signals ONCE per response
+            current_subtask = _ctx._get_current_task().active_subtask()
+            subtask_desc = current_subtask.description if current_subtask else None
+            analysis = analyze_llm_response(msg.get("content", ""), calls, subtask_desc)
+
             for c in calls:
                 tool_name = c["function"]["name"]
 
@@ -495,10 +546,20 @@ def main() -> None:
                         success = tool_result.get("status") in ["subtask_advanced", "task_advanced", "goal_complete"]
                         status.record_subtask_complete(success)
 
-                # Add tool result to messages
+                # Add tool result to messages (with nudge if needed on LAST tool call)
+                tool_result_str = json.dumps(tool_result)
+                is_last_call = (c == calls[-1])
+
+                if is_last_call and analysis["should_nudge"]:
+                    # Append nudge message to last tool result
+                    tool_result_with_nudge = tool_result.copy() if isinstance(tool_result, dict) else {}
+                    tool_result_with_nudge["_nudge"] = analysis["nudge_message"]
+                    tool_result_str = json.dumps(tool_result_with_nudge)
+                    log(f"NUDGE: {analysis['reason']}")
+
                 messages.append({
                     "role": "tool",
-                    "content": json.dumps(tool_result),
+                    "content": tool_result_str,
                 })
 
                 # Check if goal completed via mark_subtask_complete
@@ -511,7 +572,31 @@ def main() -> None:
 
             continue
 
-        # No tool calls - final answer
+        # No tool calls - check for completion signals before giving final answer
+        messages.append(msg)
+
+        # Analyze for completion signals
+        current_subtask = _ctx._get_current_task().active_subtask()
+        subtask_desc = current_subtask.description if current_subtask else None
+        analysis = analyze_llm_response(msg.get("content", ""), calls, subtask_desc)
+
+        if analysis["should_nudge"]:
+            # Agent mentioned completion but didn't call mark_subtask_complete
+            # Add a strong system message to prompt the tool call
+            log(f"NUDGE: {analysis['reason']}")
+            nudge_msg = (
+                f"{analysis['nudge_message']}\n\n"
+                f"IMPORTANT: You must call mark_subtask_complete(success=True) to advance. "
+                f"Do not give a final answer until the goal is marked complete."
+            )
+            messages.append({
+                "role": "user",
+                "content": nudge_msg
+            })
+            # Continue to next round to let agent respond with mark_subtask_complete
+            continue
+
+        # No completion signal - this is a real final answer
         print("\n=== Agent Reply ===")
         print(msg["content"])
         return
