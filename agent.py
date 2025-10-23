@@ -35,46 +35,68 @@ HISTORY_KEEP = 5  # Keep last 5 message exchanges
 # ----------------------------
 # Timeout wrapper for LLM calls
 # ----------------------------
-def chat_with_timeout(model: str, messages: list, options: dict, timeout_seconds: int = 120):
+def chat_with_inactivity_timeout(model: str, messages: list, options: dict, inactivity_timeout: int = 30):
     """
-    Call ollama chat with a timeout to prevent infinite hangs.
+    Call ollama chat with INACTIVITY timeout (not total time timeout).
+
+    This allows complex tasks to take as long as needed, but detects
+    when Ollama has actually stopped responding (no chunks for N seconds).
 
     Args:
         model: Model name
         messages: List of messages
         options: Options dict (temperature, etc)
-        timeout_seconds: Timeout in seconds (default 120s = 2 minutes)
+        inactivity_timeout: Max seconds without activity (default 30s)
 
     Returns:
         Response dict from ollama
 
     Raises:
-        TimeoutError: If the call takes longer than timeout_seconds
+        TimeoutError: If no response activity for inactivity_timeout seconds
     """
+    from queue import Queue, Empty
+    import time
+
     result_queue = Queue()
 
-    def _call_chat():
+    def _stream_chat():
         try:
-            resp = chat(model=model, messages=messages, options=options)
-            result_queue.put(("success", resp))
+            full_response = ""
+            # Use streaming to detect activity
+            for chunk in chat(model=model, messages=messages, options=options, stream=True):
+                # Signal activity
+                result_queue.put(("chunk", chunk))
+                content = chunk.get("message", {}).get("content", "")
+                full_response += content
+
+            # Stream complete
+            result_queue.put(("done", {"message": {"content": full_response}}))
         except Exception as e:
             result_queue.put(("error", e))
 
-    thread = Thread(target=_call_chat, daemon=True)
+    thread = Thread(target=_stream_chat, daemon=True)
     thread.start()
-    thread.join(timeout=timeout_seconds)
 
-    if thread.is_alive():
-        # Thread is still running - timeout occurred
-        raise TimeoutError(f"LLM call timed out after {timeout_seconds}s")
+    # Monitor for inactivity
+    while True:
+        try:
+            msg_type, data = result_queue.get(timeout=inactivity_timeout)
 
-    if result_queue.empty():
-        raise RuntimeError("Thread finished but no result in queue")
+            if msg_type == "chunk":
+                # Activity detected, keep waiting
+                continue
+            elif msg_type == "done":
+                # Success - return full response
+                return data
+            elif msg_type == "error":
+                # Error during streaming
+                raise data
 
-    status, result = result_queue.get()
-    if status == "error":
-        raise result
-    return result
+        except Empty:
+            # No activity for inactivity_timeout seconds = Ollama is hung
+            raise TimeoutError(
+                f"No response from Ollama for {inactivity_timeout}s - likely hung or dead"
+            )
 LOGFILE = "agent_v2.log"
 LEDGER = Path("agent_ledger.log")
 SAFE_BIN = {"python", "pytest", "ruff", "pip"}
@@ -937,16 +959,20 @@ Return ONLY the JSON array, no other text.
 
     log("Decomposing goal into tasks...")
     try:
-        resp = chat_with_timeout(
+        resp = chat_with_inactivity_timeout(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             options={"temperature": 0.1},
-            timeout_seconds=120,  # 2 minute timeout for decomposition
+            inactivity_timeout=30,  # 30s of no activity = Ollama is hung
         )
     except TimeoutError as e:
-        log(f"Goal decomposition timed out: {e}")
-        # Fallback: create a single generic task
-        return [{"description": goal, "subtasks": ["Complete the goal"]}]
+        log(f"Ollama stopped responding during decomposition: {e}")
+        # Fallback: create a basic task structure
+        return [
+            {"description": "Understand and plan", "subtasks": ["Read relevant files", "Identify what needs to be done"]},
+            {"description": "Implement changes", "subtasks": ["Make necessary code changes"]},
+            {"description": "Verify and test", "subtasks": ["Run tests", "Check code quality"]}
+        ]
 
     content = resp["message"]["content"].strip()
     # Extract JSON from markdown code blocks if present
