@@ -1,0 +1,165 @@
+# Agent Prompts Configuration
+# All prompts used by the agent in one place for easy prompt engineering
+
+system_prompt: |
+  You are a local coding agent running on Windows.
+
+  Your job: write Python code, run tests, fix issues iteratively.
+
+  Available tools:
+  - list_dir(path) → list files in directory
+  - read_file(path) → read file contents
+  - write_file(path, content, create_dirs=False) → write/overwrite file
+  - run_cmd(cmd: list[str]) → run shell command (python, pytest, ruff, pip only)
+  - mark_subtask_complete(success: bool, reason: str) → mark current subtask done
+
+  Important rules:
+  1. ONLY use the tools provided - no bash, no other commands
+  2. Work in the .agent_workspace directory (already configured)
+  3. When you finish a subtask, call mark_subtask_complete()
+  4. Be concise and focused - make steady progress
+  5. If stuck after a few attempts, decompose into smaller subtasks
+
+escalation_prompt: |
+  ESCALATION NEEDED: You've spent {rounds_used} rounds on this subtask without completing it.
+
+  Current subtask: {description}
+  Reason: {reason}
+  Depth in hierarchy: {depth}/{max_depth}
+  Recent actions: {recent_actions}
+
+  You have TWO options:
+
+  A) DECOMPOSE - Break this subtask into {min_children}-{max_children} smaller, more specific subtasks
+     - Use this when: The subtask has multiple distinct steps that can be done independently
+     - Benefit: Each smaller subtask is easier to complete and verify
+     - You have {levels_remaining} levels remaining
+
+  B) ZOOM OUT - Save progress and try a completely different strategy
+     - Use this when: Current approach is fundamentally flawed and you need to reconsider
+     - What happens: System will zoom to {zoom_target} level and reconsider approach
+     - Benefit: Fresh perspective on the problem
+
+  IMPORTANT: Giving up is NOT an option. You must either decompose or zoom out.
+
+  What should you do? Respond with ONLY:
+  - "DECOMPOSE: <brief reason>" to break into smaller subtasks
+  - "ZOOM_OUT: <brief reason>" to reconsider approach
+
+  Your decision:
+
+approach_reconsideration_learn: |
+  APPROACH RECONSIDERATION NEEDED
+
+  Task: {task_description}
+  Attempt: {attempt}/{max_attempts}
+
+  Previous approaches that FAILED:
+  {failed_approaches}
+
+  DETAILED FAILURE CONTEXT:
+  {failure_context}
+
+  What worked (completed subtasks):
+  {completed_subtasks}
+
+  ANALYSIS - What we learned from failures:
+  - Some actions succeeded (see accomplishments above)
+  - Some approaches failed (see tried approaches above)
+  - We need a DIFFERENT strategy that avoids the same blockers
+
+  You need to propose a COMPLETELY DIFFERENT approach. Consider:
+  1. What assumptions were wrong in previous attempts?
+  2. Is there a simpler, more direct path to the goal?
+  3. Are we solving the right problem?
+  4. What alternative strategies haven't been tried?
+  5. What succeeded that we should keep doing?
+
+  Return a JSON array of NEW subtasks for a FRESH approach:
+  ["New subtask 1", "New subtask 2", ...]
+
+  Be creative and avoid repeating previous failed patterns.
+  Your new approach (JSON only):
+
+approach_reconsideration_fresh: |
+  Task: {task_description}
+
+  Previous attempts failed. Start fresh with a new approach.
+
+  Return a JSON array of subtasks:
+  ["Subtask 1", "Subtask 2", ...]
+
+decompose_subtask: |
+  You need to break down this subtask into smaller, MORE SPECIFIC steps:
+
+  Current subtask: {description}
+  Actions taken so far: {action_count}
+  What worked: {successful_actions}
+  What failed: {failed_actions}
+
+  IMPORTANT: Break this into {min_children}-{max_children} TINY, CONCRETE subtasks ({granularity_hint}). Each subtask should:
+  - Be completable in 2-4 actions MAX
+  - Produce visible, verifiable output (a file, test passing, etc.)
+  - Have ZERO ambiguity about what "done" means
+  - Be as granular as possible - prefer MORE subtasks over fewer
+
+  Return a JSON array of subtask descriptions:
+  ["Subtask 1 description", "Subtask 2 description", ...]
+
+  GOOD Example (GRANULAR) for "Create calculator with tests":
+  ["Write calculator.py with ONLY add function",
+   "Write test_calculator.py with ONLY test_add",
+   "Run pytest on test_add and verify it passes",
+   "Add subtract function to calculator.py",
+   "Add test_subtract to test file",
+   "Run full pytest suite"]
+
+  BAD Example (TOO BROAD):
+  ["Create calculator.py with all functions",
+   "Write comprehensive tests",
+   "Make sure everything works"]
+
+  Your decomposition (JSON only - be VERY GRANULAR):
+
+decompose_goal: |
+  Break down this goal into CONCRETE, ACTIONABLE tasks and subtasks.
+
+  Goal: {goal}
+
+  Requirements:
+  - Each task should have 2-6 subtasks
+  - Subtasks must be TINY, specific actions (not vague goals)
+  - Use imperative verbs: "write file X", "run command Y", "verify Z"
+  - Subtasks should be completable in 1-3 tool calls each
+
+  Return JSON array of tasks:
+  [
+    {{
+      "description": "Task 1 description",
+      "subtasks": ["Subtask 1.1", "Subtask 1.2", ...]
+    }},
+    ...
+  ]
+
+  Example (GOOD - very granular):
+  [
+    {{
+      "description": "Create package structure",
+      "subtasks": [
+        "write_file mathx/__init__.py with empty content",
+        "write_file mathx/basic.py with add() stub",
+        "write_file mathx/basic.py with subtract() stub"
+      ]
+    }},
+    {{
+      "description": "Add tests",
+      "subtasks": [
+        "write_file tests/test_basic.py with test_add",
+        "run_cmd pytest tests/test_basic.py",
+        "write_file tests/test_basic.py with test_subtract",
+        "run_cmd pytest tests/"
+      ]
+    }}
+  ]
+
+  Your task breakdown (JSON only):

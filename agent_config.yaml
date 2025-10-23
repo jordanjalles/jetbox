@@ -1,0 +1,116 @@
+# Agent Configuration
+# This file controls the hierarchical task decomposition and failure handling behavior
+
+# ==============================
+# Round Limits
+# ==============================
+rounds:
+  # Maximum rounds per subtask before forced escalation
+  max_per_subtask: 12
+
+  # Maximum total rounds per task (safety cap)
+  max_per_task: 256
+
+  # Legacy global maximum (for backwards compatibility)
+  max_global: 24
+
+# ==============================
+# Hierarchy Limits
+# ==============================
+hierarchy:
+  # Maximum depth of subtask nesting (1 = top-level, 5 = 5 levels deep)
+  max_depth: 5
+
+  # Maximum number of sibling subtasks at any level
+  max_siblings: 8
+
+# ==============================
+# Escalation Strategy
+# ==============================
+escalation:
+  # When a subtask hits max_rounds_per_subtask, what should happen?
+  # Options: "force_decompose", "agent_decides"
+  # - force_decompose: Always decompose into smaller subtasks (no give-up option)
+  # - agent_decides: Let agent choose between decompose/zoom_out/give_up (original behavior)
+  strategy: "force_decompose"
+
+  # When at max depth and still failing, zoom out to this level
+  # Options: "parent", "task", "root", "smart"
+  # - parent: Go up one level to parent subtask
+  # - task: Go to task level (top of current task)
+  # - root: Go to root goal and reconsider entire approach
+  # - smart: Analyze subtask tree to find the actual root of the problem
+  zoom_out_target: "smart"
+
+  # Number of times to reconsider approach at root before final failure
+  max_approach_retries: 3
+
+  # When zooming out, should we mark failed path as blocked?
+  block_failed_paths: true
+
+# ==============================
+# Loop Detection
+# ==============================
+loop_detection:
+  # Same action attempted N times = loop
+  max_action_repeats: 3
+
+  # Same subtask failed N times = escalate
+  max_subtask_repeats: 2
+
+  # Context age in seconds before considered stale
+  max_context_age: 300
+
+# ==============================
+# Decomposition Behavior
+# ==============================
+decomposition:
+  # When forcing decomposition, what's the minimum number of child subtasks?
+  min_children: 2
+
+  # Maximum number of child subtasks when decomposing
+  max_children: 6
+
+  # LLM temperature for decomposition planning (higher = more creative)
+  temperature: 0.2
+
+  # Should decomposition be granular (prefer more, smaller subtasks)?
+  prefer_granular: true
+
+# ==============================
+# Approach Reconsideration
+# ==============================
+approach_retry:
+  # Track approach attempts per task
+  enabled: true
+
+  # When reconsidering approach, should we reset all subtasks?
+  reset_subtasks_on_retry: true
+
+  # Should we preserve successful subtasks when retrying?
+  preserve_completed: true
+
+  # Prompt style for approach reconsideration
+  # Options: "fresh_start", "learn_from_failures"
+  retry_style: "learn_from_failures"
+
+# ==============================
+# Context Management
+# ==============================
+context:
+  # Maximum number of message pairs to keep in context window
+  # Higher = more context but slower LLM calls
+  max_messages_in_memory: 12
+
+  # Maximum tokens to allow in context (approximate)
+  # Set to 0 to disable token limiting
+  max_tokens: 8000
+
+  # How many recent actions to include in context
+  recent_actions_limit: 10
+
+  # Enable context compression (summarize old messages)
+  enable_compression: true
+
+  # Compression trigger: compress when context exceeds this many messages
+  compression_threshold: 20

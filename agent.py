@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from ollama import chat
+from ollama._types import ResponseError
 from context_manager import ContextManager
 from status_display import StatusDisplay
 from workspace_manager import WorkspaceManager
 from completion_detector import analyze_llm_response
+from agent_config import config
 
 # Fix Windows console encoding for Unicode characters
 if sys.platform == "win32":
@@ -21,15 +23,21 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # ----------------------------
-# Config
+# Config (loaded from agent_config.yaml)
 # ----------------------------
 MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 TEMP = 0.2
-MAX_ROUNDS = 24
 HISTORY_KEEP = 5  # Keep last 5 message exchanges
 LOGFILE = "agent_v2.log"
 LEDGER = Path("agent_ledger.log")
 SAFE_BIN = {"python", "pytest", "ruff", "pip"}
+
+# Load from config file
+MAX_ROUNDS = config.rounds.max_global
+MAX_ROUNDS_PER_SUBTASK = config.rounds.max_per_subtask
+MAX_ROUNDS_PER_TASK = config.rounds.max_per_task
+MAX_SUBTASK_DEPTH = config.hierarchy.max_depth
+MAX_SUBTASK_SIBLINGS = config.hierarchy.max_siblings
 
 # ----------------------------
 # Logging / Ledger
@@ -206,6 +214,18 @@ def mark_subtask_complete(success: bool = True, reason: str = "") -> dict[str, A
     _ctx.mark_subtask_complete(success, reason)
     _ledger_append("SUBTASK", f"marked {'complete' if success else 'failed'}: {reason}")
 
+    # Log visible progress
+    if success:
+        current_task = _ctx._get_current_task()
+        if current_task:
+            completed = sum(1 for st in current_task.subtasks if st.status == "completed")
+            total = len(current_task.subtasks)
+            log(f"✓ Progress: {completed}/{total} subtasks complete ({completed/total*100:.0f}%)")
+            print(f"\n{'='*70}")
+            print(f"✓ SUBTASK COMPLETE: {reason if reason else 'success'}")
+            print(f"Progress: {completed}/{total} subtasks ({completed/total*100:.0f}%)")
+            print(f"{'='*70}\n")
+
     if success:
         # Try to advance to next subtask
         has_next = _ctx.advance_to_next_subtask()
@@ -234,6 +254,563 @@ def mark_subtask_complete(success: bool = True, reason: str = "") -> dict[str, A
             }
     else:
         return {"status": "subtask_failed", "reason": reason}
+
+# ----------------------------
+# Phase 2: Agent-Driven Escalation (NO GIVE-UP)
+# ----------------------------
+def agent_decide_escalation(
+    subtask: Any,
+    reason: str
+) -> str:
+    """
+    Decide escalation strategy based on config and subtask depth.
+
+    Strategy:
+    - If can decompose AND strategy is "force_decompose": Always decompose
+    - If can decompose AND strategy is "agent_decides": Ask agent
+    - If at max depth: Force zoom out to reconsider approach
+    - Never give up - always either decompose or zoom out
+
+    Returns: "decompose" or "zoom_out" (never "give_up")
+    """
+    # Check if decomposition is possible
+    can_decompose = subtask.can_add_child()
+
+    # Force decompose strategy from config
+    if config.escalation.strategy == "force_decompose":
+        if can_decompose:
+            log(f"[escalation] Forcing decomposition (depth {subtask.depth}/{MAX_SUBTASK_DEPTH})")
+            return "decompose"
+        else:
+            log(f"[escalation] At max depth/width, zooming out to {config.escalation.zoom_out_target}")
+            return "zoom_out"
+
+    # Agent decides strategy (but no give-up option)
+    if config.escalation.strategy == "agent_decides":
+        if not can_decompose:
+            # No choice - must zoom out
+            log(f"[escalation] At max depth/width, forced zoom out")
+            return "zoom_out"
+
+        # Build escalation prompt (NO GIVE-UP OPTION)
+        escalation_prompt = f"""ESCALATION NEEDED: You've spent {subtask.rounds_used} rounds on this subtask without completing it.
+
+Current subtask: {subtask.description}
+Reason: {reason}
+Depth in hierarchy: {subtask.depth}/{MAX_SUBTASK_DEPTH}
+Recent actions: {[a.name for a in subtask.actions[-5:]]}
+
+You have TWO options:
+
+A) DECOMPOSE - Break this subtask into {config.decomposition.min_children}-{config.decomposition.max_children} smaller, more specific subtasks
+   - Use this when: The subtask has multiple distinct steps that can be done independently
+   - Benefit: Each smaller subtask is easier to complete and verify
+   - You have {MAX_SUBTASK_DEPTH - subtask.depth} levels remaining
+
+B) ZOOM OUT - Save progress and try a completely different strategy
+   - Use this when: Current approach is fundamentally flawed and you need to reconsider
+   - What happens: System will zoom to {config.escalation.zoom_out_target} level and reconsider approach
+   - Benefit: Fresh perspective on the problem
+
+IMPORTANT: Giving up is NOT an option. You must either decompose or zoom out.
+
+What should you do? Respond with ONLY:
+- "DECOMPOSE: <brief reason>" to break into smaller subtasks
+- "ZOOM_OUT: <brief reason>" to reconsider approach
+
+Your decision:"""
+
+        # Ask the LLM to decide
+        try:
+            response = chat(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": escalation_prompt}
+                ],
+                options={"temperature": 0.3}  # Slightly higher temp for decision-making
+            )
+
+            decision_text = response["message"]["content"].strip().upper()
+
+            # Parse decision (only decompose or zoom_out allowed)
+            if "DECOMPOSE" in decision_text:
+                log(f"Agent chose DECOMPOSE: {decision_text}")
+                return "decompose"
+            else:
+                # Default to zoom_out if unclear
+                log(f"Agent chose ZOOM_OUT: {decision_text}")
+                return "zoom_out"
+        except Exception as e:
+            log(f"Escalation decision failed: {e}, defaulting to zoom_out")
+            return "zoom_out"
+
+    # Fallback: decompose if possible, otherwise zoom out
+    return "decompose" if can_decompose else "zoom_out"
+
+
+def find_smart_zoom_target(current_subtask: Any, ctx: ContextManager) -> str:
+    """
+    Analyze the subtask tree to find the best zoom-out target.
+
+    Strategy:
+    1. If current subtask has only 1-2 failed siblings, zoom to parent (localized issue)
+    2. If parent has mostly failed children, zoom to task (systemic issue in parent's approach)
+    3. If task has multiple failed branches, zoom to root (fundamental approach problem)
+    4. Otherwise, zoom to parent (conservative default)
+
+    Returns: "parent", "task", or "root"
+    """
+    # Get parent subtask if exists
+    parent = current_subtask.parent_subtask if hasattr(current_subtask, 'parent_subtask') else None
+
+    # If at top level (no parent), must go to task
+    if not parent:
+        log("[smart_zoom] No parent subtask, zooming to task")
+        return "task"
+
+    # Analyze siblings (other children of parent)
+    siblings = parent.child_subtasks if hasattr(parent, 'child_subtasks') else []
+    if siblings:
+        failed_siblings = [s for s in siblings if s.status in ("failed", "blocked")]
+        total_siblings = len(siblings)
+
+        # If less than half of siblings failed, problem is localized
+        if len(failed_siblings) < total_siblings / 2:
+            log(f"[smart_zoom] Only {len(failed_siblings)}/{total_siblings} siblings failed, zooming to parent")
+            return "parent"
+
+    # Analyze parent's status - if parent itself is struggling, go higher
+    if parent.rounds_used > config.rounds.max_per_subtask * 0.7:
+        log(f"[smart_zoom] Parent has {parent.rounds_used} rounds, zooming to task")
+        return "task"
+
+    # Check if multiple branches at task level are failing
+    current_task = ctx.state.goal.tasks[ctx.state.current_task_idx]
+    task_subtasks = current_task.subtasks
+    if task_subtasks:
+        failed_task_subtasks = [s for s in task_subtasks if s.status in ("failed", "blocked")]
+
+        # If more than 2/3 of top-level subtasks failed, fundamental issue
+        if len(failed_task_subtasks) > len(task_subtasks) * 2 / 3:
+            log(f"[smart_zoom] {len(failed_task_subtasks)}/{len(task_subtasks)} task subtasks failed, zooming to root")
+            return "root"
+
+    # Default: zoom to parent (conservative)
+    log("[smart_zoom] No clear pattern, zooming to parent")
+    return "parent"
+
+
+def generate_failure_report(goal: str, ctx: ContextManager, reason: str) -> str:
+    """
+    Generate a comprehensive failure report for debugging and analysis.
+
+    Returns the path to the generated report.
+    """
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_path = f"reports/failure_report_{timestamp}.md"
+
+    # Ensure reports directory exists
+    Path("reports").mkdir(exist_ok=True)
+
+    lines = []
+    lines.append(f"# Agent Failure Report")
+    lines.append(f"")
+    lines.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"**Goal:** {goal}")
+    lines.append(f"**Failure Reason:** {reason}")
+    lines.append(f"")
+
+    if not ctx.state.goal:
+        lines.append("No goal state available.")
+        Path(report_path).write_text("\n".join(lines), encoding="utf-8")
+        return report_path
+
+    # Overall summary
+    lines.append("## Summary")
+    lines.append(f"")
+    total_tasks = len(ctx.state.goal.tasks)
+    completed_tasks = sum(1 for t in ctx.state.goal.tasks if t.status == "completed")
+    lines.append(f"- **Tasks Completed:** {completed_tasks}/{total_tasks}")
+    lines.append(f"- **Current Task Index:** {ctx.state.current_task_idx}")
+    lines.append(f"")
+
+    # Task breakdown
+    lines.append("## Task Breakdown")
+    lines.append("")
+
+    for i, task in enumerate(ctx.state.goal.tasks):
+        is_current = i == ctx.state.current_task_idx
+        marker = "**[CURRENT]**" if is_current else ""
+
+        lines.append(f"### Task {i+1}: {task.description} {marker}")
+        lines.append(f"")
+        lines.append(f"- **Status:** {task.status}")
+        if hasattr(task, 'approach_attempts') and task.approach_attempts > 0:
+            lines.append(f"- **Approach Attempts:** {task.approach_attempts}")
+        if hasattr(task, 'failed_approaches') and task.failed_approaches:
+            lines.append(f"- **Failed Approaches:**")
+            for fa in task.failed_approaches:
+                lines.append(f"  - {fa}")
+        lines.append(f"")
+
+        # Subtask breakdown
+        if task.subtasks:
+            total_subtasks = len(task.subtasks)
+            completed_subtasks = sum(1 for st in task.subtasks if st.status == "completed")
+            lines.append(f"**Subtasks:** {completed_subtasks}/{total_subtasks} completed")
+            lines.append(f"")
+
+            for j, subtask in enumerate(task.subtasks):
+                _write_subtask_report(lines, subtask, indent=0)
+
+        lines.append(f"")
+
+    # Blockers and issues
+    lines.append("## Identified Blockers")
+    lines.append("")
+
+    blockers = []
+    for task in ctx.state.goal.tasks:
+        for subtask in task.subtasks:
+            if subtask.status in ["blocked", "failed"]:
+                blocker = f"- **{subtask.description}**"
+                if subtask.failure_reason:
+                    blocker += f": {subtask.failure_reason}"
+                if hasattr(subtask, 'tried_approaches') and subtask.tried_approaches:
+                    blocker += f"\n  - Tried: {', '.join(subtask.tried_approaches[:3])}"
+                blockers.append(blocker)
+
+    if blockers:
+        lines.extend(blockers)
+    else:
+        lines.append("No specific blockers identified.")
+
+    lines.append(f"")
+
+    # Progress achieved
+    lines.append("## Progress Achieved")
+    lines.append("")
+
+    accomplishments = []
+    for task in ctx.state.goal.tasks:
+        for subtask in task.subtasks:
+            if hasattr(subtask, 'accomplishments') and subtask.accomplishments:
+                for acc in subtask.accomplishments:
+                    accomplishments.append(f"- {acc}")
+
+    if accomplishments:
+        lines.extend(accomplishments)
+    else:
+        lines.append("No measurable progress recorded.")
+
+    lines.append(f"")
+
+    # Recommendations
+    lines.append("## Recommendations")
+    lines.append("")
+    lines.append("Based on this failure analysis:")
+    lines.append("1. Review the blockers listed above")
+    lines.append("2. Check if the goal is achievable with current tools")
+    lines.append("3. Consider breaking down blocked subtasks further")
+    lines.append("4. Review failed approaches to avoid repeating them")
+    lines.append("")
+
+    # Write report
+    report_content = "\n".join(lines)
+    Path(report_path).write_text(report_content, encoding="utf-8")
+
+    log(f"[report] Generated failure report: {report_path}")
+    return report_path
+
+
+def _write_subtask_report(lines: list[str], subtask: Any, indent: int) -> None:
+    """Helper to recursively write subtask info to report."""
+    indent_str = "  " * indent
+
+    # Subtask header
+    status_emoji = {"completed": "✓", "failed": "✗", "blocked": "⊘", "in_progress": "⟳", "pending": "○"}
+    emoji = status_emoji.get(subtask.status, "?")
+
+    lines.append(f"{indent_str}- {emoji} **{subtask.description}**")
+    lines.append(f"{indent_str}  - Status: {subtask.status}")
+
+    if hasattr(subtask, 'depth'):
+        lines.append(f"{indent_str}  - Depth: Level {subtask.depth}")
+    if hasattr(subtask, 'rounds_used') and subtask.rounds_used > 0:
+        lines.append(f"{indent_str}  - Rounds Used: {subtask.rounds_used}")
+
+    # Accomplishments
+    if hasattr(subtask, 'accomplishments') and subtask.accomplishments:
+        lines.append(f"{indent_str}  - **Accomplishments:**")
+        for acc in subtask.accomplishments:
+            lines.append(f"{indent_str}    - {acc}")
+
+    # Tried approaches
+    if hasattr(subtask, 'tried_approaches') and subtask.tried_approaches:
+        lines.append(f"{indent_str}  - **Tried (failed):**")
+        for tried in subtask.tried_approaches[:5]:  # Limit to 5
+            lines.append(f"{indent_str}    - {tried}")
+
+    # Context notes
+    if hasattr(subtask, 'context_notes') and subtask.context_notes:
+        lines.append(f"{indent_str}  - **Notes:** {subtask.context_notes}")
+
+    # Failure reason
+    if subtask.status in ["failed", "blocked"] and subtask.failure_reason:
+        lines.append(f"{indent_str}  - **Failure Reason:** {subtask.failure_reason}")
+
+    lines.append("")
+
+    # Recurse for child subtasks
+    if hasattr(subtask, 'child_subtasks') and subtask.child_subtasks:
+        for child in subtask.child_subtasks:
+            _write_subtask_report(lines, child, indent + 1)
+
+
+def reconsider_approach_at_root(task: Any, ctx: ContextManager) -> bool:
+    """
+    Zoom out to root and reconsider the entire approach.
+
+    Returns True if approach was reconsidered and we should retry.
+    Returns False if max retries exhausted and task should be marked failed.
+    """
+    if not config.approach_retry.enabled:
+        log("[approach] Approach retry disabled in config")
+        return False
+
+    # Check if we've exceeded max retries
+    if task.approach_attempts >= config.escalation.max_approach_retries:
+        log(f"[approach] Max approach retries ({config.escalation.max_approach_retries}) exceeded")
+        return False
+
+    # Increment attempt counter
+    task.approach_attempts += 1
+
+    # Collect what we've learned
+    failed_subtasks = [st for st in task.subtasks if st.status in ["failed", "blocked"]]
+    failed_approaches = [st.description for st in failed_subtasks]
+
+    # Save failed approach summary
+    approach_summary = f"Attempt {task.approach_attempts}: Failed subtasks: {', '.join(failed_approaches[:3])}"
+    task.failed_approaches.append(approach_summary)
+
+    log(f"[approach] Reconsidering approach (attempt {task.approach_attempts}/{config.escalation.max_approach_retries})")
+    print(f"\n{'='*70}")
+    print(f"🔄 RECONSIDERING APPROACH (Attempt {task.approach_attempts}/{config.escalation.max_approach_retries})")
+    print(f"Task: {task.description}")
+    print(f"\nPrevious failed approaches:")
+    for i, summary in enumerate(task.failed_approaches, 1):
+        print(f"  {i}. {summary}")
+    print(f"{'='*70}\n")
+
+    # Reset or preserve based on config
+    if config.approach_retry.reset_subtasks_on_retry:
+        if config.approach_retry.preserve_completed:
+            # Keep completed subtasks, reset others
+            task.subtasks = [st for st in task.subtasks if st.status == "completed"]
+            log(f"[approach] Preserved {len(task.subtasks)} completed subtasks")
+        else:
+            # Complete reset
+            task.subtasks = []
+            log("[approach] Complete reset - all subtasks cleared")
+
+    # Collect detailed context from failed subtasks
+    failed_context = []
+    for st in failed_subtasks:
+        context = f"{st.description}"
+        if hasattr(st, 'accomplishments') and st.accomplishments:
+            context += f"\n  Accomplished: {', '.join(st.accomplishments[:3])}"
+        if hasattr(st, 'tried_approaches') and st.tried_approaches:
+            context += f"\n  Tried: {', '.join(st.tried_approaches[:3])}"
+        if hasattr(st, 'context_notes') and st.context_notes:
+            context += f"\n  Notes: {st.context_notes}"
+        failed_context.append(context)
+
+    # Ask LLM to reconsider approach
+    if config.approach_retry.retry_style == "learn_from_failures":
+        reconsider_prompt = f"""APPROACH RECONSIDERATION NEEDED
+
+Task: {task.description}
+Attempt: {task.approach_attempts}/{config.escalation.max_approach_retries}
+
+Previous approaches that FAILED:
+{chr(10).join(f"- {fa}" for fa in task.failed_approaches)}
+
+DETAILED FAILURE CONTEXT:
+{chr(10).join(failed_context) if failed_context else "(no details available)"}
+
+What worked (completed subtasks):
+{chr(10).join(f"✓ {st.description}" for st in task.subtasks if st.status == "completed") or "(none)"}
+
+ANALYSIS - What we learned from failures:
+- Some actions succeeded (see accomplishments above)
+- Some approaches failed (see tried approaches above)
+- We need a DIFFERENT strategy that avoids the same blockers
+
+You need to propose a COMPLETELY DIFFERENT approach. Consider:
+1. What assumptions were wrong in previous attempts?
+2. Is there a simpler, more direct path to the goal?
+3. Are we solving the right problem?
+4. What alternative strategies haven't been tried?
+5. What succeeded that we should keep doing?
+
+Return a JSON array of NEW subtasks for a FRESH approach:
+["New subtask 1", "New subtask 2", ...]
+
+Be creative and avoid repeating previous failed patterns.
+Your new approach (JSON only):"""
+    else:  # fresh_start
+        reconsider_prompt = f"""Task: {task.description}
+
+Previous attempts failed. Start fresh with a new approach.
+
+Return a JSON array of subtasks:
+["Subtask 1", "Subtask 2", ...]"""
+
+    try:
+        response = chat(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a strategic problem solver who learns from failures."},
+                {"role": "user", "content": reconsider_prompt}
+            ],
+            options={"temperature": 0.4}  # Higher creativity for new approaches
+        )
+
+        content = response["message"]["content"].strip()
+
+        # Extract JSON
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+
+        from context_manager import Subtask
+        new_subtasks_data = json.loads(content)
+
+        # Create new subtasks
+        new_subtasks = []
+        for desc in new_subtasks_data[:config.decomposition.max_children]:
+            new_st = Subtask(
+                description=desc,
+                status="pending",
+                depth=1,
+                parent_subtask=""
+            )
+            new_subtasks.append(new_st)
+
+        # Append new subtasks to task
+        task.subtasks.extend(new_subtasks)
+
+        # Mark first new subtask as in_progress
+        if new_subtasks:
+            new_subtasks[0].status = "in_progress"
+
+        # Reset task status
+        task.status = "in_progress"
+
+        ctx._save_state()
+
+        log(f"[approach] Created {len(new_subtasks)} new subtasks for fresh approach")
+        print(f"✓ New approach with {len(new_subtasks)} subtasks:")
+        for i, st in enumerate(new_subtasks, 1):
+            print(f"  {i}. {st.description}")
+        print()
+
+        return True
+
+    except Exception as e:
+        log(f"[approach] Failed to reconsider: {e}")
+        return False
+
+
+def agent_decompose_subtask(
+    parent_subtask: Any
+) -> list[Any]:
+    """
+    Agent decomposes current subtask into smaller children.
+    Agent decides WHAT the subtasks should be.
+    """
+    granularity_hint = "VERY GRANULAR - prefer MORE subtasks over fewer" if config.decomposition.prefer_granular else "balanced"
+
+    decompose_prompt = f"""You need to break down this subtask into smaller, VERY SPECIFIC pieces:
+
+Current subtask: {parent_subtask.description}
+Actions taken so far: {len(parent_subtask.actions)}
+What worked: {[a.name for a in parent_subtask.actions if a.result == "success"]}
+What failed: {[a.name for a in parent_subtask.actions if a.result == "error"]}
+
+IMPORTANT: Break this into {config.decomposition.min_children}-{config.decomposition.max_children} TINY, CONCRETE subtasks ({granularity_hint}). Each subtask should:
+- Be completable in 2-4 actions MAX
+- Produce visible, verifiable output (a file, test passing, etc.)
+- Have ZERO ambiguity about what "done" means
+- Be as granular as possible - prefer MORE subtasks over fewer
+
+Return a JSON array of subtask descriptions:
+["Subtask 1 description", "Subtask 2 description", ...]
+
+GOOD Example (GRANULAR) for "Create calculator with tests":
+["Write calculator.py with ONLY add function",
+ "Write test_calculator.py with ONLY test_add",
+ "Run pytest on test_add and verify it passes",
+ "Add subtract function to calculator.py",
+ "Add test_subtract to test file",
+ "Run full pytest suite"]
+
+BAD Example (TOO BROAD):
+["Create calculator.py with all functions",
+ "Write comprehensive tests",
+ "Make sure everything works"]
+
+Your decomposition (JSON only - be VERY GRANULAR):"""
+
+    try:
+        response = chat(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a task decomposition expert."},
+                {"role": "user", "content": decompose_prompt}
+            ],
+            options={"temperature": config.decomposition.temperature}
+        )
+
+        content = response["message"]["content"].strip()
+
+        # Extract JSON
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+
+        try:
+            from context_manager import Subtask
+            subtask_descriptions = json.loads(content)
+
+            # Create child subtasks
+            children = []
+            for desc in subtask_descriptions[:MAX_SUBTASK_SIBLINGS]:  # Limit siblings
+                child = Subtask(
+                    description=desc,
+                    status="pending",
+                    depth=parent_subtask.depth + 1,
+                    parent_subtask=parent_subtask.description
+                )
+                children.append(child)
+
+            parent_subtask.child_subtasks = children
+            log(f"Decomposed into {len(children)} child subtasks")
+            return children
+
+        except json.JSONDecodeError:
+            log(f"Failed to parse decomposition: {content}")
+            return []
+    except Exception as e:
+        log(f"Decomposition failed: {e}")
+        return []
+
 
 TOOLS = {
     "list_dir": list_dir,
@@ -372,8 +949,31 @@ def build_context(ctx: ContextManager, messages: list[dict[str, Any]]) -> list[d
 
         if subtask:
             context_info.append(f"ACTIVE SUBTASK: {subtask.description}")
+            context_info.append(f"Subtask Depth: {subtask.depth}/{MAX_SUBTASK_DEPTH}")
+            context_info.append(f"Rounds Used: {subtask.rounds_used}/{MAX_ROUNDS_PER_SUBTASK}")
         else:
             context_info.append("ACTIVE SUBTASK: (none - call mark_subtask_complete to advance)")
+
+        # Phase 2: Add loop detection nudge
+        if ctx.state.loop_counts:
+            loop_warnings = []
+            for sig, count in ctx.state.loop_counts.items():
+                if count > 0:
+                    loop_warnings.append(f"  • Action repeated {count}x: {sig[:80]}")
+
+            if loop_warnings:
+                context_info.append("")
+                context_info.append("⚠️  LOOP DETECTION WARNING:")
+                context_info.append("You appear to be repeating actions. Consider:")
+                context_info.append("- Trying a COMPLETELY DIFFERENT approach")
+                context_info.append("- Reading error messages carefully")
+                context_info.append("- Checking if assumptions are wrong")
+                context_info.append("- Asking yourself: 'Why didn't the last attempt work?'")
+                context_info.append("")
+                context_info.append("Detected loops:")
+                context_info.extend(loop_warnings)
+                context_info.append("")
+                context_info.append("Try something NEW this round.")
 
         # Add generic filesystem state
         probe = probe_state_generic()
@@ -464,10 +1064,174 @@ def main() -> None:
     # Message history (just the conversation, not context info)
     messages: list[dict[str, Any]] = []
 
+    # Phase 2: Track rounds per subtask
+    subtask_rounds = {}  # key: subtask.signature() → rounds used
+    current_subtask_rounds = 0
+    last_subtask_sig = None
+    task_total_rounds = 0  # Safety cap per task
+
     for round_no in range(1, MAX_ROUNDS + 1):
         # Update probe state in context manager
         probe = probe_state_generic()
         _ctx.update_probe_state(probe)
+
+        # Phase 2: Get current subtask and track rounds
+        current_task = _ctx._get_current_task()
+        if current_task:
+            current_subtask = current_task.active_subtask()
+            if current_subtask:
+                current_sig = current_subtask.signature()
+
+                # Reset counter if subtask changed
+                if current_sig != last_subtask_sig:
+                    current_subtask_rounds = subtask_rounds.get(current_sig, 0)
+                    last_subtask_sig = current_sig
+
+                # Check per-subtask round limit
+                if current_subtask_rounds >= MAX_ROUNDS_PER_SUBTASK:
+                    log(f"Subtask '{current_subtask.description}' hit {MAX_ROUNDS_PER_SUBTASK} rounds")
+
+                    # Agent decides: Decompose or zoom out
+                    escalation_decision = agent_decide_escalation(
+                        current_subtask,
+                        reason="max_rounds_per_subtask"
+                    )
+
+                    if escalation_decision == "decompose":
+                        # Agent will create child subtasks
+                        children = agent_decompose_subtask(current_subtask)
+                        if children:
+                            # Mark current subtask as having children, move to first child
+                            current_subtask.status = "decomposed"
+                            children[0].status = "in_progress"
+                            current_subtask_rounds = 0  # Reset for decomposition
+                            last_subtask_sig = None
+                            _ctx._save_state()
+                            log(f"Decomposed into {len(children)} subtasks, starting with: {children[0].description}")
+
+                            # Show decomposition to user
+                            print(f"\n{'='*70}")
+                            print(f"🔀 DECOMPOSING: {current_subtask.description}")
+                            print(f"Created {len(children)} granular subtasks:")
+                            for i, child in enumerate(children, 1):
+                                print(f"  {i}. {child.description}")
+                            print(f"Starting with: {children[0].description}")
+                            print(f"{'='*70}\n")
+                            continue
+                        else:
+                            log("Decomposition failed, falling back to zoom_out")
+                            escalation_decision = "zoom_out"
+
+                    if escalation_decision == "zoom_out":
+                        # Mark current subtask as blocked
+                        current_subtask.status = "blocked"
+                        current_subtask.failure_reason = f"Hit {MAX_ROUNDS_PER_SUBTASK} rounds, zooming out"
+                        _ctx._save_state()
+
+                        # Determine zoom target based on config
+                        zoom_target_config = config.escalation.zoom_out_target
+
+                        # Smart zoom: analyze tree to find best target
+                        if zoom_target_config == "smart":
+                            zoom_target = find_smart_zoom_target(current_subtask, _ctx)
+                            log(f"[smart_zoom] Determined target: {zoom_target}")
+                        else:
+                            zoom_target = zoom_target_config
+
+                        if zoom_target == "root":
+                            # Zoom all the way to root and reconsider approach
+                            log(f"[zoom] Zooming to root to reconsider approach")
+                            retry_success = reconsider_approach_at_root(current_task, _ctx)
+
+                            if retry_success:
+                                # Approach reconsidered, reset round counters and continue
+                                current_subtask_rounds = 0
+                                last_subtask_sig = None
+                                task_total_rounds = 0
+                                log("[zoom] Continuing with new approach")
+                                continue
+                            else:
+                                # Max retries exhausted - generate failure report
+                                log("[zoom] Max approach retries exhausted, task failed")
+                                current_task.status = "failed"
+                                _ctx._save_state()
+
+                                # Generate comprehensive failure report
+                                report_path = generate_failure_report(
+                                    goal,
+                                    _ctx,
+                                    f"Max approach retries ({config.escalation.max_approach_retries}) exhausted on task: {current_task.description}"
+                                )
+                                print(f"\n{'='*70}")
+                                print(f"❌ TASK FAILED AFTER {config.escalation.max_approach_retries} RETRY ATTEMPTS")
+                                print(f"Task: {current_task.description}")
+                                print(f"\n📊 Detailed failure report generated: {report_path}")
+                                print(f"{'='*70}\n")
+                                break
+
+                        elif zoom_target == "task":
+                            # Try next subtask in current task
+                            has_next = _ctx.advance_to_next_subtask()
+                            if not has_next:
+                                # No more subtasks, reconsider task approach
+                                log("[zoom] No more subtasks, reconsidering task approach")
+                                retry_success = reconsider_approach_at_root(current_task, _ctx)
+                                if not retry_success:
+                                    current_task.status = "failed"
+                                    _ctx._save_state()
+                                    report_path = generate_failure_report(
+                                        goal, _ctx,
+                                        f"No more subtasks and max retries exhausted: {current_task.description}"
+                                    )
+                                    print(f"\n📊 Failure report: {report_path}\n")
+                                    break
+                                task_total_rounds = 0
+                            current_subtask_rounds = 0
+                            last_subtask_sig = None
+                            continue
+
+                        else:  # "parent"
+                            # Move to parent or next sibling
+                            has_next = _ctx.advance_to_next_subtask()
+                            if not has_next:
+                                # At end of task, reconsider
+                                retry_success = reconsider_approach_at_root(current_task, _ctx)
+                                if not retry_success:
+                                    current_task.status = "failed"
+                                    _ctx._save_state()
+                                    report_path = generate_failure_report(
+                                        goal, _ctx,
+                                        f"Exhausted all retry attempts: {current_task.description}"
+                                    )
+                                    print(f"\n📊 Failure report: {report_path}\n")
+                                    break
+                                task_total_rounds = 0
+                            current_subtask_rounds = 0
+                            last_subtask_sig = None
+                            continue
+
+                # Check per-task round limit (safety cap)
+                if task_total_rounds >= MAX_ROUNDS_PER_TASK:
+                    log(f"Task hit {MAX_ROUNDS_PER_TASK} total rounds safety cap")
+                    log("[zoom] Zooming to root to reconsider approach (safety cap)")
+
+                    # Force reconsideration at root
+                    retry_success = reconsider_approach_at_root(current_task, _ctx)
+                    if retry_success:
+                        task_total_rounds = 0
+                        current_subtask_rounds = 0
+                        last_subtask_sig = None
+                        continue
+                    else:
+                        # Max retries exhausted (safety cap)
+                        current_task.status = "failed"
+                        _ctx._save_state()
+                        report_path = generate_failure_report(
+                            goal, _ctx,
+                            f"Safety cap hit ({MAX_ROUNDS_PER_TASK} rounds) and retries exhausted: {current_task.description}"
+                        )
+                        print(f"\n📊 Failure report: {report_path}\n")
+                        break
 
         # Display status at start of round
         print("\n" + status.render(round_no))
@@ -490,13 +1254,33 @@ def main() -> None:
 
         # Call LLM
         t0 = time.time()
-        resp = chat(
-            model=MODEL,
-            messages=context,
-            tools=tool_specs(),
-            options={"temperature": TEMP},
-            stream=False,
-        )
+        try:
+            resp = chat(
+                model=MODEL,
+                messages=context,
+                tools=tool_specs(),
+                options={"temperature": TEMP},
+                stream=False,
+            )
+        except ResponseError as e:
+            # Handle JSON parsing errors from malformed tool calls
+            llm_duration = time.time() - t0
+            status.record_llm_call(llm_duration, len(context))
+            log(f"ROUND {round_no}: chat() {llm_duration:.2f}s")
+            log(f"ROUND {round_no}: Ollama ResponseError (malformed tool call): {str(e)[:200]}")
+
+            # Add error message to context and retry next round
+            messages.append({
+                "role": "assistant",
+                "content": "I encountered an error generating the tool call. Let me try a different approach."
+            })
+            messages.append({
+                "role": "user",
+                "content": "ERROR: The previous tool call had invalid JSON formatting. Please ensure all strings in JSON use double quotes and proper escaping (e.g., \\\" for quotes, not \\')."
+            })
+            round_no += 1
+            continue
+
         llm_duration = time.time() - t0
         status.record_llm_call(llm_duration, len(context))
         log(f"ROUND {round_no}: chat() {llm_duration:.2f}s")
@@ -570,6 +1354,17 @@ def main() -> None:
                         print(f"Files created: {', '.join(probe['files_exist'])}")
                     return
 
+            # Increment round counters at end of round
+            current_task = _ctx._get_current_task()
+            if current_task:
+                current_subtask = current_task.active_subtask()
+                if current_subtask:
+                    current_sig = current_subtask.signature()
+                    current_subtask_rounds += 1
+                    subtask_rounds[current_sig] = current_subtask_rounds
+                    current_subtask.rounds_used = current_subtask_rounds
+                    task_total_rounds += 1
+                    _ctx._save_state()
             continue
 
         # No tool calls - check for completion signals before giving final answer
@@ -594,6 +1389,12 @@ def main() -> None:
                 "content": nudge_msg
             })
             # Continue to next round to let agent respond with mark_subtask_complete
+            # Increment round counters at end of round
+            current_subtask_rounds += 1
+            subtask_rounds[current_sig if current_sig else "unknown"] = current_subtask_rounds
+            if current_subtask:
+                current_subtask.rounds_used = current_subtask_rounds
+            task_total_rounds += 1
             continue
 
         # No completion signal - this is a real final answer

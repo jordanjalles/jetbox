@@ -17,6 +17,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# Load configuration
+from agent_config import config
+
 # ----------------------------
 # Configuration
 # ----------------------------
@@ -25,10 +28,10 @@ STATE_FILE = CONTEXT_DIR / "state.json"
 HISTORY_FILE = CONTEXT_DIR / "history.jsonl"
 LOOPS_FILE = CONTEXT_DIR / "loops.json"
 
-# Loop detection thresholds
-MAX_ACTION_REPEATS = 3  # Same action attempted 3+ times = loop
-MAX_SUBTASK_REPEATS = 2  # Same subtask failed 2+ times = escalate
-MAX_CONTEXT_AGE = 300  # Seconds before context is considered stale
+# Loop detection thresholds (from config)
+MAX_ACTION_REPEATS = config.loop_detection.max_action_repeats
+MAX_SUBTASK_REPEATS = config.loop_detection.max_subtask_repeats
+MAX_CONTEXT_AGE = config.loop_detection.max_context_age
 
 
 # ----------------------------
@@ -62,9 +65,34 @@ class Subtask:
     failure_reason: str = ""
     attempt_count: int = 1
 
+    # Phase 2: Hierarchy tracking
+    depth: int = 1  # How deep in hierarchy (1 = top-level subtask)
+    parent_subtask: str = ""  # Description of parent (empty if top-level)
+    child_subtasks: list[Subtask] = field(default_factory=list)  # Nested subtasks
+    rounds_used: int = 0  # Rounds spent on this subtask
+
+    # Accomplishment tracking (for partial success and learning from failures)
+    accomplishments: list[str] = field(default_factory=list)  # What was successfully done
+    tried_approaches: list[str] = field(default_factory=list)  # What was attempted but failed
+    context_notes: str = ""  # Additional context about progress/blockers
+
     def signature(self) -> str:
         """Unique signature for loop detection."""
         return self.description.lower().strip()
+
+    def can_add_child(self, max_depth: int | None = None, max_siblings: int | None = None) -> bool:
+        """Check if can add child subtask (depth and sibling limits)."""
+        # Use config defaults if not specified
+        if max_depth is None:
+            max_depth = config.hierarchy.max_depth
+        if max_siblings is None:
+            max_siblings = config.hierarchy.max_siblings
+
+        if self.depth >= max_depth:
+            return False  # Too deep
+        if len(self.child_subtasks) >= max_siblings:
+            return False  # Too many siblings
+        return True
 
 
 @dataclass
@@ -76,6 +104,8 @@ class Task:
     status: str = "pending"
     timestamp: float = field(default_factory=lambda: datetime.now().timestamp())
     parent_goal: str = ""
+    approach_attempts: int = 0  # Number of times we've retried this task from root
+    failed_approaches: list[str] = field(default_factory=list)  # Track what didn't work
 
     def active_subtask(self) -> Subtask | None:
         """Get current in-progress subtask."""
@@ -144,10 +174,50 @@ class ContextManager:
         if STATE_FILE.exists():
             self._load_state()
             if self.state.goal and self.state.goal.description == goal_text:
-                return  # Resume existing goal
-        # New goal
+                # Check if goal was previously completed
+                all_tasks_done = all(
+                    task.status == "completed"
+                    for task in self.state.goal.tasks
+                ) if self.state.goal.tasks else False
+
+                if all_tasks_done:
+                    # Goal was completed - start fresh
+                    print("[context] Previous run completed. Starting fresh run.")
+                    self.state.goal = Goal(description=goal_text)
+                    self.state.current_task_idx = 0
+                    self.state.current_subtask_idx = 0
+                    self._save_state()
+                else:
+                    # Resume in-progress goal
+                    return
+            else:
+                # Different goal - reset indices
+                print("[context] Different goal detected. Starting fresh.")
+        # New goal - reset all state
         self.state.goal = Goal(description=goal_text)
+        self.state.current_task_idx = 0
+        self.state.current_subtask_idx = 0
         self._save_state()
+
+    def _load_subtask(self, st_data: dict[str, Any]) -> Subtask:
+        """Recursively load subtask with children."""
+        return Subtask(
+            description=st_data["description"],
+            actions=[Action(**a) for a in st_data.get("actions", [])],
+            status=st_data.get("status", "pending"),
+            timestamp=st_data.get("timestamp", 0),
+            failure_reason=st_data.get("failure_reason", ""),
+            attempt_count=st_data.get("attempt_count", 1),
+            depth=st_data.get("depth", 1),
+            parent_subtask=st_data.get("parent_subtask", ""),
+            child_subtasks=[
+                self._load_subtask(child) for child in st_data.get("child_subtasks", [])
+            ],
+            rounds_used=st_data.get("rounds_used", 0),
+            accomplishments=st_data.get("accomplishments", []),
+            tried_approaches=st_data.get("tried_approaches", []),
+            context_notes=st_data.get("context_notes", ""),
+        )
 
     def _load_state(self) -> None:
         """Load state from disk."""
@@ -160,21 +230,14 @@ class ContextManager:
                     Task(
                         description=t["description"],
                         subtasks=[
-                            Subtask(
-                                description=st["description"],
-                                actions=[
-                                    Action(**a) for a in st.get("actions", [])
-                                ],
-                                status=st.get("status", "pending"),
-                                timestamp=st.get("timestamp", 0),
-                                failure_reason=st.get("failure_reason", ""),
-                                attempt_count=st.get("attempt_count", 1),
-                            )
+                            self._load_subtask(st)
                             for st in t.get("subtasks", [])
                         ],
                         status=t.get("status", "pending"),
                         timestamp=t.get("timestamp", 0),
                         parent_goal=t.get("parent_goal", ""),
+                        approach_attempts=t.get("approach_attempts", 0),
+                        failed_approaches=t.get("failed_approaches", []),
                     )
                     for t in goal_data.get("tasks", [])
                 ]
@@ -357,6 +420,9 @@ class ContextManager:
         if not subtask:
             return
 
+        # Analyze actions to extract accomplishments and failed attempts
+        self._extract_subtask_context(subtask)
+
         if success:
             subtask.status = "completed"
         else:
@@ -371,6 +437,52 @@ class ContextManager:
                 task.status = "blocked"
 
         self._save_state()
+
+    def _extract_subtask_context(self, subtask: Subtask) -> None:
+        """
+        Extract accomplishments and tried approaches from subtask actions.
+
+        This analyzes what was done successfully vs what failed to provide
+        context for future retry attempts.
+        """
+        # Extract successful actions as accomplishments
+        for action in subtask.actions:
+            if action.result == "success":
+                if action.name == "write_file":
+                    path = action.args.get("path", "unknown")
+                    if path not in [a for a in subtask.accomplishments if path in a]:
+                        subtask.accomplishments.append(f"Created {path}")
+                elif action.name == "run_cmd":
+                    cmd = " ".join(action.args.get("cmd", []))
+                    if "pytest" in cmd or "ruff" in cmd:
+                        subtask.accomplishments.append(f"Ran {cmd}")
+
+        # Extract failed actions as tried approaches
+        for action in subtask.actions:
+            if action.result == "error":
+                approach = f"{action.name}"
+                if action.args.get("path"):
+                    approach += f" {action.args['path']}"
+                elif action.args.get("cmd"):
+                    approach += f" {' '.join(action.args['cmd'][:2])}"
+
+                error_short = action.error_msg[:50] if action.error_msg else "unknown error"
+                tried = f"{approach}: {error_short}"
+
+                # Avoid duplicates
+                if not any(tried[:30] in t for t in subtask.tried_approaches):
+                    subtask.tried_approaches.append(tried)
+
+        # Generate context notes summarizing the situation
+        if subtask.accomplishments or subtask.tried_approaches:
+            notes = []
+            if subtask.accomplishments:
+                notes.append(f"Completed: {len(subtask.accomplishments)} actions")
+            if subtask.tried_approaches:
+                notes.append(f"Failed: {len(subtask.tried_approaches)} attempts")
+            if subtask.rounds_used > 0:
+                notes.append(f"Rounds: {subtask.rounds_used}")
+            subtask.context_notes = ", ".join(notes)
 
     def advance_to_next_subtask(self) -> bool:
         """

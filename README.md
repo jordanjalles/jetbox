@@ -1,343 +1,406 @@
 # Jetbox
 
-Tiny local coding agent + sample package, built to run with Ollama on Windows. It includes:
+**A production-ready local coding agent with hierarchical context management, built to run with Ollama on Windows.**
 
-- **Two production-ready agents** (both use gpt-oss:20b):
-  - `agent_enhanced.py` - Enhanced agent with hierarchical context manager (baseline)
-  - `agent_quality.py` - ⭐ **Optimized agent - 1.7x faster** (recommended)
-- **Hierarchical context manager** (`context_manager.py`) - Crash-resilient task tracking with loop detection
-- **Performance optimizations** - Probe caching, parallel execution, model selection (see `OPTIMIZATION_SUMMARY.md`)
-- A tiny demo package `mathx` with `add(a, b)`, `multiply(a, b)` and comprehensive tests
-- Dev tooling via `pytest` and `ruff` configured in `pyproject.toml`
-- Comprehensive profiling tools (`profile_*.py`) and benchmarks
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Requirements
+## Features
+
+- 🎯 **Hierarchical Context Management** - Organizes work into Goal → Task → Subtask → Action
+- ⚙️ **Fully Configurable** - YAML-based configuration for all agent behavior
+- 🔄 **No Give-Up Option** - Always decomposes or zooms out (3x retry before final failure)
+- 🧠 **Smart Zoom-Out** - Analyzes task tree to find root of problem (parent/task/root)
+- 🔍 **Loop Detection** - Prevents infinite action loops with automatic blocking
+- 💾 **Crash Recovery** - Resume from exact point of interruption
+- 📊 **Real-Time Status** - Tree-based visualization with progress bars
+- 🏗️ **Workspace Isolation** - Each goal gets isolated directory
+- 📝 **Prompt Engineering** - External YAML prompts for easy tuning
+
+## Quick Start
+
+### Requirements
 
 - Python 3.10+
-- Ollama running locally, with a model available (default: `gpt-oss:20b`)
-- Python packages: `ollama`, `pytest`, `ruff`
+- Ollama running locally with a model (default: `gpt-oss:20b`)
+- Packages: `ollama`, `pytest`, `ruff`, `pyyaml`
 
-Install packages:
+```bash
+pip install ollama pytest ruff pyyaml
+ollama pull gpt-oss:20b  # or your preferred model
+```
 
+### Run the Agent
+
+```bash
+python agent.py "Create a calculator module with add, subtract, multiply functions and tests"
 ```
-python -m pip install --upgrade pip
-pip install ollama pytest ruff
-```
+
+The agent will:
+1. Decompose the goal into tasks and subtasks
+2. Execute actions in isolated workspace
+3. Automatically advance through the hierarchy
+4. Display real-time progress
+5. Retry up to 3 times if approaches fail
+6. Save all state for crash recovery
 
 ## Project Structure
 
 ```
-.
-├─ agent.py                  # Basic agent with flat context
-├─ agent_enhanced.py         # ⭐ Enhanced agent with hierarchical context (recommended)
-├─ context_manager.py        # Hierarchical context manager (Goal→Task→Subtask→Action)
-├─ agent_integration.py      # Integration guide and examples
-├─ test_context_manager.py  # Tests for context manager
-├─ diag_speed.py             # Quick timing test for Ollama responses
-├─ mathx/
-│  └─ __init__.py            # Demo: add(a, b), multiply(a, b)
-├─ tests/
-│  └─ test_mathx.py          # Pytest tests for mathx functions
-├─ .agent_context/           # Context manager state (created at runtime)
-│  ├─ state.json            # Hierarchical task state
-│  ├─ history.jsonl         # Action history log
-│  └─ loops.json            # Detected loop patterns
-└─ pyproject.toml            # pytest + ruff config
+jetbox/
+├── agent.py                    # Main agent with hierarchical execution
+├── context_manager.py          # Hierarchical state management
+├── workspace_manager.py        # Workspace isolation system
+├── status_display.py           # Real-time progress visualization
+├── completion_detector.py      # Completion signal detection
+│
+├── agent_config.yaml           # ⚙️ User configuration
+├── agent_config.py             # Configuration loader
+├── prompts.yaml                # 📝 All agent prompts
+├── prompt_loader.py            # Prompt loading utility
+│
+├── tests/                      # Test infrastructure
+│   ├── run_stress_tests.py    # Stress test suite
+│   ├── run_eval_suite.py       # Multi-iteration evaluation
+│   ├── generate_eval_report.py # Report generator
+│   └── test_*.py               # Unit tests
+│
+├── .agent_context/             # Runtime state (auto-created)
+│   ├── state.json              # Complete hierarchical state
+│   ├── history.jsonl           # Action history log
+│   ├── loops.json              # Detected loop patterns
+│   └── stats.json              # Performance statistics
+│
+├── .agent_workspace/           # Isolated workspaces (auto-created)
+│   └── {goal-slug}/            # One workspace per goal
+│
+└── docs/                       # Documentation
+    └── reports/                # Analysis reports
 ```
 
-## Usage
+## Configuration
 
-### Quick Start (Quality Agent - Recommended)
+Customize agent behavior in `agent_config.yaml`:
 
-1) Make sure Ollama is running and you have a local model:
+```yaml
+# Escalation Strategy
+escalation:
+  strategy: "force_decompose"    # No give-up option
+  zoom_out_target: "smart"       # Intelligent zoom analysis
+  max_approach_retries: 3        # Retry attempts before failure
+  block_failed_paths: true       # Prevent retrying failed approaches
 
-```bash
-ollama list  # Verify model is available
+# Round Limits
+rounds:
+  max_per_subtask: 12            # Rounds before escalation
+  max_per_task: 256              # Safety cap per task
+  max_global: 24                 # Global round limit
+
+# Hierarchy Limits
+hierarchy:
+  max_depth: 5                   # Max nesting levels
+  max_siblings: 8                # Max subtasks per level
+
+# Decomposition Behavior
+decomposition:
+  min_children: 2                # Min subtasks when decomposing
+  max_children: 6                # Max subtasks when decomposing
+  temperature: 0.2               # LLM temperature for planning
+  prefer_granular: true          # Prefer more, smaller subtasks
+
+# Loop Detection
+loop_detection:
+  max_action_repeats: 3          # Block after N repeats
+  max_subtask_repeats: 2         # Escalate after N subtask repeats
+  max_context_age: 300           # Context staleness threshold (seconds)
+
+# Context Management
+context:
+  max_messages_in_memory: 12     # Message pairs in context
+  max_tokens: 8000                # Token limit (0 = disabled)
+  recent_actions_limit: 10        # Recent actions to show
+  enable_compression: true        # Summarize old messages
+  compression_threshold: 20       # Compress when > N messages
 ```
 
-2) Run the optimized quality agent (1.7x faster with professional code quality):
+## Key Features Explained
 
-```bash
-python agent_quality.py "Create mathx package with add(a,b) and multiply(a,b), add tests, run ruff and pytest."
+### 1. Hierarchical Context Management
+
+The agent organizes work into a tree structure:
+
+```
+Goal: Create calculator with tests
+├── Task 1: Create calculator module
+│   ├── Subtask: Write calculator.py with add function
+│   │   └── Action: write_file("calculator.py", ...)
+│   └── Subtask: Write calculator.py with subtract function
+│       └── Action: write_file("calculator.py", ...)
+├── Task 2: Add tests
+│   └── Subtask: Write test_calculator.py
+│       └── Action: write_file("test_calculator.py", ...)
+└── Task 3: Verify quality
+    ├── Subtask: Run ruff linter
+    └── Subtask: Run pytest
 ```
 
-The quality agent features:
-- ⭐ **gpt-oss:20b** for production-quality code
-- ⚡ **LLM warm-up** - eliminates 9.2s cold-start penalty (98.4% reduction!)
-- ⚡ **Keep-alive thread** - maintains <200ms latency throughout workflow
-- ✅ **Probe caching** - 70% cache hit rate, 250-350ms savings per round
-- ✅ **Parallel execution** - ruff + pytest run concurrently
-- ✅ **Hierarchical context** - automatic task progression with loop detection
-- ✅ **Crash recovery** - resume from exact point of interruption
+**Benefits:**
+- **Automatic progression** - Completes subtasks and advances automatically
+- **Compact context** - Only shows current branch (60-80% token reduction)
+- **Crash recovery** - Resume from exact subtask after interruption
+- **Need-to-know** - Each level only sees relevant parent context
 
-**Performance:**
-- **Total time:** ~5.8s per workflow (vs 10s baseline)
-- **Speedup:** 1.7x faster
-- **Code quality:** ★★★★★ (type hints, docstrings, professional formatting)
-- **First call:** 155ms (vs 9,376ms cold start)
-- **Subsequent calls:** 146-600ms consistently
+### 2. Smart Zoom-Out
 
-### Basic Agent (Original)
+When stuck at max depth, the agent analyzes the task tree to determine if the problem is:
+- **Localized** (zoom to parent) - Only 1-2 siblings failed
+- **Systemic** (zoom to task) - Parent is struggling, need different approach
+- **Fundamental** (zoom to root) - Multiple branches failing, reconsider entire strategy
 
-Run the basic agent with flat context:
+### 3. Loop Detection
 
-```bash
-python agent.py "Create a tiny package 'mathx' with add(a,b), add tests, then run ruff and pytest."
+Detects and blocks:
+- Same action repeated 3+ times
+- Alternating patterns (A→B→A→B)
+- Similar actions in recent history
+
+When loop detected:
+- Action is permanently blocked
+- Warning shown to agent
+- Forces different approach
+
+### 4. Workspace Isolation
+
+Each goal gets isolated workspace:
+```
+.agent_workspace/
+└── create-calculator-with-tests/
+    ├── calculator.py
+    ├── test_calculator.py
+    └── __pycache__/
 ```
 
-### Testing and Validation
+**Benefits:**
+- No root directory pollution
+- Parallel goal execution possible
+- Easy cleanup
+- Clear scope boundaries
 
-Run tests directly:
+### 5. Approach Reconsideration
+
+When stuck, agent can reconsider approach at root:
+- Learns from previous failures
+- Extracts accomplishments (what worked)
+- Identifies failed approaches (what didn't work)
+- Generates completely new strategy
+- 3 attempts before final failure
+
+## Prompt Engineering
+
+All prompts are externalized in `prompts.yaml` for easy tuning:
+
+```yaml
+system_prompt: |
+  You are a local coding agent...
+
+escalation_prompt: |
+  ESCALATION NEEDED: You've spent {rounds_used} rounds...
+
+decompose_subtask: |
+  Break this into {min_children}-{max_children} smaller subtasks...
+```
+
+Load and format prompts:
+
+```python
+from prompt_loader import prompts
+
+prompt = prompts.get("decompose_subtask", min_children=2, max_children=6)
+```
+
+## Testing
+
+### Run Unit Tests
 
 ```bash
 pytest tests/ -q
 ```
 
-Lint with ruff:
+### Run Stress Tests
+
+```bash
+python tests/run_stress_tests.py 3,4,5  # Run levels 3, 4, 5
+```
+
+### Run Full Evaluation Suite
+
+```bash
+python tests/run_eval_suite.py  # 5 iterations of L3-L4-L5
+```
+
+### Generate Report
+
+```bash
+python tests/generate_eval_report.py
+```
+
+### Lint Code
 
 ```bash
 ruff check .
+ruff check --fix .  # Auto-fix issues
 ```
 
-Test context manager:
-
-```bash
-python test_context_manager.py
-```
-
-Quick model latency check:
+### Check Ollama Latency
 
 ```bash
 python diag_speed.py
 ```
 
-## Hierarchical Context Manager
+## Performance
 
-The enhanced agent uses a hierarchical context manager that organizes work into a tree structure:
+**Evaluation Results** (L3-L4-L5 tests, 5 iterations each):
+- Overall pass rate: 75.6% (34/45)
+- Level 3: 53% - Advanced tasks
+- Level 4: 80% - Expert tasks
+- Level 5: 93% - Extreme tasks
+
+**Interesting finding:** Agent performs better on harder tasks due to effective decomposition.
+
+## Status Display
+
+Real-time visualization shows:
 
 ```
-Goal: "Create mathx package with add and multiply functions, add tests, run ruff and pytest"
-│
-├─ Task 1: Create mathx package structure
-│  └─ Subtask: write_file 'mathx/__init__.py' with add() and multiply()
-│     └─ Action: write_file(path="mathx/__init__.py", content="...")
-│
-├─ Task 2: Add tests
-│  └─ Subtask: write_file 'tests/test_mathx.py' with tests
-│     └─ Action: write_file(path="tests/test_mathx.py", content="...")
-│
-├─ Task 3: Add configuration
-│  └─ Subtask: write_file 'pyproject.toml' with pytest+ruff config
-│     └─ Action: write_file(path="pyproject.toml", content="...")
-│
-└─ Task 4: Verify quality
-   ├─ Subtask: run_cmd ['ruff', 'check', '.']
-   │  └─ Action: run_cmd(cmd=["ruff", "check", "."])
-   └─ Subtask: run_cmd ['pytest', 'tests/', '-q']
-      └─ Action: run_cmd(cmd=["pytest", "tests/", "-q"])
+GOAL: Create calculator package
+
+TASKS (1/3 completed):
+  ► ⟳ Create calculator package structure
+    SUBTASKS:
+        ✓ Write calculator/__init__.py
+      ► ⟳ Write calculator/advanced.py
+        ○ Write pyproject.toml
+    ○ Write comprehensive tests
+
+PROGRESS:
+  Tasks:    [█████░░░░░░░░░░░░░░░] 33%
+  Subtasks: [████████░░░░░░░░░░░░] 43%
+  Success:  92%
+
+PERFORMANCE:
+  Avg LLM call:      2.15s
+  Avg subtask time:  1m 30s
+  Actions executed:  25
+  Tokens (est):      3,500
+  ⚠ Loops detected:  1
 ```
 
-### Key Features
+## Documentation
 
-**1. Automatic Task Progression**
-- Agent completes subtasks and automatically advances to the next one
-- No manual coordination needed - the context manager handles the flow
-- Example: After creating `mathx/__init__.py`, automatically moves to creating tests
+- **`CLAUDE.md`** - Main agent documentation
+- **`AGENT_ARCHITECTURE.md`** - Detailed architecture
+- **`IMPLEMENTATION_COMPLETE.md`** - Recent implementation summary
+- **`EVAL_SUITE_REPORT.md`** - Latest evaluation results
+- **`STATUS_DISPLAY.md`** - Status display documentation
 
-**2. Loop Detection & Recovery**
-- Detects when the same action is attempted multiple times
-- Identifies alternating patterns (A→B→A→B)
-- Automatically blocks looping actions and advances to next subtask
-- Prevents the agent from getting stuck indefinitely
+## Development Tools
 
-**3. Crash Recovery**
-- Full state persists to `.agent_context/state.json`
-- Agent can resume from exact subtask after interruption
-- No need to restart from beginning
-- Idempotent operations ensure safe retries
+- **`agent_config.py`** - Configuration system with dataclasses
+- **`prompt_loader.py`** - YAML prompt loading
+- **`workspace_manager.py`** - Workspace path resolution
+- **`completion_detector.py`** - Heuristic completion detection
+- **`status_display.py`** - Progress visualization
+- **`context_manager.py`** - Hierarchical state machine
 
-**4. Compact Context**
-- LLM only sees the current branch of the task tree
-- Reduces token usage by 60-80% compared to full message history
-- Shows: Current Goal → Active Task → Active Subtask → Recent Actions
-- Hides completed tasks and future tasks to maintain focus
+## Crash Recovery
 
-**5. Need-to-Know Principle**
-- Each level only sees relevant parent context
-- Subtasks don't see sibling subtasks
-- Actions don't see unrelated tasks
-- Mimics how humans organize work mentally
-
-### Context Manager State
-
-The `.agent_context/` directory contains:
-
-- **`state.json`** - Complete hierarchical state with all tasks, subtasks, and actions
-- **`history.jsonl`** - Append-only log of all actions (JSONL format)
-- **`loops.json`** - Record of detected loop patterns for analysis
-
-### Example: Crash Recovery
+Agent automatically recovers from crashes:
 
 ```bash
-# Session 1: Agent runs and crashes at task 2
-$ python agent_enhanced.py "Create mathx package..."
+# Session 1: Crashes mid-task
+$ python agent.py "Create mathx package..."
 [log] Created mathx/__init__.py
 [log] Advanced to task: Add tests
-# ... crash ...
+^C  # Interrupted
 
-# Session 2: Agent resumes exactly where it left off
-$ python agent_enhanced.py "Create mathx package..."
+# Session 2: Resumes exactly where it left off
+$ python agent.py "Create mathx package..."
 [log] Resuming existing task hierarchy
 [log] Current task: Add tests (in_progress)
-[log] Subtask: write_file 'tests/test_mathx.py'
-# ... continues from task 2 ...
+# ... continues from same point ...
 ```
 
-### Comparison: Basic vs Enhanced Agent
+State persists in:
+- `.agent_context/state.json` - Full hierarchical state
+- `.agent_context/history.jsonl` - Complete action history
+- `.agent_context/stats.json` - Performance metrics
 
-| Feature | Basic Agent (`agent.py`) | Enhanced Agent (`agent_enhanced.py`) |
-|---------|--------------------------|--------------------------------------|
-| Context Structure | Flat message list | Hierarchical tree (Goal→Task→Subtask→Action) |
-| Task Tracking | Manual checklist in messages | Automatic hierarchical state machine |
-| Loop Detection | Simple deduplication (count > 3) | Pattern detection (repeats, alternating) |
-| Crash Recovery | Parse ledger + status.txt | Load full state from state.json |
-| Context Size | Last 12 messages (~2-3KB) | Current branch only (~500B-1KB) |
-| Task Progression | Manual prompting | Automatic advancement |
-| State Persistence | status.txt (plaintext summary) | state.json (complete structured state) |
-| Completion Tracking | Probe-based heuristics | Explicit subtask status flags |
+## Model Configuration
 
-### Integration Guide
-
-See `agent_integration.py` for:
-- Complete integration examples
-- Migration guide from basic agent
-- API documentation for context manager
-- Example agent loops with hierarchical context
-
-## Performance Optimizations
-
-The quality agent (`agent_quality.py`) includes comprehensive performance optimizations while maintaining gpt-oss:20b code quality:
-
-### Optimization Highlights
-
-| Optimization | Savings | Description |
-|--------------|---------|-------------|
-| LLM Warm-up | 9,200ms first call | Pre-warm model on startup (98.4% reduction) |
-| Probe Caching | 250-350ms/round | Cache results for 3s, invalidate on file writes |
-| Parallel Execution | 150ms/probe | Run ruff + pytest concurrently |
-| Smart Skipping | 280ms | Skip pytest if no test directory |
-
-### Speed Comparison
-
-| Agent | Avg Round | Total (10 rounds) | Speedup |
-|-------|-----------|-------------------|---------|
-| Baseline (agent_enhanced.py) | 1000ms | 10.0s | 1.0x |
-| **Optimized (agent_quality.py)** | **580ms** | **5.8s** | **1.7x faster** |
-
-### Detailed Documentation
-
-- `OPTIMIZATION_SUMMARY.md` - Complete optimization analysis
-- `LLM_WARMUP_FINDINGS.md` - LLM warm-up deep dive (9.2s savings)
-- `FINAL_PERFORMANCE_COMPARISON.md` - Full performance comparison
-- `profile_*.py` - Profiling tools
-
-## Configuration
-
-Set the model via environment variable:
+Set model via environment variable:
 
 ```bash
 # PowerShell
-$env:OLLAMA_MODEL = "gpt-oss:20b"
+$env:OLLAMA_MODEL = "qwen2.5-coder:7b"
 
 # Bash
-export OLLAMA_MODEL="gpt-oss:20b"
+export OLLAMA_MODEL="qwen2.5-coder:7b"
 ```
 
-Configuration in agent files:
+Default model: `gpt-oss:20b`
 
-- `MODEL` - Ollama model tag (default: "gpt-oss:20b")
-- `TEMP` - Temperature for model (0.2 for focused outputs)
-- `MAX_ROUNDS` - Hard cap on agent loop iterations (24)
-- `HISTORY_KEEP` - Number of recent messages to retain in basic agent (12)
-- `SAFE_BIN` - Allowed commands for safety: `{"python", "pytest", "ruff", "pip"}`
+Supported models: Any Ollama-compatible model with function calling support.
 
-## Notes
+## Safety
 
-- The agent writes a lightweight ledger to `agent_ledger.log` and logs to `agent.log`.
-- The repository is intentionally minimal to keep the agent loop fast and easy to follow.
+**Command Whitelist:**
+Only `python`, `pytest`, `ruff`, and `pip` commands are allowed.
+All other commands are blocked for Windows safety.
 
-**Agent Context**
-- Local‑first and crash‑resilient: the agent is expected to crash or be stopped at any time. Design for idempotency and fast rehydration from plaintext. Prefer simple files over databases so humans can inspect and edit status.
-- Plaintext status first: keep a compact, human‑readable status that captures the overarching goal, current status, active subtasks, and next actions. Use this as the single source of truth for resuming work.
-- Short timeboxes: run in small, bounded sessions (e.g., 30–120 seconds or a handful of rounds). At each boundary, persist status, compact context, and reflect before continuing.
+**Workspace Isolation:**
+Agent cannot modify files outside its workspace directory.
 
-**Status Storage**
-- Primary artifacts:
-  - `agent_ledger.log` — append‑only trace of writes and commands for audit and recovery.
-  - `agent.log` — human‑readable runtime log for quick inspection.
-  - Optional `status.txt` — compact snapshot to drive resumability; updated at round boundaries.
-- Suggested `status.txt` format (plaintext, one concept per line):
+**Loop Prevention:**
+Automatic detection and blocking of infinite loops.
 
-```
-Goal: <single sentence>
-Status: <green/yellow/red + brief reason>
-Active: <1–3 key subtasks>
-Next: <up to 4 concrete next actions>
-Notes: <freeform, compact, decisions/assumptions>
-```
+**Failure Reports:**
+Comprehensive markdown reports generated on all failures.
 
-**Context Compaction**
-- Keep only small, high‑signal context for the model:
-  - Probe real state first (files exist, tests pass) to avoid hallucinating.
-  - Summarize ledger into a 1–2 line recap (last writes/commands/errors).
-  - Include current `status.txt` snapshot instead of long histories.
-  - Deduplicate repeated tool calls and compress equivalent steps into a checklist.
-- Bound context size by rounds and characters; prune oldest assistant/user exchanges first, keep the current plan and latest tool outputs.
+## Architecture Principles
 
-**Reflection Loop**
-- At each round boundary:
-  1) Probe: verify end‑state quickly (ruff/pytest, key files).
-  2) Compact: synthesize a tiny recap + next checklist.
-  3) Reflect: compare plan vs. results; adjust next steps or stop if done.
-  4) Persist: write `status.txt` and append to `agent_ledger.log`.
+1. **Local-first and crash-resilient** - Designed to crash/stop anytime
+2. **Idempotent operations** - Safe to retry any action
+3. **Plaintext state** - Human-inspectable JSON/JSONL files
+4. **No databases** - Everything is files
+5. **Short timeboxes** - Bounded execution with frequent persistence
+6. **Probe-first** - Verify real state before planning
+7. **Compact context** - Minimize LLM context size
 
-**Crash Recovery**
-- On start, reconstruct state without the model:
-  - Probe filesystem and tests.
-  - Read latest `status.txt` if present; otherwise compress the tail of `agent_ledger.log` into a one‑line summary.
-  - Rebuild a minimal checklist (e.g., create missing files → lint → test) and proceed.
-- Aim for idempotent actions so retries are safe.
+## Contributing
 
-**Short Timebox Testing**
-- Use brief, repeatable runs to gauge behavior and stability:
-  - Set conservative constants in `agent.py` (e.g., `MAX_ROUNDS`, `HISTORY_KEEP`, `TEMP`).
-  - Run targeted goals and measure: rounds taken, files touched, test outcomes, error rate.
-  - Example: `python agent.py "Create mathx.add, add tests, run ruff and pytest."`
-  - Validate after each run: `ruff check .` then `pytest -q`.
-  - Inspect `agent_ledger.log` for repeated or low‑value steps; tighten compaction rules if needed.
+1. Fork the repository
+2. Create feature branch
+3. Make changes
+4. Run tests: `pytest tests/ -q`
+5. Run linter: `ruff check .`
+6. Submit pull request
 
-**Pseudocode (Context Manager)**
-```
-def step():
-    state = probe_state()  # files, ruff, pytest
-    if state.pytest_ok:
-        persist_status(goal, "green", active=[], next=[], notes="tests pass")
-        return DONE
+## License
 
-    recap = ledger_compact_tail(max_lines=60)  # tiny, deduped
-    status = read_status_txt_or_default(goal)
+MIT License - See LICENSE file for details
 
-    plan = plan_next(state)  # concrete, small checklist
-    messages = compact_messages(system, status, recap, plan)
+## Credits
 
-    msg = llm(messages, tools=TOOL_SPECS)
-    for call in msg.tool_calls:
-        out = dispatch(call)
-        append_ledger(call, out)
+Built with:
+- [Ollama](https://ollama.ai/) - Local LLM runtime
+- [Python](https://python.org/) - Programming language
+- [Pytest](https://pytest.org/) - Testing framework
+- [Ruff](https://github.com/astral-sh/ruff) - Fast Python linter
 
-    reflect = compare(plan, observed=outcomes_from_ledger_tail())
-    persist_status(goal, reflect.status, reflect.active, reflect.next, reflect.notes)
-    return CONTINUE
-```
+---
 
-This approach keeps the model context tiny, leans on real system probes, and ensures the agent can recover quickly after interruptions while making steady, test‑driven progress.
+**Status:** Production-ready, actively maintained
+
+**Version:** 2.0 (Hierarchical Context Manager with Smart Zoom-Out)
+
+**Evaluation:** 75.6% success rate on L3-L4-L5 test suite (45 tests)
