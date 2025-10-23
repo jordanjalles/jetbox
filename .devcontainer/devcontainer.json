@@ -9,4 +9,8 @@
       "extensions": []
     }
   }
+  
+}
+"containerEnv": {
+  "CODEX_ENV": "test"
 }

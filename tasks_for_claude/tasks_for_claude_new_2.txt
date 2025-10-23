@@ -1,0 +1,5 @@
+1. I'm not seeing the task tree and subtasks visualizer until the first task is completed. I'd like a visual to pop up as soon as it starts working. it can even be a substring or tool call per llm call.
+2. The performance stats should reset on each new agent task.
+3. Separate the HRM-JEPA project into a new different github project. JetBox will exclusively be the agent framework.
+4. Update readme with the title line "JetBox — a fast, compact, and slightly dangerous local agent framework built for speed, autonomy, and total on-device control. Makes your fan scream like a jet at takeoff."
+5. Include jetbox.png in the readme (if possible) (also located in tasks for claude folder right now)

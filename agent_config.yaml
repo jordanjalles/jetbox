@@ -12,7 +12,7 @@ rounds:
   max_per_task: 256
 
   # Legacy global maximum (for backwards compatibility)
-  max_global: 24
+  max_global: 256
 
 # ==============================
 # Hierarchy Limits

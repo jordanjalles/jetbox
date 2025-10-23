@@ -41,6 +41,15 @@ python test_status_display.py
 ```
 
 ### Configuration
+
+**Agent Behavior Configuration:**
+The agent's failure handling, task decomposition, and retry behavior is configured in `agent_config.yaml`. See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for details.
+
+Key settings:
+- **No give-up option**: Agent always decomposes or zooms out when stuck
+- **3x approach retries**: Agent gets 3 chances to reconsider approach at root before final failure
+- **Configurable depth/breadth**: Adjust max_depth, max_siblings, max_rounds_per_subtask
+
 Set the Ollama model via environment variable:
 ```bash
 # PowerShell
@@ -81,12 +90,34 @@ export OLLAMA_MODEL="gpt-oss:20b"
 - Statistics persist to `.agent_context/stats.json`
 - **See [STATUS_DISPLAY.md](STATUS_DISPLAY.md) for complete documentation**
 
-**Tool whitelist** (agent.py:29): Only `python`, `pytest`, `ruff`, and `pip` commands are allowed for Windows safety. All other commands are rejected.
+**workspace_manager.py** (workspace isolation):
+- `WorkspaceManager` - Creates isolated directories for each goal
+- Automatic path resolution (all file operations workspace-relative)
+- File tracking and workspace-scoped test/lint commands
+- Prevents context distraction from root directory files
+- **See [WORKSPACE_AND_COMPLETION_FEATURES.md](WORKSPACE_AND_COMPLETION_FEATURES.md) for details**
+
+**completion_detector.py** (completion nudging):
+- Heuristic pattern matching to detect completion signals in LLM responses
+- 15+ regex patterns for phrases like "task completed successfully"
+- Nudges agent to call `mark_subtask_complete()` when appropriate
+- Reduces false negative completion reporting
+- **See [WORKSPACE_AND_COMPLETION_FEATURES.md](WORKSPACE_AND_COMPLETION_FEATURES.md) for details**
+
+**agent_config.py** (configuration system):
+- Loads behavior settings from `agent_config.yaml`
+- Controls escalation strategy, retry limits, decomposition parameters
+- No give-up option: Agent always decomposes or zooms out when stuck
+- Approach reconsideration: 3x retries at root before final failure
+- **See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for complete documentation**
+
+**Tool whitelist** (agent.py:32): Only `python`, `pytest`, `ruff`, and `pip` commands are allowed for Windows safety. All other commands are rejected.
 
 **Status artifacts**:
 - `.agent_context/state.json` - Hierarchical task state (Goal/Task/Subtask/Action)
 - `.agent_context/history.jsonl` - Action history (append-only)
 - `.agent_context/stats.json` - Performance statistics
+- `.agent_workspace/{goal-slug}/` - Isolated workspace for agent work (auto-created)
 - `agent_ledger.log` - Append-only trace of WRITE/CMD/ERROR actions (audit trail)
 - `agent_v2.log` - Human-readable runtime log
 
@@ -107,13 +138,24 @@ All tools in `agent.py` are tolerant of edge cases:
 - `write_file()` - Creates parent directories automatically
 - `run_cmd()` - Enforces whitelist, captures output, logs to ledger, returns structured dict
 
-## Key Constants (agent.py:23-29)
+## Key Configuration
 
+**Runtime constants (agent.py:27-39):**
 - `MODEL` - Ollama model tag (default: "gpt-oss:20b", override with `OLLAMA_MODEL` env var)
 - `TEMP` - Temperature for model (0.2 for focused outputs)
-- `MAX_ROUNDS` - Hard cap on agent loop iterations (24)
 - `HISTORY_KEEP` - Number of recent message exchanges to retain (5)
 - `SAFE_BIN` - Whitelisted commands: `{"python", "pytest", "ruff", "pip"}`
+
+**Configurable behavior (agent_config.yaml):**
+- `rounds.max_per_subtask` - Rounds before escalation (default: 6)
+- `rounds.max_per_task` - Safety cap for task rounds (default: 128)
+- `hierarchy.max_depth` - Maximum nesting levels (default: 5)
+- `hierarchy.max_siblings` - Max subtasks per level (default: 8)
+- `escalation.strategy` - `"force_decompose"` (no give-up) or `"agent_decides"`
+- `escalation.zoom_out_target` - `"root"`, `"task"`, or `"parent"`
+- `escalation.max_approach_retries` - Retry attempts at root (default: 3)
+
+**See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for full configuration reference.**
 
 ## Status Display
 

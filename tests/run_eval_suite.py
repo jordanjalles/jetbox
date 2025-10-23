@@ -10,6 +10,35 @@ from pathlib import Path
 from typing import Any
 
 
+def check_ollama_health() -> bool:
+    """Check if Ollama is responsive."""
+    try:
+        import requests
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
+def restart_ollama_if_needed() -> None:
+    """Restart Ollama if it's not responding (helps prevent hangs)."""
+    if not check_ollama_health():
+        print("[warning] Ollama not responding, waiting and checking again...")
+        time.sleep(5)
+
+        # Check again after wait
+        if check_ollama_health():
+            print("[info] Ollama recovered after wait")
+            return
+
+        print("[warning] Ollama still not responding. Manual restart may be needed.")
+        print("[info] To restart Ollama:")
+        print("  Windows: Restart Ollama app or run: ollama serve")
+        print("  Linux: systemctl restart ollama")
+        print("[info] Continuing test anyway...")
+        time.sleep(2)
+
+
 def clean_agent_state():
     """Clean agent state between runs."""
     if Path(".agent_workspace").exists():
@@ -29,6 +58,9 @@ def run_full_suite(iteration: int) -> list[dict[str, Any]]:
 
     # Clean state
     clean_agent_state()
+
+    # Check Ollama health before starting iteration (prevents timeout issues)
+    restart_ollama_if_needed()
 
     # Run stress tests
     try:

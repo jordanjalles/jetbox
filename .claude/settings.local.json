@@ -44,9 +44,27 @@
       "Bash(docker-compose up -d)",
       "Bash(docker-compose exec jetbox python --version)",
       "Bash(docker-compose exec -e OLLAMA_MODEL=gpt-oss:20b jetbox python agent.py \"Create mathx package with add(a,b) and multiply(a,b) functions. Add tests for both. Run ruff and pytest.\")",
-      "Bash(docker-compose exec jetbox bash -c \"ls -la mathx/ tests/ 2>/dev/null || echo ''No mathx or tests directories''\")"
+      "Bash(docker-compose exec jetbox bash -c \"ls -la mathx/ tests/ 2>/dev/null || echo ''No mathx or tests directories''\")",
+      "Bash(python agent_v2.py:*)",
+      "Bash(cat:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(timeout 60 python agent.py:*)",
+      "Bash(ruff check:*)",
+      "Bash(chmod:*)",
+      "Bash(git checkout:*)",
+      "Bash(timeout 10 python:*)",
+      "Bash(timeout 30 python:*)",
+      "Bash(timeout 15 python agent.py:*)",
+      "Bash(tee:*)",
+      "Bash(timeout 60 python:*)",
+      "Bash(env)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "bypassPermissions"
   }
 }

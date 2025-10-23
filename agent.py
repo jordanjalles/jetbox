@@ -8,6 +8,8 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from threading import Thread
+from queue import Queue
 
 from ollama import chat
 from ollama._types import ResponseError
@@ -28,6 +30,51 @@ if sys.platform == "win32":
 MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 TEMP = 0.2
 HISTORY_KEEP = 5  # Keep last 5 message exchanges
+
+
+# ----------------------------
+# Timeout wrapper for LLM calls
+# ----------------------------
+def chat_with_timeout(model: str, messages: list, options: dict, timeout_seconds: int = 120):
+    """
+    Call ollama chat with a timeout to prevent infinite hangs.
+
+    Args:
+        model: Model name
+        messages: List of messages
+        options: Options dict (temperature, etc)
+        timeout_seconds: Timeout in seconds (default 120s = 2 minutes)
+
+    Returns:
+        Response dict from ollama
+
+    Raises:
+        TimeoutError: If the call takes longer than timeout_seconds
+    """
+    result_queue = Queue()
+
+    def _call_chat():
+        try:
+            resp = chat(model=model, messages=messages, options=options)
+            result_queue.put(("success", resp))
+        except Exception as e:
+            result_queue.put(("error", e))
+
+    thread = Thread(target=_call_chat, daemon=True)
+    thread.start()
+    thread.join(timeout=timeout_seconds)
+
+    if thread.is_alive():
+        # Thread is still running - timeout occurred
+        raise TimeoutError(f"LLM call timed out after {timeout_seconds}s")
+
+    if result_queue.empty():
+        raise RuntimeError("Thread finished but no result in queue")
+
+    status, result = result_queue.get()
+    if status == "error":
+        raise result
+    return result
 LOGFILE = "agent_v2.log"
 LEDGER = Path("agent_ledger.log")
 SAFE_BIN = {"python", "pytest", "ruff", "pip"}
@@ -889,11 +936,17 @@ Return ONLY the JSON array, no other text.
 """
 
     log("Decomposing goal into tasks...")
-    resp = chat(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        options={"temperature": 0.1},
-    )
+    try:
+        resp = chat_with_timeout(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.1},
+            timeout_seconds=120,  # 2 minute timeout for decomposition
+        )
+    except TimeoutError as e:
+        log(f"Goal decomposition timed out: {e}")
+        # Fallback: create a single generic task
+        return [{"description": goal, "subtasks": ["Complete the goal"]}]
 
     content = resp["message"]["content"].strip()
     # Extract JSON from markdown code blocks if present

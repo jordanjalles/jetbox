@@ -268,20 +268,54 @@ def setup_failing_tests(task_description: str) -> None:
     )
 
 
+def check_ollama_health() -> bool:
+    """Check if Ollama is responsive."""
+    try:
+        import requests
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
+def restart_ollama_if_needed() -> None:
+    """Restart Ollama if it's not responding (helps prevent hangs)."""
+    if not check_ollama_health():
+        print("[warning] Ollama not responding, waiting and checking again...")
+        time.sleep(5)
+
+        # Check again after wait
+        if check_ollama_health():
+            print("[info] Ollama recovered after wait")
+            return
+
+        print("[warning] Ollama still not responding. Manual restart may be needed.")
+        print("[info] To restart Ollama:")
+        print("  Windows: Restart Ollama app or run: ollama serve")
+        print("  Linux: systemctl restart ollama")
+        print("[info] Continuing test anyway...")
+        time.sleep(2)
+
+
 def clean_workspace() -> None:
     """Clean up workspace before test."""
     # Remove entire .agent_workspace
     if Path(".agent_workspace").exists():
         shutil.rmtree(".agent_workspace")
+        print("[cleanup] Removed .agent_workspace")
 
-    # Remove agent state
+    # Remove agent state - CRITICAL for preventing state pollution
     if Path(".agent_context").exists():
         shutil.rmtree(".agent_context")
+        print("[cleanup] Removed .agent_context")
 
     # Remove log files
     for log_file in ["agent_v2.log", "agent_ledger.log", "agent.log"]:
         if Path(log_file).exists():
             Path(log_file).unlink()
+
+    # Wait a moment for filesystem to sync
+    time.sleep(0.1)
 
     # Remove __pycache__ directories recursively
     for pycache in Path(".").rglob("__pycache__"):
@@ -329,6 +363,10 @@ def run_test(test: dict[str, Any]) -> dict[str, Any]:
 
     # Setup
     clean_workspace()
+
+    # Check Ollama health before running test (prevents timeout issues)
+    restart_ollama_if_needed()
+
     if "setup" in test:
         test["setup"](test["task"])
 
