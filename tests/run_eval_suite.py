@@ -55,22 +55,22 @@ def run_full_suite(iteration: int) -> list[dict[str, Any]]:
 
 
 def main():
-    """Run full evaluation suite 5 times."""
+    """Run full evaluation suite 10 times."""
     all_results = []
 
     print("="*70)
-    print("EVALUATION SUITE: L3-L4-L5 Tests (5 full iterations)")
+    print("EVALUATION SUITE: L3-L4-L5 Tests (10 full iterations)")
     print("="*70)
     print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     start_time = time.time()
 
-    for iteration in range(1, 6):
+    for iteration in range(1, 11):
         results = run_full_suite(iteration)
         all_results.extend(results)
 
         # Save incremental results
-        with open("eval_suite_results.json", "w") as f:
+        with open("eval_suite_results_x10.json", "w") as f:
             json.dump(all_results, f, indent=2)
 
         # Quick summary

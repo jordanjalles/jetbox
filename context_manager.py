@@ -163,6 +163,7 @@ class ContextManager:
         self.action_history: list[Action] = []
         self.loop_detector = LoopDetector()
         self.loop_callback = None  # Optional callback for loop detection
+        self.is_new_goal = False  # Track if this is a fresh goal
         self._ensure_dirs()
 
     def _ensure_dirs(self) -> None:
@@ -170,7 +171,7 @@ class ContextManager:
         CONTEXT_DIR.mkdir(exist_ok=True)
 
     def load_or_init(self, goal_text: str) -> None:
-        """Load existing state or initialize new goal."""
+        """Load existing state or initialize new goal. Returns True if new goal."""
         if STATE_FILE.exists():
             self._load_state()
             if self.state.goal and self.state.goal.description == goal_text:
@@ -186,13 +187,18 @@ class ContextManager:
                     self.state.goal = Goal(description=goal_text)
                     self.state.current_task_idx = 0
                     self.state.current_subtask_idx = 0
+                    self.is_new_goal = True
                     self._save_state()
                 else:
                     # Resume in-progress goal
+                    self.is_new_goal = False
                     return
             else:
                 # Different goal - reset indices
                 print("[context] Different goal detected. Starting fresh.")
+                self.is_new_goal = True
+        else:
+            self.is_new_goal = True
         # New goal - reset all state
         self.state.goal = Goal(description=goal_text)
         self.state.current_task_idx = 0

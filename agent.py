@@ -1033,8 +1033,8 @@ def main() -> None:
     _ctx = ContextManager()
     _ctx.load_or_init(goal)
 
-    # Initialize status display
-    status = StatusDisplay(_ctx)
+    # Initialize status display (reset stats if new goal)
+    status = StatusDisplay(_ctx, reset_stats=_ctx.is_new_goal)
     _ctx.loop_callback = status.record_loop  # Wire up loop detection callback
 
     # If new goal, decompose into tasks
@@ -1060,6 +1060,14 @@ def main() -> None:
                 _ctx.state.goal.tasks[0].subtasks[0].status = "in_progress"
 
         _ctx._save_state()
+
+        # Show initial task tree immediately after decomposition
+        print("\n" + "=" * 70)
+        print("INITIAL TASK TREE")
+        print("=" * 70)
+        print()
+        print(status.render_compact())
+        print()
 
     # Message history (just the conversation, not context info)
     messages: list[dict[str, Any]] = []

@@ -104,12 +104,13 @@ class PerformanceStats:
 class StatusDisplay:
     """Manages clean, hierarchical status output."""
 
-    def __init__(self, ctx: ContextManager) -> None:
+    def __init__(self, ctx: ContextManager, reset_stats: bool = False) -> None:
         self.ctx = ctx
         self.stats = PerformanceStats()
         self.session_start = time.time()
         self.stats_file = Path(".agent_context/stats.json")
-        self._load_stats()
+        if not reset_stats:
+            self._load_stats()
 
     def _load_stats(self) -> None:
         """Load performance stats from disk if available."""
@@ -119,6 +120,12 @@ class StatusDisplay:
                 self.stats = PerformanceStats.from_dict(data)
             except Exception:
                 pass  # Use fresh stats on error
+
+    def reset_stats(self) -> None:
+        """Reset all performance statistics."""
+        self.stats = PerformanceStats()
+        self.session_start = time.time()
+        self._save_stats()
 
     def _save_stats(self) -> None:
         """Save performance stats to disk."""
@@ -207,7 +214,7 @@ class StatusDisplay:
         return f"AGENT STATUS - Round {round_no} | Runtime: {runtime}"
 
     def _render_hierarchy(self) -> str:
-        """Render task hierarchy showing current position."""
+        """Render full task hierarchy tree structure."""
         if not self.ctx.state.goal:
             return "No active goal."
 
@@ -221,27 +228,67 @@ class StatusDisplay:
         # Tasks level
         if goal.tasks:
             total_tasks = len(goal.tasks)
-            current_idx = self.ctx.state.current_task_idx
+            completed_tasks = sum(1 for t in goal.tasks if t.status == "completed")
 
-            lines.append(f"TASKS ({current_idx}/{total_tasks} completed):")
+            lines.append(f"TASK TREE ({completed_tasks}/{total_tasks} completed):")
             for i, task in enumerate(goal.tasks):
-                is_current = i == current_idx
-                status_icon = self._get_status_icon(task.status, is_current)
-                prefix = "  ► " if is_current else "    "
-                lines.append(f"{prefix}{status_icon} {task.description}")
-
-                # Show subtasks for current task
-                if is_current and task.subtasks:
-                    lines.append("")
-                    lines.append("    SUBTASKS:")
-                    for j, subtask in enumerate(task.subtasks):
-                        st_is_current = subtask.status == "in_progress"
-                        st_icon = self._get_status_icon(subtask.status, st_is_current)
-                        st_prefix = "      ► " if st_is_current else "        "
-                        desc = subtask.description[:60] + "..." if len(subtask.description) > 60 else subtask.description
-                        lines.append(f"{st_prefix}{st_icon} {desc}")
+                is_current = i == self.ctx.state.current_task_idx
+                # Render task and its full subtask tree
+                lines.extend(self._render_task_tree(task, is_current, indent=1))
 
         return "\n".join(lines)
+
+    def _render_task_tree(self, task: Any, is_current: bool, indent: int) -> list[str]:
+        """Render a task and all its subtasks as a tree."""
+        lines = []
+        indent_str = "  " * indent
+
+        # Render task
+        status_icon = self._get_status_icon(task.status, is_current)
+        prefix = "► " if is_current else "  "
+        task_desc = task.description[:70] + "..." if len(task.description) > 70 else task.description
+
+        # Show approach attempt count if > 0
+        attempt_info = f" (attempt {task.approach_attempts}/{3})" if hasattr(task, 'approach_attempts') and task.approach_attempts > 0 else ""
+        lines.append(f"{indent_str}{prefix}{status_icon} {task_desc}{attempt_info}")
+
+        # Render all subtasks recursively
+        if task.subtasks:
+            for subtask in task.subtasks:
+                lines.extend(self._render_subtask_tree(subtask, indent + 1))
+
+        return lines
+
+    def _render_subtask_tree(self, subtask: Any, indent: int) -> list[str]:
+        """Render a subtask and all its children recursively as a tree."""
+        lines = []
+        indent_str = "  " * indent
+
+        # Determine if this subtask is active
+        is_current = subtask.status == "in_progress"
+
+        # Render subtask
+        status_icon = self._get_status_icon(subtask.status, is_current)
+        prefix = "► " if is_current else "  "
+        desc = subtask.description[:65] + "..." if len(subtask.description) > 65 else subtask.description
+
+        # Show depth indicator
+        depth_info = f" [L{subtask.depth}]" if hasattr(subtask, 'depth') and subtask.depth > 1 else ""
+
+        # Show failure reason if blocked/failed
+        if subtask.status in ["blocked", "failed"] and hasattr(subtask, 'failure_reason') and subtask.failure_reason:
+            failure_short = subtask.failure_reason[:40] + "..." if len(subtask.failure_reason) > 40 else subtask.failure_reason
+            lines.append(f"{indent_str}{prefix}{status_icon} {desc}{depth_info}")
+            lines.append(f"{indent_str}   └─ ⚠ {failure_short}")
+        else:
+            lines.append(f"{indent_str}{prefix}{status_icon} {desc}{depth_info}")
+
+        # Render child subtasks recursively
+        if hasattr(subtask, 'child_subtasks') and subtask.child_subtasks:
+            for child in subtask.child_subtasks:
+                lines.extend(self._render_subtask_tree(child, indent + 1))
+
+        return lines
 
     def _render_progress(self) -> str:
         """Render progress indicators."""

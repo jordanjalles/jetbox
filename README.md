@@ -1,6 +1,8 @@
 # Jetbox
 
-**A production-ready local coding agent with hierarchical context management, built to run with Ollama on Windows.**
+![Jetbox Logo](jetbox.png)
+
+**JetBox — a fast, compact, and slightly dangerous local agent framework built for speed, autonomy, and total on-device control. Makes your fan scream like a jet at takeoff.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
