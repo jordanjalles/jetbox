@@ -190,6 +190,79 @@ TESTS = [
         "expected_files": [],  # Unclear what files should be created
         "timeout": 300,
     },
+
+    # Level 6: Master
+    {
+        "id": "L6-1",
+        "level": 6,
+        "name": "Web API with Tests",
+        "task": "Create a simple REST API using Flask with endpoints for creating, reading, updating, and deleting items. Include comprehensive tests using pytest. Setup with proper error handling and validation.",
+        "expected_files": ["api.py", "test_api.py", "requirements.txt"],
+        "timeout": 420,
+    },
+    {
+        "id": "L6-2",
+        "level": 6,
+        "name": "Plugin System Architecture",
+        "task": "Design and implement a plugin system where plugins can be dynamically loaded from a plugins/ directory. Each plugin should implement a common interface. Include example plugins and tests.",
+        "expected_files": ["plugin_manager.py", "plugins/example_plugin.py", "test_plugins.py"],
+        "timeout": 420,
+    },
+    {
+        "id": "L6-3",
+        "level": 6,
+        "name": "Legacy Code Migration",
+        "task": "Migrate the old_codebase.py from Python 2 style to modern Python 3 with type hints, pathlib instead of os.path, and f-strings. Add tests to ensure behavior is preserved.",
+        "expected_files": ["old_codebase.py", "test_migration.py"],
+        "timeout": 360,
+        "setup": lambda task: (get_workspace_path(task).mkdir(parents=True, exist_ok=True),
+                              (get_workspace_path(task) / "old_codebase.py").write_text(
+            "# -*- coding: utf-8 -*-\n"
+            "import os\n\n"
+            "def process_file(filepath):\n"
+            "    if os.path.exists(filepath):\n"
+            "        with open(filepath, 'r') as f:\n"
+            "            content = f.read()\n"
+            "        return 'File has %d chars' % len(content)\n"
+            "    return None\n\n"
+            "def combine_paths(base, *parts):\n"
+            "    result = base\n"
+            "    for part in parts:\n"
+            "        result = os.path.join(result, part)\n"
+            "    return result\n\n"
+            "class DataProcessor:\n"
+            "    def __init__(self, data):\n"
+            "        self.data = data\n"
+            "    def process(self):\n"
+            "        return [x * 2 for x in self.data if x > 0]\n"
+        ))[1],
+    },
+
+    # Level 7: Grandmaster
+    {
+        "id": "L7-1",
+        "level": 7,
+        "name": "Multi-Module Dependency Resolution",
+        "task": "Create a package manager simulation with modules A, B, C where B depends on A v1.x, C depends on A v2.x. Implement version resolution logic to detect conflicts and suggest solutions.",
+        "expected_files": ["package_manager.py", "test_package_manager.py"],
+        "timeout": 480,
+    },
+    {
+        "id": "L7-2",
+        "level": 7,
+        "name": "Concurrent Task Queue",
+        "task": "Build a thread-safe task queue system with worker threads, priority levels, retry logic on failure, and graceful shutdown. Include comprehensive tests for concurrency edge cases.",
+        "expected_files": ["task_queue.py", "test_task_queue.py"],
+        "timeout": 480,
+    },
+    {
+        "id": "L7-3",
+        "level": 7,
+        "name": "DSL Parser and Interpreter",
+        "task": "Design a simple domain-specific language (DSL) for mathematical expressions with variables, functions (sin, cos, sqrt), and implement a parser and interpreter. Include tests for complex expressions.",
+        "expected_files": ["dsl_parser.py", "dsl_interpreter.py", "test_dsl.py"],
+        "timeout": 540,
+    },
 ]
 
 
@@ -299,20 +372,40 @@ def restart_ollama_if_needed() -> None:
 
 def clean_workspace() -> None:
     """Clean up workspace before test."""
+    def safe_rmtree(path: Path, max_retries: int = 3) -> None:
+        """Safely remove a directory tree with retries and error handling."""
+        for attempt in range(max_retries):
+            try:
+                if path.exists():
+                    shutil.rmtree(path, ignore_errors=False)
+                    return
+            except OSError:
+                if attempt < max_retries - 1:
+                    time.sleep(0.2 * (attempt + 1))  # Exponential backoff
+                else:
+                    # Last attempt: force removal with ignore_errors
+                    try:
+                        shutil.rmtree(path, ignore_errors=True)
+                    except Exception:
+                        pass  # Silent fail on final attempt
+
     # Remove entire .agent_workspace
     if Path(".agent_workspace").exists():
-        shutil.rmtree(".agent_workspace")
+        safe_rmtree(Path(".agent_workspace"))
         print("[cleanup] Removed .agent_workspace")
 
     # Remove agent state - CRITICAL for preventing state pollution
     if Path(".agent_context").exists():
-        shutil.rmtree(".agent_context")
+        safe_rmtree(Path(".agent_context"))
         print("[cleanup] Removed .agent_context")
 
     # Remove log files
     for log_file in ["agent_v2.log", "agent_ledger.log", "agent.log"]:
-        if Path(log_file).exists():
-            Path(log_file).unlink()
+        try:
+            if Path(log_file).exists():
+                Path(log_file).unlink()
+        except OSError:
+            pass  # Ignore if file is locked
 
     # Wait a moment for filesystem to sync
     time.sleep(0.1)
@@ -320,7 +413,7 @@ def clean_workspace() -> None:
     # Remove __pycache__ directories recursively
     for pycache in Path(".").rglob("__pycache__"):
         if pycache.is_dir():
-            shutil.rmtree(pycache)
+            safe_rmtree(pycache)
 
     # Define files to preserve
     preserve_files = {

@@ -9,7 +9,6 @@ import time
 from pathlib import Path
 from typing import Any
 from threading import Thread
-from queue import Queue
 
 from ollama import chat
 from ollama._types import ResponseError
@@ -35,7 +34,13 @@ HISTORY_KEEP = 5  # Keep last 5 message exchanges
 # ----------------------------
 # Timeout wrapper for LLM calls
 # ----------------------------
-def chat_with_inactivity_timeout(model: str, messages: list, options: dict, inactivity_timeout: int = 30):
+def chat_with_inactivity_timeout(
+    model: str,
+    messages: list,
+    options: dict,
+    inactivity_timeout: int = 30,
+    tools: list | None = None,
+):
     """
     Call ollama chat with INACTIVITY timeout (not total time timeout).
 
@@ -47,6 +52,7 @@ def chat_with_inactivity_timeout(model: str, messages: list, options: dict, inac
         messages: List of messages
         options: Options dict (temperature, etc)
         inactivity_timeout: Max seconds without activity (default 30s)
+        tools: Optional list of tool specifications for function calling
 
     Returns:
         Response dict from ollama
@@ -55,22 +61,40 @@ def chat_with_inactivity_timeout(model: str, messages: list, options: dict, inac
         TimeoutError: If no response activity for inactivity_timeout seconds
     """
     from queue import Queue, Empty
-    import time
 
     result_queue = Queue()
 
     def _stream_chat():
         try:
-            full_response = ""
+            # Build chat arguments
+            chat_args = {
+                "model": model,
+                "messages": messages,
+                "options": options,
+                "stream": True
+            }
+            if tools is not None:
+                chat_args["tools"] = tools
+
+            full_response = {"message": {"role": "assistant", "content": ""}}
+
             # Use streaming to detect activity
-            for chunk in chat(model=model, messages=messages, options=options, stream=True):
+            for chunk in chat(**chat_args):
                 # Signal activity
                 result_queue.put(("chunk", chunk))
+
+                # Accumulate content
                 content = chunk.get("message", {}).get("content", "")
-                full_response += content
+                if content:
+                    full_response["message"]["content"] += content
+
+                # Get tool calls from final chunk
+                tool_calls = chunk.get("message", {}).get("tool_calls")
+                if tool_calls:
+                    full_response["message"]["tool_calls"] = tool_calls
 
             # Stream complete
-            result_queue.put(("done", {"message": {"content": full_response}}))
+            result_queue.put(("done", full_response))
         except Exception as e:
             result_queue.put(("error", e))
 
@@ -104,7 +128,6 @@ SAFE_BIN = {"python", "pytest", "ruff", "pip"}
 # Load from config file
 MAX_ROUNDS = config.rounds.max_global
 MAX_ROUNDS_PER_SUBTASK = config.rounds.max_per_subtask
-MAX_ROUNDS_PER_TASK = config.rounds.max_per_task
 MAX_SUBTASK_DEPTH = config.hierarchy.max_depth
 MAX_SUBTASK_SIBLINGS = config.hierarchy.max_siblings
 
@@ -212,6 +235,16 @@ def write_file(path: str, content: str, create_dirs: bool = True) -> str:
     # Resolve path through workspace if available
     if _workspace:
         resolved_path = _workspace.resolve_path(path)
+
+        # Safety check in edit mode: prevent modifying agent code
+        if _workspace.is_edit_mode:
+            forbidden_files = {'agent.py', 'context_manager.py', 'workspace_manager.py',
+                              'status_display.py', 'completion_detector.py', 'agent_config.py'}
+            if resolved_path.name in forbidden_files:
+                error_msg = f"[SAFETY] Cannot modify agent code in edit mode: {resolved_path.name}"
+                log(error_msg)
+                return error_msg
+
         _workspace.track_file(path)  # Track file creation
         display_path = _workspace.relative_path(resolved_path)
     else:
@@ -1093,20 +1126,81 @@ def dispatch(call: dict[str, Any]) -> dict[str, Any]:
         return {"error": str(e)}
 
 # ----------------------------
+# Ollama Health Check
+# ----------------------------
+def check_ollama_health(timeout: int = 5) -> bool:
+    """Check if Ollama is responsive using stdlib only."""
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://localhost:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
+def wait_for_ollama(max_wait: int = 30, check_interval: int = 5) -> bool:
+    """Wait for Ollama to become responsive, with retry logic."""
+    import time
+
+    print("[info] Checking Ollama health...")
+
+    if check_ollama_health():
+        print("[info] Ollama is responsive")
+        return True
+
+    print(f"[warning] Ollama not responding. Waiting up to {max_wait}s for recovery...")
+
+    elapsed = 0
+    while elapsed < max_wait:
+        time.sleep(check_interval)
+        elapsed += check_interval
+
+        if check_ollama_health():
+            print(f"[info] Ollama recovered after {elapsed}s")
+            return True
+
+        print(f"[warning] Still waiting... ({elapsed}s/{max_wait}s)")
+
+    return False
+
+
+# ----------------------------
 # Main loop
 # ----------------------------
 def main() -> None:
     global _ctx, _workspace
 
-    goal = "Write a hello world script"
-    if len(sys.argv) > 1:
-        goal = " ".join(sys.argv[1:])
+    # Parse arguments
+    import argparse
+    parser = argparse.ArgumentParser(description="Jetbox coding agent")
+    parser.add_argument("goal", nargs="*", help="Goal/task description")
+    parser.add_argument("--workspace", "-w", type=str, default=None,
+                       help="Edit mode: work in this existing directory (default: create isolated workspace)")
+    args = parser.parse_args()
+
+    goal = " ".join(args.goal) if args.goal else "Write a hello world script"
+    workspace_path = args.workspace
+
+    # Check Ollama health BEFORE doing anything else
+    if not wait_for_ollama(max_wait=30, check_interval=5):
+        print("[error] Ollama is not responding after 30s. Cannot start agent.")
+        print("[error] Please ensure Ollama is running: ollama serve")
+        sys.exit(1)
 
     log(f"Starting agent with goal: {goal}")
 
-    # Initialize workspace manager (isolated directory for this goal)
-    _workspace = WorkspaceManager(goal)
-    log(f"Workspace: {_workspace.workspace_dir}")
+    # Initialize workspace manager
+    if workspace_path:
+        # Edit mode: work in specified existing directory
+        _workspace = WorkspaceManager(goal, workspace_path=workspace_path)
+        log(f"Mode: EDIT (working in existing directory)")
+        log(f"Workspace: {_workspace.workspace_dir}")
+    else:
+        # Isolate mode: create isolated directory for this goal
+        _workspace = WorkspaceManager(goal)
+        log(f"Mode: ISOLATE (isolated workspace)")
+        log(f"Workspace: {_workspace.workspace_dir}")
 
     # Initialize context manager
     _ctx = ContextManager()
@@ -1297,28 +1391,7 @@ def main() -> None:
                             last_subtask_sig = None
                             continue
 
-                # Check per-task round limit (safety cap)
-                if task_total_rounds >= MAX_ROUNDS_PER_TASK:
-                    log(f"Task hit {MAX_ROUNDS_PER_TASK} total rounds safety cap")
-                    log("[zoom] Zooming to root to reconsider approach (safety cap)")
-
-                    # Force reconsideration at root
-                    retry_success = reconsider_approach_at_root(current_task, _ctx)
-                    if retry_success:
-                        task_total_rounds = 0
-                        current_subtask_rounds = 0
-                        last_subtask_sig = None
-                        continue
-                    else:
-                        # Max retries exhausted (safety cap)
-                        current_task.status = "failed"
-                        _ctx._save_state()
-                        report_path = generate_failure_report(
-                            goal, _ctx,
-                            f"Safety cap hit ({MAX_ROUNDS_PER_TASK} rounds) and retries exhausted: {current_task.description}"
-                        )
-                        print(f"\n📊 Failure report: {report_path}\n")
-                        break
+                # Per-task limit removed - using MAX_ROUNDS (global) and MAX_ROUNDS_PER_SUBTASK instead
 
         # Display status at start of round
         print("\n" + status.render(round_no))
@@ -1339,16 +1412,38 @@ def main() -> None:
 
         log(f"ROUND {round_no}: sending {len(context)} messages")
 
-        # Call LLM
+        # Call LLM with inactivity timeout protection
         t0 = time.time()
         try:
-            resp = chat(
+            resp = chat_with_inactivity_timeout(
                 model=MODEL,
                 messages=context,
-                tools=tool_specs(),
                 options={"temperature": TEMP},
-                stream=False,
+                tools=tool_specs(),
+                inactivity_timeout=30,  # Fail if Ollama stops responding for 30s
             )
+        except TimeoutError as e:
+            # Ollama stopped responding
+            llm_duration = time.time() - t0
+            status.record_llm_call(llm_duration, len(context))
+            log(f"ROUND {round_no}: TIMEOUT after {llm_duration:.1f}s")
+            log(f"ROUND {round_no}: {str(e)}")
+
+            print(f"\n{'='*70}")
+            print(f"❌ OLLAMA TIMEOUT")
+            print(f"Ollama stopped responding after {llm_duration:.1f}s")
+            print(f"This usually means Ollama has hung or crashed.")
+            print(f"{'='*70}\n")
+
+            # Generate failure report and exit
+            report_path = generate_failure_report(
+                goal,
+                _ctx,
+                f"Ollama timeout: No response for 30s on round {round_no}"
+            )
+            print(f"📊 Failure report: {report_path}\n")
+            sys.exit(1)
+
         except ResponseError as e:
             # Handle JSON parsing errors from malformed tool calls
             llm_duration = time.time() - t0

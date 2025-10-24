@@ -17,6 +17,7 @@
 - 💾 **Crash Recovery** - Resume from exact point of interruption
 - 📊 **Real-Time Status** - Tree-based visualization with progress bars
 - 🏗️ **Workspace Isolation** - Each goal gets isolated directory
+- ⏱️ **Timeout Protection** - Automatic detection and recovery from LLM hangs
 - 📝 **Prompt Engineering** - External YAML prompts for easy tuning
 
 ## Quick Start
@@ -25,11 +26,25 @@
 
 - Python 3.10+
 - Ollama running locally with a model (default: `gpt-oss:20b`)
-- Packages: `ollama`, `pytest`, `ruff`, `pyyaml`
+- Packages: `ollama`, `pytest`, `ruff`, `pyyaml`, `requests`
 
 ```bash
-pip install ollama pytest ruff pyyaml
+pip install ollama pytest ruff pyyaml requests
 ollama pull gpt-oss:20b  # or your preferred model
+```
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/jetbox.git
+cd jetbox
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Ensure Ollama is running
+ollama serve  # if not already running
 ```
 
 ### Run the Agent
@@ -45,6 +60,40 @@ The agent will:
 4. Display real-time progress
 5. Retry up to 3 times if approaches fail
 6. Save all state for crash recovery
+
+### Example Session
+
+```bash
+$ python agent.py "Create a simple todo list CLI app"
+
+[info] Checking Ollama health...
+[info] Ollama is responsive
+[log] Starting agent with goal: Create a simple todo list CLI app
+[log] Mode: ISOLATE (isolated workspace)
+[log] Workspace: .agent_workspace/create-a-simple-todo-list-cli-app
+[log] Decomposing goal into tasks...
+[log] Decomposed into 3 tasks
+
+======================================================================
+INITIAL TASK TREE
+======================================================================
+
+Task 1/3 | Subtask 1/2 | ✓0% | 0.0s
+
+GOAL: Create a simple todo list CLI app
+
+TASK TREE (0/3 completed):
+  ► ⟳ Create todo.py with CLI interface
+    ► ⟳ Write todo.py with add/list/complete functions
+      ○ Add command-line argument parsing
+    ○ Create tests for todo functionality
+      ○ Write test_todo.py
+      ○ Run pytest
+    ○ Verify code quality
+      ○ Run ruff check
+
+...
+```
 
 ## Project Structure
 
@@ -63,8 +112,7 @@ jetbox/
 │
 ├── tests/                      # Test infrastructure
 │   ├── run_stress_tests.py    # Stress test suite
-│   ├── run_eval_suite.py       # Multi-iteration evaluation
-│   ├── generate_eval_report.py # Report generator
+│   ├── run_l3_l7_x5.py         # L3-L7 evaluation (5 iterations)
 │   └── test_*.py               # Unit tests
 │
 ├── .agent_context/             # Runtime state (auto-created)
@@ -77,7 +125,7 @@ jetbox/
 │   └── {goal-slug}/            # One workspace per goal
 │
 └── docs/                       # Documentation
-    └── reports/                # Analysis reports
+    └── *.md                    # Architecture and analysis docs
 ```
 
 ## Configuration
@@ -171,7 +219,15 @@ When loop detected:
 - Warning shown to agent
 - Forces different approach
 
-### 4. Workspace Isolation
+### 4. Timeout Protection
+
+Built-in timeout protection prevents infinite hangs:
+- Monitors LLM response activity (not total time)
+- Detects when Ollama stops responding (30s of inactivity)
+- Generates failure report and exits gracefully
+- Allows long complex tasks to complete normally
+
+### 5. Workspace Isolation
 
 Each goal gets isolated workspace:
 ```
@@ -188,7 +244,7 @@ Each goal gets isolated workspace:
 - Easy cleanup
 - Clear scope boundaries
 
-### 5. Approach Reconsideration
+### 6. Approach Reconsideration
 
 When stuck, agent can reconsider approach at root:
 - Learns from previous failures
@@ -197,28 +253,24 @@ When stuck, agent can reconsider approach at root:
 - Generates completely new strategy
 - 3 attempts before final failure
 
-## Prompt Engineering
+## Model Configuration
 
-All prompts are externalized in `prompts.yaml` for easy tuning:
+Set model via environment variable:
 
-```yaml
-system_prompt: |
-  You are a local coding agent...
+```bash
+# PowerShell
+$env:OLLAMA_MODEL = "qwen2.5-coder:7b"
 
-escalation_prompt: |
-  ESCALATION NEEDED: You've spent {rounds_used} rounds...
+# Bash
+export OLLAMA_MODEL="qwen2.5-coder:7b"
 
-decompose_subtask: |
-  Break this into {min_children}-{max_children} smaller subtasks...
+# Or use any Ollama-compatible model
+export OLLAMA_MODEL="llama3.2:3b"
 ```
 
-Load and format prompts:
+Default model: `gpt-oss:20b`
 
-```python
-from prompt_loader import prompts
-
-prompt = prompts.get("decompose_subtask", min_children=2, max_children=6)
-```
+Supported models: Any Ollama-compatible model with function calling support.
 
 ## Testing
 
@@ -230,20 +282,16 @@ pytest tests/ -q
 
 ### Run Stress Tests
 
+Run specific levels (1-7):
 ```bash
 python tests/run_stress_tests.py 3,4,5  # Run levels 3, 4, 5
 ```
 
-### Run Full Evaluation Suite
+### Run L3-L7 Evaluation Suite
 
+5 iterations of levels 3-7 (75 tests total):
 ```bash
-python tests/run_eval_suite.py  # 5 iterations of L3-L4-L5
-```
-
-### Generate Report
-
-```bash
-python tests/generate_eval_report.py
+python tests/run_l3_l7_x5.py
 ```
 
 ### Lint Code
@@ -258,16 +306,6 @@ ruff check --fix .  # Auto-fix issues
 ```bash
 python diag_speed.py
 ```
-
-## Performance
-
-**Evaluation Results** (L3-L4-L5 tests, 5 iterations each):
-- Overall pass rate: 75.6% (34/45)
-- Level 3: 53% - Advanced tasks
-- Level 4: 80% - Expert tasks
-- Level 5: 93% - Extreme tasks
-
-**Interesting finding:** Agent performs better on harder tasks due to effective decomposition.
 
 ## Status Display
 
@@ -299,20 +337,12 @@ PERFORMANCE:
 
 ## Documentation
 
-- **`CLAUDE.md`** - Main agent documentation
-- **`AGENT_ARCHITECTURE.md`** - Detailed architecture
-- **`IMPLEMENTATION_COMPLETE.md`** - Recent implementation summary
-- **`EVAL_SUITE_REPORT.md`** - Latest evaluation results
-- **`STATUS_DISPLAY.md`** - Status display documentation
-
-## Development Tools
-
-- **`agent_config.py`** - Configuration system with dataclasses
-- **`prompt_loader.py`** - YAML prompt loading
-- **`workspace_manager.py`** - Workspace path resolution
-- **`completion_detector.py`** - Heuristic completion detection
-- **`status_display.py`** - Progress visualization
-- **`context_manager.py`** - Hierarchical state machine
+- **`CLAUDE.md`** - Project instructions for AI assistants
+- **`AGENT_ARCHITECTURE.md`** - Detailed architecture documentation
+- **`STATUS_DISPLAY.md`** - Status display system documentation
+- **`CONFIG_SYSTEM.md`** - Configuration system documentation
+- **`WORKSPACE_AND_COMPLETION_FEATURES.md`** - Workspace and completion features
+- **`FAILURE_ANALYSIS.md`** - Test failure analysis and debugging
 
 ## Crash Recovery
 
@@ -337,22 +367,6 @@ State persists in:
 - `.agent_context/history.jsonl` - Complete action history
 - `.agent_context/stats.json` - Performance metrics
 
-## Model Configuration
-
-Set model via environment variable:
-
-```bash
-# PowerShell
-$env:OLLAMA_MODEL = "qwen2.5-coder:7b"
-
-# Bash
-export OLLAMA_MODEL="qwen2.5-coder:7b"
-```
-
-Default model: `gpt-oss:20b`
-
-Supported models: Any Ollama-compatible model with function calling support.
-
 ## Safety
 
 **Command Whitelist:**
@@ -364,6 +378,9 @@ Agent cannot modify files outside its workspace directory.
 
 **Loop Prevention:**
 Automatic detection and blocking of infinite loops.
+
+**Timeout Protection:**
+Automatic detection and recovery from LLM hangs.
 
 **Failure Reports:**
 Comprehensive markdown reports generated on all failures.
@@ -377,6 +394,40 @@ Comprehensive markdown reports generated on all failures.
 5. **Short timeboxes** - Bounded execution with frequent persistence
 6. **Probe-first** - Verify real state before planning
 7. **Compact context** - Minimize LLM context size
+
+## Troubleshooting
+
+### Ollama Not Responding
+
+```bash
+# Check if Ollama is running
+ollama list
+
+# Restart Ollama service
+# Windows: Restart Ollama app
+# Linux: systemctl restart ollama
+# macOS: Restart Ollama app
+```
+
+### Agent Hanging
+
+The agent has built-in timeout protection. If hanging persists:
+1. Check Ollama health: `python diag_speed.py`
+2. Try a different model: `export OLLAMA_MODEL="qwen2.5-coder:7b"`
+3. Check system resources (RAM, CPU)
+
+### Tests Failing
+
+```bash
+# Clean workspace and context
+rm -rf .agent_workspace .agent_context
+
+# Run single test in isolation
+python agent.py "Write a hello world script"
+
+# Check dependencies
+pip install -r requirements.txt
+```
 
 ## Contributing
 
@@ -403,6 +454,4 @@ Built with:
 
 **Status:** Production-ready, actively maintained
 
-**Version:** 2.0 (Hierarchical Context Manager with Smart Zoom-Out)
-
-**Evaluation:** 75.6% success rate on L3-L4-L5 test suite (45 tests)
+**Version:** 2.1 (Timeout Protection + Smart Zoom-Out)
