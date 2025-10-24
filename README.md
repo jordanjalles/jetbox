@@ -338,11 +338,16 @@ PERFORMANCE:
 ## Documentation
 
 - **`CLAUDE.md`** - Project instructions for AI assistants
-- **`AGENT_ARCHITECTURE.md`** - Detailed architecture documentation
-- **`STATUS_DISPLAY.md`** - Status display system documentation
-- **`CONFIG_SYSTEM.md`** - Configuration system documentation
-- **`WORKSPACE_AND_COMPLETION_FEATURES.md`** - Workspace and completion features
-- **`FAILURE_ANALYSIS.md`** - Test failure analysis and debugging
+- **`QUICK_START.md`** - Quick reference guide
+
+### Architecture Documentation (`docs/architecture/`)
+System design and component documentation
+
+### Implementation Details (`docs/implementation/`)
+Feature implementations, fixes, and design proposals
+
+### Analysis & Reports (`docs/analysis/`)
+Test results, failure analysis, and evaluation reports
 
 ## Crash Recovery
 
