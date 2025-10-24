@@ -2,7 +2,6 @@
 """Run systematic stress tests on the agent and log results."""
 
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -341,33 +340,88 @@ def setup_failing_tests(task_description: str) -> None:
     )
 
 
-def check_ollama_health() -> bool:
-    """Check if Ollama is responsive."""
+def check_ollama_health(timeout: int = 10) -> tuple[bool, float]:
+    """Check if Ollama is responsive and measure latency.
+
+    Returns:
+        (is_healthy, latency_seconds)
+    """
     try:
         import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        return response.status_code == 200
+        start = time.time()
+        response = requests.get("http://localhost:11434/api/tags", timeout=timeout)
+        latency = time.time() - start
+
+        if response.status_code == 200:
+            return (True, latency)
+        else:
+            return (False, latency)
     except Exception:
-        return False
+        return (False, timeout)
 
 
-def restart_ollama_if_needed() -> None:
-    """Restart Ollama if it's not responding (helps prevent hangs)."""
-    if not check_ollama_health():
-        print("[warning] Ollama not responding, waiting and checking again...")
-        time.sleep(5)
+def restart_ollama() -> bool:
+    """Attempt to restart Ollama service.
 
-        # Check again after wait
-        if check_ollama_health():
-            print("[info] Ollama recovered after wait")
-            return
+    Returns:
+        True if restart succeeded, False otherwise
+    """
+    print("[action] Attempting to restart Ollama...")
 
-        print("[warning] Ollama still not responding. Manual restart may be needed.")
-        print("[info] To restart Ollama:")
-        print("  Windows: Restart Ollama app or run: ollama serve")
-        print("  Linux: systemctl restart ollama")
-        print("[info] Continuing test anyway...")
-        time.sleep(2)
+    # Try different restart methods based on platform
+    restart_commands = [
+        # Linux systemd
+        ["systemctl", "restart", "ollama"],
+        # Docker (if running in container)
+        ["docker", "restart", "ollama"],
+        # Fallback: kill and restart (if ollama serve is available)
+        ["pkill", "ollama"],
+    ]
+
+    for cmd in restart_commands:
+        try:
+            subprocess.run(cmd, capture_output=True, timeout=10)
+            print(f"[info] Executed: {' '.join(cmd)}")
+            time.sleep(5)  # Wait for service to start
+
+            # Check if restart worked
+            is_healthy, latency = check_ollama_health(timeout=10)
+            if is_healthy:
+                print(f"[success] Ollama restarted successfully (latency: {latency:.2f}s)")
+                return True
+        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+            continue  # Try next method
+
+    print("[warning] Could not restart Ollama automatically")
+    print("[info] To restart Ollama manually:")
+    print("  Windows: Restart Ollama app or run: ollama serve")
+    print("  Linux: systemctl restart ollama")
+    print("  Docker: docker restart ollama")
+    return False
+
+
+def check_ollama_health_with_recovery() -> bool:
+    """Check Ollama health and attempt restart if degraded.
+
+    Returns:
+        True if Ollama is healthy, False if unrecoverable
+    """
+    is_healthy, latency = check_ollama_health(timeout=10)
+
+    if is_healthy and latency < 10:
+        # Ollama is responsive and fast
+        return True
+
+    if is_healthy and latency >= 10:
+        # Ollama is slow but responsive
+        print(f"[warning] Ollama responding slowly ({latency:.1f}s latency)")
+        print("[action] Restarting Ollama to clear degradation...")
+        return restart_ollama()
+
+    # Ollama not responding at all
+    print("[warning] Ollama not responding")
+    print("[action] Attempting to restart...")
+    return restart_ollama()
 
 
 def clean_workspace() -> None:
@@ -433,7 +487,7 @@ def clean_workspace() -> None:
 
 
 def run_test(test: dict[str, Any]) -> dict[str, Any]:
-    """Run a single test and collect results."""
+    """Run a single test and collect results with timeout recovery."""
     print(f"\n{'='*70}")
     print(f"Running {test['id']}: {test['name']}")
     print(f"Task: {test['task']}")
@@ -452,68 +506,117 @@ def run_test(test: dict[str, Any]) -> dict[str, Any]:
         "error": None,
         "files_created": [],
         "failure_mode": None,
+        "ollama_restarts": 0,  # Track restart attempts
     }
 
     # Setup
     clean_workspace()
 
-    # Check Ollama health before running test (prevents timeout issues)
-    restart_ollama_if_needed()
+    # Check Ollama health with recovery (restart if degraded)
+    if not check_ollama_health_with_recovery():
+        print("[error] Ollama health check failed - cannot run test")
+        result["error"] = "Ollama not responding after restart attempt"
+        result["failure_mode"] = "ollama_unavailable"
+        return result
 
     if "setup" in test:
         test["setup"](test["task"])
 
-    # Run agent
+    # Timeout recovery: retry up to 5 times if Ollama timeouts occur
+    MAX_OLLAMA_TIMEOUT_RETRIES = 5
+    ollama_timeout_count = 0
+
+    # Run agent with timeout recovery
     start_time = time.time()
-    try:
-        proc = subprocess.run(
-            ["python", "agent.py", test["task"]],
-            capture_output=True,
-            text=True,
-            timeout=test["timeout"],
-        )
-        result["duration"] = time.time() - start_time
-        result["output"] = proc.stdout + proc.stderr
+    attempt = 1
 
-        # Check if agent completed - expanded success patterns
-        success_patterns = [
-            "Goal achieved",
-            "All tasks finished",
-            "goal_complete",
-            "Successfully created",
-            r"✓.*complete",
-            "Task completed successfully",
-            "marked complete",
-        ]
+    while attempt <= MAX_OLLAMA_TIMEOUT_RETRIES:
+        try:
+            proc = subprocess.run(
+                ["python", "agent.py", test["task"]],
+                capture_output=True,
+                text=True,
+                timeout=test["timeout"],
+            )
+            result["duration"] = time.time() - start_time
+            result["output"] = proc.stdout + proc.stderr
 
-        for pattern in success_patterns:
-            if "\\." in pattern or "*" in pattern:  # Regex pattern
-                import re
-                if re.search(pattern, result["output"], re.IGNORECASE):
-                    result["success"] = True
+            # Check if this was an Ollama timeout (not subprocess timeout)
+            is_ollama_timeout = "OLLAMA TIMEOUT" in result["output"]
+
+            if is_ollama_timeout:
+                ollama_timeout_count += 1
+                result["ollama_restarts"] = ollama_timeout_count
+
+                if ollama_timeout_count >= MAX_OLLAMA_TIMEOUT_RETRIES:
+                    # Failed 5 times - give up
+                    print(f"[error] Ollama timed out {ollama_timeout_count} times - giving up")
+                    result["failure_mode"] = "ollama_timeout_repeated"
+                    result["error"] = f"Ollama timeout after {ollama_timeout_count} restart attempts"
                     break
-            else:  # Simple substring match
-                if pattern in result["output"]:
-                    result["success"] = True
-                    break
+                else:
+                    # Retry with Ollama restart
+                    print(f"[warning] Ollama timeout detected (attempt {ollama_timeout_count}/{MAX_OLLAMA_TIMEOUT_RETRIES})")
+                    print("[action] Restarting Ollama and retrying test...")
 
-        # Check failure modes if not successful
-        if not result["success"]:
-            if "Hit MAX_ROUNDS" in result["output"]:
-                result["failure_mode"] = "max_rounds_exceeded"
-            elif "loop" in result["output"].lower() and "detect" in result["output"].lower():
-                result["failure_mode"] = "infinite_loop"
+                    if restart_ollama():
+                        print(f"[info] Retrying test {test['id']} (attempt {attempt + 1}/{MAX_OLLAMA_TIMEOUT_RETRIES})...")
+                        clean_workspace()  # Clean workspace for retry
+                        if "setup" in test:
+                            test["setup"](test["task"])
+                        attempt += 1
+                        start_time = time.time()  # Reset timer
+                        continue  # Retry
+                    else:
+                        # Restart failed
+                        result["failure_mode"] = "ollama_restart_failed"
+                        result["error"] = f"Could not restart Ollama after timeout (attempt {ollama_timeout_count})"
+                        break
             else:
-                result["failure_mode"] = "unknown_failure"
+                # No Ollama timeout - check success normally
+                break  # Exit retry loop
 
-    except subprocess.TimeoutExpired:
-        result["duration"] = time.time() - start_time
-        result["failure_mode"] = "timeout"
-        result["error"] = f"Timeout after {test['timeout']}s"
-    except Exception as e:
-        result["duration"] = time.time() - start_time
-        result["failure_mode"] = "execution_error"
-        result["error"] = str(e)
+        except subprocess.TimeoutExpired:
+            result["duration"] = time.time() - start_time
+            result["failure_mode"] = "timeout"
+            result["error"] = f"Subprocess timeout after {test['timeout']}s"
+            break  # Don't retry subprocess timeouts
+        except Exception as e:
+            result["duration"] = time.time() - start_time
+            result["failure_mode"] = "execution_error"
+            result["error"] = str(e)
+            break  # Don't retry execution errors
+
+    # Check if agent completed - expanded success patterns
+    success_patterns = [
+        "Goal achieved",
+        "All tasks finished",
+        "goal_complete",
+        "Successfully created",
+        r"✓.*complete",
+        "Task completed successfully",
+        "marked complete",
+    ]
+
+    for pattern in success_patterns:
+        if "\\." in pattern or "*" in pattern:  # Regex pattern
+            import re
+            if re.search(pattern, result["output"], re.IGNORECASE):
+                result["success"] = True
+                break
+        else:  # Simple substring match
+            if pattern in result["output"]:
+                result["success"] = True
+                break
+
+    # Check failure modes if not successful (and not already set by timeout recovery)
+    if not result["success"] and not result["failure_mode"]:
+        if "Hit MAX_ROUNDS" in result["output"]:
+            result["failure_mode"] = "max_rounds_exceeded"
+        elif "loop" in result["output"].lower() and "detect" in result["output"].lower():
+            result["failure_mode"] = "infinite_loop"
+        else:
+            result["failure_mode"] = "unknown_failure"
 
     # Check expected files
     result["files_created"] = [
@@ -618,7 +721,7 @@ def main() -> None:
         for mode, tests in failure_modes.items():
             print(f"  {mode}: {', '.join(tests)}")
 
-    print(f"\nDetailed results saved to: stress_test_results.json")
+    print("\nDetailed results saved to: stress_test_results.json")
 
 
 if __name__ == "__main__":
