@@ -10,13 +10,16 @@ from pathlib import Path
 from typing import Any
 from threading import Thread
 
-from ollama import chat
+from ollama import Client
 from ollama._types import ResponseError
 from context_manager import ContextManager
 from status_display import StatusDisplay
 from workspace_manager import WorkspaceManager
 from completion_detector import analyze_llm_response
 from agent_config import config
+
+# Initialize Ollama client with proper host configuration
+OLLAMA_CLIENT = Client(host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"))
 
 # Fix Windows console encoding for Unicode characters
 if sys.platform == "win32":
@@ -79,7 +82,7 @@ def chat_with_inactivity_timeout(
             full_response = {"message": {"role": "assistant", "content": ""}}
 
             # Use streaming to detect activity
-            for chunk in chat(**chat_args):
+            for chunk in OLLAMA_CLIENT.chat(**chat_args):
                 # Signal activity
                 result_queue.put(("chunk", chunk))
 
@@ -152,7 +155,10 @@ def _ledger_append(kind: str, detail: str) -> None:
 # Generic state probe
 # ----------------------------
 def probe_state_generic() -> dict[str, Any]:
-    """Generic filesystem probe - no goal-specific assumptions."""
+    """Generic filesystem probe - no goal-specific assumptions.
+
+    Only includes files/errors from the current session (after last SESSION_START marker).
+    """
 
     state = {
         "files_written": [],      # Files we wrote (from ledger)
@@ -165,7 +171,19 @@ def probe_state_generic() -> dict[str, Any]:
     if not LEDGER.exists():
         return state
 
-    lines = LEDGER.read_text(encoding="utf-8").splitlines()[-30:]
+    # Read ledger and find last SESSION_START marker
+    all_lines = LEDGER.read_text(encoding="utf-8").splitlines()
+
+    # Find last session marker
+    session_start_idx = 0
+    for i in range(len(all_lines) - 1, -1, -1):
+        if all_lines[i].startswith("SESSION_START\t"):
+            session_start_idx = i
+            break
+
+    # Only process lines after session start
+    lines = all_lines[session_start_idx:]
+
     writes = []
 
     for line in lines:
@@ -424,7 +442,7 @@ Your decision:"""
 
         # Ask the LLM to decide
         try:
-            response = chat(
+            response = OLLAMA_CLIENT.chat(
                 model=MODEL,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
@@ -773,7 +791,7 @@ Return a JSON array of subtasks:
 ["Subtask 1", "Subtask 2", ...]"""
 
     try:
-        response = chat(
+        response = OLLAMA_CLIENT.chat(
             model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a strategic problem solver who learns from failures."},
@@ -870,7 +888,7 @@ BAD Example (TOO BROAD):
 Your decomposition (JSON only - be VERY GRANULAR):"""
 
     try:
-        response = chat(
+        response = OLLAMA_CLIENT.chat(
             model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a task decomposition expert."},
@@ -1026,7 +1044,7 @@ Return ONLY the JSON array, no other text.
 # ----------------------------
 # Context building
 # ----------------------------
-SYSTEM_PROMPT = """You are a local coding agent running on Windows.
+SYSTEM_PROMPT = """You are a local coding agent that helps build software projects.
 
 Your workflow:
 1. Work on your current subtask using the available tools
@@ -1036,9 +1054,14 @@ Your workflow:
 
 Guidelines:
 - Use tools to read, write files, and run commands
-- Only python, pytest, ruff, and pip commands are allowed
+- You can work with any programming language or technology stack (Python, JavaScript, HTML/CSS, TypeScript, etc.)
+- For Python projects: use pytest for testing and ruff for linting
+- For web projects: create HTML, CSS, and JavaScript files as needed
+- For other languages: use appropriate tools and conventions for that ecosystem
+- Only python, pytest, ruff, and pip commands are allowed for security
 - When you finish your current subtask, ALWAYS call mark_subtask_complete
 - Be concise and focused on the current subtask
+- Adapt your approach based on the project type and requirements
 """
 
 def build_context(ctx: ContextManager, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1132,7 +1155,13 @@ def check_ollama_health(timeout: int = 5) -> bool:
     """Check if Ollama is responsive using stdlib only."""
     try:
         import urllib.request
-        req = urllib.request.Request("http://localhost:11434/api/tags")
+        # Use OLLAMA_HOST environment variable, fallback to localhost
+        ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        # Ensure URL has proper format
+        if not ollama_host.startswith("http"):
+            ollama_host = f"http://{ollama_host}"
+        health_url = f"{ollama_host}/api/tags"
+        req = urllib.request.Request(health_url)
         with urllib.request.urlopen(req, timeout=timeout) as response:
             return response.status == 200
     except Exception:
@@ -1189,6 +1218,10 @@ def main() -> None:
         sys.exit(1)
 
     log(f"Starting agent with goal: {goal}")
+
+    # Add session marker to ledger
+    from datetime import datetime
+    _ledger_append("SESSION_START", f"{datetime.now().isoformat()} | {goal[:80]}")
 
     # Initialize workspace manager
     if workspace_path:
@@ -1393,9 +1426,48 @@ def main() -> None:
 
                 # Per-task limit removed - using MAX_ROUNDS (global) and MAX_ROUNDS_PER_SUBTASK instead
 
+        # Set activity: Thinking
+        status.set_activity("thinking: planning next actions")
+
+        # Calculate accurate context stats for visualization
+        # Build the actual context to measure it
+        full_context = build_context(_ctx, messages)
+
+        # Calculate token counts (approximate: 4 chars per token)
+        system_tokens = len(full_context[0]["content"]) // 4 if full_context else 0
+
+        # Task/goal description is in second message (user role with context_info)
+        task_tokens = len(full_context[1]["content"]) // 4 if len(full_context) > 1 else 0
+
+        # Agent output: all assistant messages
+        agent_tokens = sum(len(str(m.get("content", ""))) // 4
+                          for m in full_context[2:] if m.get("role") == "assistant")
+
+        # System interaction: all tool results (file reads, cmd outputs, errors, etc)
+        system_interaction_tokens = sum(len(str(m.get("content", ""))) // 4
+                                       for m in full_context[2:] if m.get("role") == "tool")
+
+        context_stats = {
+            "system_prompt": system_tokens,
+            "task_desc": task_tokens,
+            "agent_output": agent_tokens,
+            "system_interaction": system_interaction_tokens,  # Renamed from files_read
+        }
+
         # Display status at start of round
-        print("\n" + status.render(round_no))
-        print()  # Add spacing
+        # Use in-place update after first round to avoid clutter
+        use_in_place = (round_no > 1)
+        if use_in_place:
+            # For in-place: print with end='' to avoid extra newline, then flush
+            print(status.render(round_no, context_stats, in_place=True,
+                              subtask_rounds=current_subtask_rounds, max_rounds=MAX_ROUNDS_PER_SUBTASK),
+                  end='', flush=True)
+            print()  # Single newline for spacing
+        else:
+            # For first round: add newline before
+            print("\n" + status.render(round_no, context_stats, in_place=False,
+                                      subtask_rounds=current_subtask_rounds, max_rounds=MAX_ROUNDS_PER_SUBTASK))
+            print()  # Add spacing
 
         # Check if goal is complete
         if (_ctx.state.goal and
@@ -1411,6 +1483,9 @@ def main() -> None:
         context = build_context(_ctx, messages)
 
         log(f"ROUND {round_no}: sending {len(context)} messages")
+
+        # Set activity: Calling LLM
+        status.set_activity("calling LLM: waiting for response")
 
         # Call LLM with inactivity timeout protection
         t0 = time.time()
@@ -1484,6 +1559,26 @@ def main() -> None:
 
             for c in calls:
                 tool_name = c["function"]["name"]
+
+                # Set activity based on tool
+                if tool_name == "write_file":
+                    status.set_activity(f"writing file: {c['function'].get('arguments', {}).get('path', '...')}")
+                elif tool_name == "read_file":
+                    status.set_activity(f"reading file: {c['function'].get('arguments', {}).get('path', '...')}")
+                elif tool_name == "run_cmd":
+                    cmd_args = c['function'].get('arguments', {})
+                    if isinstance(cmd_args, str):
+                        import json as json_lib
+                        try:
+                            cmd_args = json_lib.loads(cmd_args)
+                        except:
+                            cmd_args = {}
+                    cmd = cmd_args.get('cmd', '...')
+                    status.set_activity(f"running: {cmd}")
+                elif tool_name == "mark_subtask_complete":
+                    status.set_activity("marking subtask complete")
+                else:
+                    status.set_activity(f"calling tool: {tool_name}")
 
                 # Execute tool
                 try:

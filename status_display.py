@@ -10,12 +10,47 @@ Provides real-time visibility into:
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from context_manager import ContextManager
+
+
+# ----------------------------
+# Helper Functions
+# ----------------------------
+def get_model_context_size() -> int:
+    """Get the context window size for the current Ollama model.
+
+    Returns the num_ctx parameter from the model, or a sensible default.
+    """
+    try:
+        from ollama import Client
+        client = Client()
+        model_name = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
+
+        # Try to get model info
+        info = client.show(model_name)
+        if info and "modelinfo" in info:
+            # Look for num_ctx in parameters
+            params = info["modelinfo"]
+            if isinstance(params, dict) and "num_ctx" in params:
+                return int(params["num_ctx"])
+
+        # Common defaults for known models
+        if "gpt-oss" in model_name or "qwen" in model_name:
+            return 32768  # Common for 7B-20B models
+        elif "llama3" in model_name:
+            return 8192
+        else:
+            return 32768  # Conservative default
+
+    except Exception:
+        # If we can't query, use conservative default
+        return 32768
 
 
 # ----------------------------
@@ -45,6 +80,10 @@ class PerformanceStats:
     actions_successful: int = 0
     actions_failed: int = 0
     loops_detected: int = 0
+
+    # Agent activity tracking
+    current_activity: str = "idle"  # e.g., "thinking", "calling tool: write_file", "decomposing"
+    last_activity_time: float = 0.0
 
     def avg_llm_time(self) -> float:
         """Average LLM call time in seconds."""
@@ -90,6 +129,8 @@ class PerformanceStats:
             "actions_successful": self.actions_successful,
             "actions_failed": self.actions_failed,
             "loops_detected": self.loops_detected,
+            "current_activity": self.current_activity,
+            "last_activity_time": self.last_activity_time,
         }
 
     @classmethod
@@ -180,38 +221,280 @@ class StatusDisplay:
         self.stats.total_runtime = time.time() - self.session_start
         self._save_stats()
 
-    def render(self, round_no: int = 0) -> str:
+    def set_activity(self, activity: str) -> None:
+        """Set current agent activity for live status display."""
+        self.stats.current_activity = activity
+        self.stats.last_activity_time = time.time()
+        self._save_stats()
+
+    def render(self, round_no: int = 0, context_stats: dict[str, int] | None = None,
+               in_place: bool = False, subtask_rounds: int = 0, max_rounds: int = 6) -> str:
         """
         Render complete status display.
 
         Returns a clean text summary showing:
-        - Current position in task hierarchy
-        - Progress indicators
-        - Performance stats
-        - Recent activity
+        - Performance stats (top)
+        - Context usage visualization
+        - Current position in task hierarchy (with elbow connectors)
+        - Turn counter (circles showing rounds used vs limit)
+        - Agent status and current activity (bottom)
+
+        Args:
+            round_no: Current round number
+            context_stats: Optional dict with keys: system_prompt, task_desc, agent_output, files_read
+            in_place: If True, prepend ANSI codes to clear previous output for in-place update
+            subtask_rounds: Number of rounds used on current subtask
+            max_rounds: Max rounds allowed before forced decomposition
         """
         self.update_runtime()
 
+        # If in_place update requested, output ANSI codes to clear previous display
+        prefix = ""
+        if in_place and hasattr(self, '_last_line_count') and self._last_line_count > 0:
+            # Strategy: Move cursor up to start of previous output, then clear line by line
+            # \033[F moves to beginning of previous line
+            # \033[2K clears entire line
+            # Do this for each line of previous output
+            moves = []
+            for _ in range(self._last_line_count):
+                moves.append("\033[F\033[2K")  # Move up and clear line
+            prefix = "".join(moves)
+
         lines = []
-        lines.append("=" * 70)
+        lines.append("=" * 80)
         lines.append(self._render_header(round_no))
-        lines.append("=" * 70)
+        lines.append("=" * 80)
         lines.append("")
-        lines.append(self._render_hierarchy())
-        lines.append("")
-        lines.append(self._render_progress())
-        lines.append("")
+
+        # PERFORMANCE at top
         lines.append(self._render_stats())
         lines.append("")
-        lines.append(self._render_recent_activity())
-        lines.append("=" * 70)
 
-        return "\n".join(lines)
+        # Context usage visualization (if provided)
+        if context_stats:
+            lines.append(self._render_context_usage(context_stats))
+            lines.append("")
+
+        # Enhanced hierarchy with elbow connectors
+        lines.append(self._render_hierarchy_with_elbows())
+        lines.append("")
+
+        # TURN COUNTER replaces Progress
+        lines.append(self._render_turn_counter(subtask_rounds, max_rounds))
+        lines.append("")
+
+        # AGENT STATUS at bottom
+        lines.append(self._render_agent_status())
+        lines.append("=" * 80)
+
+        output = "\n".join(lines)
+        # Track line count for next in-place update (including the final newline from print())
+        self._last_line_count = len(lines) + 1  # +1 for the spacing line added by print()
+
+        return prefix + output
 
     def _render_header(self, round_no: int) -> str:
         """Render header with round and runtime."""
         runtime = self.stats.format_duration(self.stats.total_runtime)
         return f"AGENT STATUS - Round {round_no} | Runtime: {runtime}"
+
+    def _render_agent_status(self) -> str:
+        """Render current agent activity status with latest action."""
+        activity = self.stats.current_activity
+        activity_emoji = {
+            "idle": "💤",
+            "thinking": "🤔",
+            "reading": "📖",
+            "writing": "✍️",
+            "running": "⚙️",
+            "calling": "🔄",
+            "decomposing": "🔀",
+            "reflecting": "💭",
+            "planning": "📋",
+            "marking": "✅",
+        }
+
+        # Extract emoji based on activity keywords
+        emoji = "🔵"  # default
+        for keyword, em in activity_emoji.items():
+            if keyword in activity.lower():
+                emoji = em
+                break
+
+        lines = []
+        lines.append(f"AGENT STATUS: {emoji} {activity}")
+
+        # Show latest action inline with status (not in separate section)
+        task = self.ctx._get_current_task()
+        if task:
+            subtask = task.active_subtask()
+            if subtask and subtask.actions:
+                latest = subtask.actions[-1]  # Just the very last action
+                icon = "✓" if latest.result == "success" else "✗"
+                action_desc = latest.name
+                # Truncate if too long
+                if len(action_desc) > 40:
+                    action_desc = action_desc[:37] + "..."
+                lines.append(f"  Latest: {icon} {action_desc}")
+
+        return "\n".join(lines)
+
+    def _render_context_usage(self, context_stats: dict[str, int]) -> str:
+        """
+        Render discrete chunk visualization of context token usage.
+
+        Args:
+            context_stats: Dict with keys: system_prompt, task_desc, agent_output, system_interaction
+
+        Returns discrete chunk bar showing token distribution
+        """
+        # Get actual model context size
+        MAX_CONTEXT = get_model_context_size()
+
+        sys_tokens = context_stats.get("system_prompt", 0)
+        task_tokens = context_stats.get("task_desc", 0)
+        agent_tokens = context_stats.get("agent_output", 0)
+        system_tokens = context_stats.get("system_interaction", 0)  # All tool outputs
+
+        total = sys_tokens + task_tokens + agent_tokens + system_tokens
+        remaining = MAX_CONTEXT - total
+
+        lines = []
+        lines.append("CONTEXT USAGE:")
+
+        # Use discrete chunks - each block represents a fixed amount of tokens
+        bar_width = 40
+        tokens_per_block = MAX_CONTEXT // bar_width
+
+        # Calculate blocks for each category
+        sys_blocks = sys_tokens // tokens_per_block
+        task_blocks = task_tokens // tokens_per_block
+        agent_blocks = agent_tokens // tokens_per_block
+        system_blocks = system_tokens // tokens_per_block
+        used_blocks = sys_blocks + task_blocks + agent_blocks + system_blocks
+        remaining_blocks = bar_width - used_blocks
+
+        # Build colored bar with discrete chunks (using ANSI color codes)
+        # Red=system, Yellow=task, Green=agent, Blue=system interaction, Gray=remaining
+        bar = (
+            "\033[91m" + "█" * sys_blocks + "\033[0m" +      # Red for system prompt
+            "\033[93m" + "█" * task_blocks + "\033[0m" +     # Yellow for task desc
+            "\033[92m" + "█" * agent_blocks + "\033[0m" +    # Green for agent output
+            "\033[94m" + "█" * system_blocks + "\033[0m" +   # Blue for system interaction
+            "\033[90m" + "░" * remaining_blocks + "\033[0m"  # Gray for unused
+        )
+
+        lines.append(f"  [{bar}]")
+        lines.append(f"  {total:,}/{MAX_CONTEXT:,} tokens ({100*total/MAX_CONTEXT:.1f}% used)")
+        lines.append(f"  Each █ = ~{tokens_per_block:,} tokens")
+        lines.append("")
+        lines.append("  Legend:")
+        lines.append(f"    \033[91m■\033[0m System Prompt:     {sys_tokens:>7,} tokens ({sys_blocks} blocks)")
+        lines.append(f"    \033[93m■\033[0m Task Desc:         {task_tokens:>7,} tokens ({task_blocks} blocks)")
+        lines.append(f"    \033[92m■\033[0m Agent Output:      {agent_tokens:>7,} tokens ({agent_blocks} blocks)")
+        lines.append(f"    \033[94m■\033[0m System Interaction: {system_tokens:>7,} tokens ({system_blocks} blocks)")
+        lines.append(f"    \033[90m■\033[0m Remaining:         {remaining:>7,} tokens ({remaining_blocks} blocks)")
+
+        return "\n".join(lines)
+
+    def _render_hierarchy_with_elbows(self) -> str:
+        """Render task hierarchy with ASCII elbow connectors."""
+        if not self.ctx.state.goal:
+            return "No active goal."
+
+        lines = []
+        goal = self.ctx.state.goal
+
+        # Goal level
+        lines.append(f"GOAL: {goal.description}")
+        lines.append("")
+
+        # Tasks level with elbow connectors
+        if goal.tasks:
+            total_tasks = len(goal.tasks)
+            completed_tasks = sum(1 for t in goal.tasks if t.status == "completed")
+
+            lines.append(f"TASK TREE ({completed_tasks}/{total_tasks} completed):")
+            for i, task in enumerate(goal.tasks):
+                is_current = i == self.ctx.state.current_task_idx
+                is_last_task = i == len(goal.tasks) - 1
+
+                # Render task with elbow connectors
+                lines.extend(self._render_task_with_elbows(task, is_current, is_last_task))
+
+        return "\n".join(lines)
+
+    def _render_task_with_elbows(self, task: Any, is_current: bool, is_last: bool) -> list[str]:
+        """Render a task and its subtasks with ASCII elbow connectors."""
+        lines = []
+
+        # Task line
+        status_icon = self._get_status_icon(task.status, is_current)
+        connector = "└─" if is_last else "├─"
+        task_desc = task.description[:65] + "..." if len(task.description) > 65 else task.description
+
+        # Make current task VERY visible with highlighting
+        if is_current and task.status != "completed":
+            # Use bold and color for current task
+            prefix = "► \033[1m\033[96m"  # Bold cyan
+            suffix = "\033[0m"  # Reset
+        else:
+            prefix = "  "
+            suffix = ""
+
+        # Show approach attempt count if > 0
+        attempt_info = f" (attempt {task.approach_attempts}/{3})" if hasattr(task, 'approach_attempts') and task.approach_attempts > 0 else ""
+        lines.append(f"{connector}{prefix}{status_icon} {task_desc}{attempt_info}{suffix}")
+
+        # Render subtasks with proper indentation
+        if task.subtasks:
+            for j, subtask in enumerate(task.subtasks):
+                is_last_subtask = j == len(task.subtasks) - 1
+                indent_char = "  " if is_last else "│ "
+                lines.extend(self._render_subtask_with_elbows(subtask, is_last_subtask, indent_char))
+
+        return lines
+
+    def _render_subtask_with_elbows(self, subtask: Any, is_last: bool, parent_indent: str) -> list[str]:
+        """Render a subtask and its children with ASCII elbow connectors."""
+        lines = []
+
+        # Determine if this subtask is active
+        is_current = subtask.status == "in_progress"
+
+        # Subtask line
+        status_icon = self._get_status_icon(subtask.status, is_current)
+        connector = "└─" if is_last else "├─"
+        desc = subtask.description[:60] + "..." if len(subtask.description) > 60 else subtask.description
+
+        # Make current subtask VERY visible with highlighting
+        if is_current:
+            # Use bold and color for current subtask
+            prefix = "► \033[1m\033[96m"  # Bold cyan
+            suffix = "\033[0m"  # Reset
+        else:
+            prefix = "  "
+            suffix = ""
+
+        # Show depth indicator
+        depth_info = f" [L{subtask.depth}]" if hasattr(subtask, 'depth') and subtask.depth > 1 else ""
+
+        lines.append(f"{parent_indent}{connector}{prefix}{status_icon} {desc}{depth_info}{suffix}")
+
+        # Show failure reason if blocked/failed
+        if subtask.status in ["blocked", "failed"] and hasattr(subtask, 'failure_reason') and subtask.failure_reason:
+            failure_short = subtask.failure_reason[:45] + "..." if len(subtask.failure_reason) > 45 else subtask.failure_reason
+            fail_indent = "  " if is_last else "│ "
+            lines.append(f"{parent_indent}{fail_indent}  └─ ⚠ {failure_short}")
+
+        # Render child subtasks recursively
+        if hasattr(subtask, 'child_subtasks') and subtask.child_subtasks:
+            for k, child in enumerate(subtask.child_subtasks):
+                is_last_child = k == len(subtask.child_subtasks) - 1
+                child_indent = parent_indent + ("  " if is_last else "│ ")
+                lines.extend(self._render_subtask_with_elbows(child, is_last_child, child_indent))
+
+        return lines
 
     def _render_hierarchy(self) -> str:
         """Render full task hierarchy tree structure."""
@@ -290,41 +573,33 @@ class StatusDisplay:
 
         return lines
 
-    def _render_progress(self) -> str:
-        """Render progress indicators."""
-        if not self.ctx.state.goal or not self.ctx.state.goal.tasks:
-            return "No progress yet."
+    def _render_turn_counter(self, current: int, max_turns: int) -> str:
+        """Render turn counter with circles showing rounds used before forced decomposition.
 
-        total_tasks = len(self.ctx.state.goal.tasks)
-        current_task_idx = min(self.ctx.state.current_task_idx, total_tasks)  # Cap at total
-
-        # Calculate overall progress
-        total_subtasks = 0
-        completed_subtasks = 0
-
-        for task in self.ctx.state.goal.tasks:
-            total_subtasks += len(task.subtasks)
-            for subtask in task.subtasks:
-                if subtask.status == "completed":
-                    completed_subtasks += 1
-
-        # Progress bars
+        Args:
+            current: Current round number for this subtask
+            max_turns: Max rounds allowed before decomposition
+        """
         lines = []
-        lines.append("PROGRESS:")
+        lines.append("TURNS UNTIL FORCED DECOMPOSITION:")
 
-        # Task progress
-        task_pct = (current_task_idx / total_tasks * 100) if total_tasks > 0 else 0
-        task_bar = self._render_progress_bar(current_task_idx, total_tasks)
-        lines.append(f"  Tasks:    {task_bar} {task_pct:.0f}%")
+        # Use filled circles (●) for used turns, empty circles (○) for remaining
+        filled = "●" * current
+        empty = "○" * (max_turns - current)
+        circles = filled + empty
 
-        # Subtask progress
-        subtask_pct = (completed_subtasks / total_subtasks * 100) if total_subtasks > 0 else 0
-        subtask_bar = self._render_progress_bar(completed_subtasks, total_subtasks)
-        lines.append(f"  Subtasks: {subtask_bar} {subtask_pct:.0f}%")
+        # Add warning color if close to limit
+        if current >= max_turns * 0.8:  # 80% or more used
+            status_color = "\033[91m"  # Red
+            status_text = "⚠ Near limit"
+        elif current >= max_turns * 0.5:  # 50% or more used
+            status_color = "\033[93m"  # Yellow
+            status_text = "⚡ Half used"
+        else:
+            status_color = "\033[92m"  # Green
+            status_text = "✓ Early"
 
-        # Success rate
-        success_pct = self.stats.success_rate() * 100
-        lines.append(f"  Success:  {success_pct:.0f}%")
+        lines.append(f"  {circles}  {status_color}{current}/{max_turns} turns{status_text}\033[0m")
 
         return "\n".join(lines)
 
@@ -351,59 +626,91 @@ class StatusDisplay:
         return "\n".join(lines)
 
     def _render_recent_activity(self) -> str:
-        """Render recent actions and errors."""
+        """Render recent actions (errors only shown if blocking progress)."""
         lines = []
         lines.append("RECENT ACTIVITY:")
 
         # Get recent actions from current subtask
         task = self.ctx._get_current_task()
+        has_actions = False
+
         if task:
             subtask = task.active_subtask()
             if subtask and subtask.actions:
                 recent = subtask.actions[-3:]  # Last 3 actions
+                has_actions = True
                 for action in recent:
                     icon = "✓" if action.result == "success" else "✗"
                     lines.append(f"  {icon} {action.name}")
-                    if action.error_msg:
+                    # Only show error inline if action failed
+                    if action.result != "success" and action.error_msg:
                         err_short = action.error_msg[:50] + "..." if len(action.error_msg) > 50 else action.error_msg
                         lines.append(f"    └─ {err_short}")
 
-        # Show recent errors from probe state
+        # Only show recent errors section if there are unresolved errors AND low success rate
+        # This makes errors "sticky" only when they're actually blocking progress
         if self.ctx.state.last_probe_state and self.ctx.state.last_probe_state.get("recent_errors"):
             errors = self.ctx.state.last_probe_state["recent_errors"]
-            if errors:
+            # Only show if success rate < 70% (indicates ongoing issues)
+            if errors and self.stats.success_rate() < 0.7 and self.stats.actions_total > 3:
                 lines.append("")
-                lines.append("  Recent errors:")
+                lines.append("  ⚠ Blocking errors:")
                 for err in errors[-2:]:  # Last 2 errors
                     err_short = err[:60] + "..." if len(err) > 60 else err
                     lines.append(f"    • {err_short}")
+                has_actions = True
 
-        if len(lines) == 1:
+        if not has_actions:
             lines.append("  (none)")
 
         return "\n".join(lines)
 
     def _get_status_icon(self, status: str, is_current: bool) -> str:
         """Get status icon for task/subtask."""
-        if is_current:
-            return "⟳"  # In progress
-        elif status == "completed":
+        # Status takes priority over is_current - completed items always show checkmark
+        if status == "completed":
             return "✓"
         elif status == "failed":
             return "✗"
         elif status == "blocked":
             return "⊗"
+        elif is_current or status == "in_progress":
+            return "⟳"  # In progress
         else:
             return "○"  # Pending
 
     def _render_progress_bar(self, current: int, total: int, width: int = 20) -> str:
-        """Render a text progress bar."""
+        """Render a text progress bar (continuous - legacy)."""
         if total == 0:
             return "[" + " " * width + "]"
 
         filled = int(width * current / total)
         bar = "█" * filled + "░" * (width - filled)
         return f"[{bar}]"
+
+    def _render_discrete_bar(self, completed: int, total: int, max_width: int = 20) -> str:
+        """Render a discrete chunk bar showing individual items.
+
+        Each item is represented as a distinct block, making it easy to count.
+        """
+        if total == 0:
+            return "[empty]"
+
+        # If we have few items, show each one as a block
+        if total <= max_width:
+            # Show each item as a discrete block
+            bar = "█" * completed + "░" * (total - completed)
+            return f"[{bar}]"
+        else:
+            # Too many items - group them into chunks
+            # Each visual block represents multiple items
+            items_per_block = (total + max_width - 1) // max_width  # Round up
+            filled_blocks = completed // items_per_block
+            remaining = max_width - filled_blocks
+
+            # Show grouping info
+            bar = "█" * filled_blocks + "░" * remaining
+            return f"[{bar}] (each █ = ~{items_per_block} items)"
 
     def render_compact(self) -> str:
         """
