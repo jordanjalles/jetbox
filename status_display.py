@@ -366,12 +366,17 @@ class StatusDisplay:
         bar_width = 40
         tokens_per_block = MAX_CONTEXT // bar_width
 
-        # Calculate blocks for each category
-        sys_blocks = sys_tokens // tokens_per_block
-        task_blocks = task_tokens // tokens_per_block
-        agent_blocks = agent_tokens // tokens_per_block
-        feedback_blocks = feedback_tokens // tokens_per_block
+        # Calculate blocks for each category (round up if there are any tokens)
+        # This ensures even small amounts show at least 1 block
+        sys_blocks = (sys_tokens + tokens_per_block - 1) // tokens_per_block if sys_tokens > 0 else 0
+        task_blocks = (task_tokens + tokens_per_block - 1) // tokens_per_block if task_tokens > 0 else 0
+        agent_blocks = (agent_tokens + tokens_per_block - 1) // tokens_per_block if agent_tokens > 0 else 0
+        feedback_blocks = (feedback_tokens + tokens_per_block - 1) // tokens_per_block if feedback_tokens > 0 else 0
+
         used_blocks = sys_blocks + task_blocks + agent_blocks + feedback_blocks
+        # Ensure we don't exceed bar width due to rounding up
+        if used_blocks > bar_width:
+            used_blocks = bar_width
         remaining_blocks = bar_width - used_blocks
 
         # Build colored bar with discrete chunks (using ANSI color codes)
