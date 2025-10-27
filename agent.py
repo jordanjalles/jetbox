@@ -1439,19 +1439,30 @@ def main() -> None:
         # Task/goal description is in second message (user role with context_info)
         task_tokens = len(full_context[1]["content"]) // 4 if len(full_context) > 1 else 0
 
-        # Agent output: all assistant messages
-        agent_tokens = sum(len(str(m.get("content", ""))) // 4
-                          for m in full_context[2:] if m.get("role") == "assistant")
+        # Agent output: all assistant messages (content + tool_calls)
+        agent_tokens = 0
+        for m in full_context[2:]:
+            if m.get("role") == "assistant":
+                # Count content if present
+                content = str(m.get("content", ""))
+                agent_tokens += len(content) // 4
+                # Count tool_calls if present (they take up significant tokens)
+                if "tool_calls" in m:
+                    # Each tool call has name + arguments
+                    for tc in m["tool_calls"]:
+                        agent_tokens += len(tc["function"]["name"]) // 4
+                        args = tc["function"].get("arguments", "")
+                        agent_tokens += len(str(args)) // 4
 
-        # System interaction: all tool results (file reads, cmd outputs, errors, etc)
-        system_interaction_tokens = sum(len(str(m.get("content", ""))) // 4
-                                       for m in full_context[2:] if m.get("role") == "tool")
+        # System feedback: all tool results (file reads, cmd outputs, errors, etc)
+        system_feedback_tokens = sum(len(str(m.get("content", ""))) // 4
+                                     for m in full_context[2:] if m.get("role") == "tool")
 
         context_stats = {
             "system_prompt": system_tokens,
             "task_desc": task_tokens,
             "agent_output": agent_tokens,
-            "system_interaction": system_interaction_tokens,  # Renamed from files_read
+            "system_feedback": system_feedback_tokens,  # Renamed from system_interaction
         }
 
         # Display status at start of round

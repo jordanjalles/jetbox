@@ -84,7 +84,7 @@ def demo_basic_visualization():
         "system_prompt": 1200,
         "task_desc": 800,
         "agent_output": 4500,
-        "system_interaction": 6000,  # All tool outputs (files, cmd results, errors)
+        "system_feedback": 6000,  # All tool outputs (files, cmd results, errors)
     }
 
     # Render and display (with turn counter)
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     print("  ✓ Turn counter with circles (●○○○○○) replaces progress bars")
     print("  ✓ Warning colors: Green=early, Yellow=half, Red=near limit")
     print("  ✓ Context window ACCURATE and updates every turn")
-    print("  ✓ 'System Interaction' bucket for all tool outputs")
+    print("  ✓ 'System Feedback' bucket for all tool outputs")
     print("  ✓ Completed tasks show ✓ (not ⟳)")
     print("  ✓ Current step HIGHLIGHTED in bold cyan")
     print("  ✓ Model-aware context window sizing")

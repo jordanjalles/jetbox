@@ -344,7 +344,7 @@ class StatusDisplay:
         Render discrete chunk visualization of context token usage.
 
         Args:
-            context_stats: Dict with keys: system_prompt, task_desc, agent_output, system_interaction
+            context_stats: Dict with keys: system_prompt, task_desc, agent_output, system_feedback
 
         Returns discrete chunk bar showing token distribution
         """
@@ -354,9 +354,9 @@ class StatusDisplay:
         sys_tokens = context_stats.get("system_prompt", 0)
         task_tokens = context_stats.get("task_desc", 0)
         agent_tokens = context_stats.get("agent_output", 0)
-        system_tokens = context_stats.get("system_interaction", 0)  # All tool outputs
+        feedback_tokens = context_stats.get("system_feedback", 0)  # All tool outputs
 
-        total = sys_tokens + task_tokens + agent_tokens + system_tokens
+        total = sys_tokens + task_tokens + agent_tokens + feedback_tokens
         remaining = MAX_CONTEXT - total
 
         lines = []
@@ -370,17 +370,17 @@ class StatusDisplay:
         sys_blocks = sys_tokens // tokens_per_block
         task_blocks = task_tokens // tokens_per_block
         agent_blocks = agent_tokens // tokens_per_block
-        system_blocks = system_tokens // tokens_per_block
-        used_blocks = sys_blocks + task_blocks + agent_blocks + system_blocks
+        feedback_blocks = feedback_tokens // tokens_per_block
+        used_blocks = sys_blocks + task_blocks + agent_blocks + feedback_blocks
         remaining_blocks = bar_width - used_blocks
 
         # Build colored bar with discrete chunks (using ANSI color codes)
-        # Red=system, Yellow=task, Green=agent, Blue=system interaction, Gray=remaining
+        # Red=system, Yellow=task, Green=agent, Blue=system feedback, Gray=remaining
         bar = (
             "\033[91m" + "█" * sys_blocks + "\033[0m" +      # Red for system prompt
             "\033[93m" + "█" * task_blocks + "\033[0m" +     # Yellow for task desc
             "\033[92m" + "█" * agent_blocks + "\033[0m" +    # Green for agent output
-            "\033[94m" + "█" * system_blocks + "\033[0m" +   # Blue for system interaction
+            "\033[94m" + "█" * feedback_blocks + "\033[0m" + # Blue for system feedback
             "\033[90m" + "░" * remaining_blocks + "\033[0m"  # Gray for unused
         )
 
@@ -389,11 +389,11 @@ class StatusDisplay:
         lines.append(f"  Each █ = ~{tokens_per_block:,} tokens")
         lines.append("")
         lines.append("  Legend:")
-        lines.append(f"    \033[91m■\033[0m System Prompt:     {sys_tokens:>7,} tokens ({sys_blocks} blocks)")
-        lines.append(f"    \033[93m■\033[0m Task Desc:         {task_tokens:>7,} tokens ({task_blocks} blocks)")
-        lines.append(f"    \033[92m■\033[0m Agent Output:      {agent_tokens:>7,} tokens ({agent_blocks} blocks)")
-        lines.append(f"    \033[94m■\033[0m System Interaction: {system_tokens:>7,} tokens ({system_blocks} blocks)")
-        lines.append(f"    \033[90m■\033[0m Remaining:         {remaining:>7,} tokens ({remaining_blocks} blocks)")
+        lines.append(f"    \033[91m■\033[0m System Prompt:   {sys_tokens:>7,} tokens ({sys_blocks} blocks)")
+        lines.append(f"    \033[93m■\033[0m Task Desc:       {task_tokens:>7,} tokens ({task_blocks} blocks)")
+        lines.append(f"    \033[92m■\033[0m Agent Output:    {agent_tokens:>7,} tokens ({agent_blocks} blocks)")
+        lines.append(f"    \033[94m■\033[0m System Feedback: {feedback_tokens:>7,} tokens ({feedback_blocks} blocks)")
+        lines.append(f"    \033[90m■\033[0m Remaining:       {remaining:>7,} tokens ({remaining_blocks} blocks)")
 
         return "\n".join(lines)
 
