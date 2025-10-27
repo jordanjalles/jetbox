@@ -69,6 +69,10 @@ class OrchestratorAgent(BaseAgent):
                                 "type": "string",
                                 "description": "Additional context or requirements",
                             },
+                            "workspace": {
+                                "type": "string",
+                                "description": "Optional: Path to existing workspace to continue work in. Use this when updating/modifying existing projects. Omit to create new isolated workspace.",
+                            },
                         },
                         "required": ["task_description"],
                     },
@@ -127,6 +131,18 @@ class OrchestratorAgent(BaseAgent):
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_workspaces",
+                    "description": "List all existing workspaces in .agent_workspace/ directory",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    },
+                },
+            },
         ]
 
     def get_system_prompt(self) -> str:
@@ -139,10 +155,23 @@ Your workflow:
 3. For complex requests, you can optionally create_task_plan first, then delegate_to_executor
 4. After delegation completes, report results back to user WITH FILE LOCATIONS
 
+WORKSPACE BEHAVIOR (CRITICAL):
+- By DEFAULT, TaskExecutor creates a NEW isolated workspace for each delegation
+- New workspace path is derived from task description (e.g., "create calculator" → .agent_workspace/create-calculator/)
+- When user says "update X" or "modify X" or "add to X", they mean work in EXISTING workspace
+- To work in existing workspace, use the "workspace" parameter in delegate_to_executor
+- Use list_workspaces tool to see all existing workspaces
+- When user references existing project, ALWAYS check workspaces and specify correct one
+
+WORKSPACE DECISION TREE:
+1. User says "create/make/build NEW thing" → Omit workspace (creates new)
+2. User says "update/modify/add to EXISTING thing" → Call list_workspaces, then specify workspace parameter
+3. User says "fix bug in X" or "improve X" → Find X's workspace and specify it
+4. Not sure? → Ask user or call list_workspaces to check
+
 IMPORTANT RULES:
 - Delegate ONCE per user request (unless user explicitly asks for more work)
 - After delegation completes successfully, REPORT to user - do NOT delegate again
-- TaskExecutor works in isolated workspace - files it creates stay there
 - When reporting completion, tell user WHERE files are located
 - Do NOT delegate tasks to "retrieve" or "return" file contents - just tell user the workspace path
 - If user wants to see file content, tell them the path so they can read it themselves
@@ -156,7 +185,8 @@ Guidelines:
 - Don't write code yourself - delegate to TaskExecutor
 
 Tools available:
-- delegate_to_executor: Send coding tasks to TaskExecutor (use this for ALL coding work)
+- delegate_to_executor: Send coding tasks to TaskExecutor (workspace param optional - use for existing projects)
+- list_workspaces: List all existing project workspaces
 - clarify_with_user: Ask user questions (use sparingly)
 - create_task_plan: Structure complex requests (optional, use before delegation)
 - get_executor_status: Check TaskExecutor progress

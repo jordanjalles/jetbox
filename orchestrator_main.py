@@ -212,6 +212,7 @@ def execute_orchestrator_tool(
         # Delegate to TaskExecutor and run it
         task_description = args.get("task_description", "")
         context = args.get("context", "")
+        workspace = args.get("workspace", "")
 
         try:
             # Set up the task
@@ -234,8 +235,12 @@ def execute_orchestrator_tool(
             import subprocess
             import sys
 
-            # Run agent.py with the task description
-            cmd = [sys.executable, "agent.py", task_description]
+            # Build command with optional workspace parameter
+            cmd = [sys.executable, "agent.py"]
+            if workspace:
+                cmd.extend(["--workspace", workspace])
+                print(f"[orchestrator] Using existing workspace: {workspace}\n")
+            cmd.append(task_description)
 
             try:
                 proc = subprocess.run(
@@ -293,6 +298,47 @@ def execute_orchestrator_tool(
             return {"success": True, "status": status}
         except Exception as e:
             return {"success": False, "message": f"Could not get status: {e}"}
+
+    elif tool_name == "list_workspaces":
+        # List all existing workspaces
+        try:
+            workspace_dir = Path.cwd() / ".agent_workspace"
+            if not workspace_dir.exists():
+                return {"success": True, "workspaces": [], "message": "No workspaces found"}
+
+            workspaces = []
+            for item in workspace_dir.iterdir():
+                if item.is_dir() and not item.name.startswith('.'):
+                    # Get file count and list files
+                    files = []
+                    for f in item.iterdir():
+                        if f.is_file() and not f.name.startswith('.'):
+                            files.append(f.name)
+
+                    workspaces.append({
+                        "name": item.name,
+                        "path": str(item),
+                        "files": sorted(files),
+                        "file_count": len(files),
+                    })
+
+            # Sort by most recently modified
+            workspaces.sort(key=lambda x: Path(x["path"]).stat().st_mtime, reverse=True)
+
+            msg = f"Found {len(workspaces)} workspace(s):\n"
+            for ws in workspaces:
+                msg += f"\n- {ws['name']}/\n"
+                msg += f"  Path: {ws['path']}\n"
+                msg += f"  Files ({ws['file_count']}): {', '.join(ws['files'][:5])}"
+                if ws['file_count'] > 5:
+                    msg += f" ... and {ws['file_count'] - 5} more"
+                msg += "\n"
+
+            return {"success": True, "workspaces": workspaces, "message": msg}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "message": f"Could not list workspaces: {e}"}
 
     else:
         return {"success": False, "message": f"Unknown tool: {tool_name}"}
