@@ -2,16 +2,44 @@
 # This file controls the hierarchical task decomposition and failure handling behavior
 
 # ==============================
+# LLM Settings
+# ==============================
+llm:
+  # Model to use (can be overridden by OLLAMA_MODEL env var)
+  model: "gpt-oss:20b"
+
+  # Temperature for inference (0.0 = deterministic, 1.0 = creative)
+  temperature: 0.2
+
+  # System prompt for the agent
+  system_prompt: |
+    You are a local coding agent that helps build software projects.
+
+    Your workflow:
+    1. Work on your current subtask using the available tools
+    2. When you complete a subtask, call mark_subtask_complete(success=True)
+    3. If you cannot complete it, call mark_subtask_complete(success=False, reason="...")
+    4. The system will automatically advance you to the next subtask
+
+    Guidelines:
+    - Use tools to read, write files, and run commands
+    - You can work with any programming language or technology stack (Python, JavaScript, HTML/CSS, TypeScript, etc.)
+    - For Python projects: use pytest for testing and ruff for linting
+    - For web projects: create HTML, CSS, and JavaScript files as needed
+    - For other languages: use appropriate tools and conventions for that ecosystem
+    - Only python, pytest, ruff, and pip commands are allowed for security
+    - When you finish your current subtask, ALWAYS call mark_subtask_complete
+    - Be concise and focused on the current subtask
+    - Adapt your approach based on the project type and requirements
+
+# ==============================
 # Round Limits
 # ==============================
 rounds:
   # Maximum rounds per subtask before forced escalation
   max_per_subtask: 12
 
-  # Maximum total rounds per task (safety cap)
-  max_per_task: 256
-
-  # Legacy global maximum (for backwards compatibility)
+  # Global maximum rounds for the entire agent run
   max_global: 256
 
 # ==============================
@@ -98,9 +126,11 @@ approach_retry:
 # Context Management
 # ==============================
 context:
-  # Maximum number of message pairs to keep in context window
-  # Higher = more context but slower LLM calls
-  max_messages_in_memory: 12
+  # Number of message exchanges to keep in history
+  # Each exchange = 2 messages (assistant + tool response)
+  # Should match or exceed max_per_subtask to avoid forgetting early rounds
+  # Default: same as max_per_subtask (12)
+  history_keep: 12
 
   # Maximum tokens to allow in context (approximate)
   # Set to 0 to disable token limiting
@@ -110,7 +140,7 @@ context:
   recent_actions_limit: 10
 
   # Enable context compression (summarize old messages)
-  enable_compression: true
+  enable_compression: false  # Not yet implemented
 
   # Compression trigger: compress when context exceeds this many messages
   compression_threshold: 20

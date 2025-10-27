@@ -7,12 +7,11 @@ try:
 except ImportError:
     YAML_AVAILABLE = False
 
-DEFAULT_CONFIG = {"rounds": {"max_per_subtask": 12, "max_per_task": 128, "max_global": 24}, "hierarchy": {"max_depth": 5, "max_siblings": 8}, "escalation": {"strategy": "force_decompose", "zoom_out_target": "root", "max_approach_retries": 3, "block_failed_paths": True}, "loop_detection": {"max_action_repeats": 3, "max_subtask_repeats": 2, "max_context_age": 300}, "decomposition": {"min_children": 2, "max_children": 6, "temperature": 0.2, "prefer_granular": True}, "approach_retry": {"enabled": True, "reset_subtasks_on_retry": True, "preserve_completed": True, "retry_style": "learn_from_failures"}}
+DEFAULT_CONFIG = {"rounds": {"max_per_subtask": 12, "max_global": 24}, "hierarchy": {"max_depth": 5, "max_siblings": 8}, "escalation": {"strategy": "force_decompose", "zoom_out_target": "root", "max_approach_retries": 3, "block_failed_paths": True}, "loop_detection": {"max_action_repeats": 3, "max_subtask_repeats": 2, "max_context_age": 300}, "decomposition": {"min_children": 2, "max_children": 6, "temperature": 0.2, "prefer_granular": True}, "approach_retry": {"enabled": True, "reset_subtasks_on_retry": True, "preserve_completed": True, "retry_style": "learn_from_failures"}}
 
 @dataclass
 class RoundsConfig:
     max_per_subtask: int
-    max_per_task: int
     max_global: int
 
 @dataclass
@@ -48,8 +47,14 @@ class ApproachRetryConfig:
     retry_style: str
 
 @dataclass
+class LLMConfig:
+    model: str
+    temperature: float
+    system_prompt: str
+
+@dataclass
 class ContextConfig:
-    max_messages_in_memory: int
+    history_keep: int
     max_tokens: int
     recent_actions_limit: int
     enable_compression: bool
@@ -57,6 +62,7 @@ class ContextConfig:
 
 @dataclass
 class AgentConfig:
+    llm: LLMConfig
     rounds: RoundsConfig
     hierarchy: HierarchyConfig
     escalation: EscalationConfig
@@ -67,6 +73,7 @@ class AgentConfig:
 
     @classmethod
     def load(cls, config_path = "agent_config.yaml"):
+        import os
         config_dict = DEFAULT_CONFIG.copy()
         config_file = Path(config_path)
         if config_file.exists() and YAML_AVAILABLE:
@@ -76,16 +83,30 @@ class AgentConfig:
                     if yaml_config:
                         config_dict = {**config_dict, **yaml_config}
             except: pass
-        # Provide default for context if not in config
+
+        # Provide defaults for new sections if not in config
+        if "llm" not in config_dict:
+            config_dict["llm"] = {
+                "model": "gpt-oss:20b",
+                "temperature": 0.2,
+                "system_prompt": "You are a coding agent."
+            }
+
+        # Allow environment variable override for model
+        if "OLLAMA_MODEL" in os.environ:
+            config_dict["llm"]["model"] = os.environ["OLLAMA_MODEL"]
+
         if "context" not in config_dict:
             config_dict["context"] = {
-                "max_messages_in_memory": 12,
+                "history_keep": 12,
                 "max_tokens": 8000,
                 "recent_actions_limit": 10,
-                "enable_compression": True,
+                "enable_compression": False,
                 "compression_threshold": 20
             }
+
         return cls(
+            llm=LLMConfig(**config_dict["llm"]),
             rounds=RoundsConfig(**config_dict["rounds"]),
             hierarchy=HierarchyConfig(**config_dict["hierarchy"]),
             escalation=EscalationConfig(**config_dict["escalation"]),

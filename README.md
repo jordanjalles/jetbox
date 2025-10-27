@@ -10,6 +10,7 @@
 ## Features
 
 - 🎯 **Hierarchical Context Management** - Organizes work into Goal → Task → Subtask → Action
+- 🤝 **Multi-Agent Orchestration** - Conversational orchestrator delegates to task executor
 - ⚙️ **Fully Configurable** - YAML-based configuration for all agent behavior
 - 🔄 **No Give-Up Option** - Always decomposes or zooms out (3x retry before final failure)
 - 🧠 **Smart Zoom-Out** - Analyzes task tree to find root of problem (parent/task/root)
@@ -49,6 +50,8 @@ ollama serve  # if not already running
 
 ### Run the Agent
 
+#### TaskExecutor Mode (Direct Execution)
+
 ```bash
 python agent.py "Create a calculator module with add, subtract, multiply functions and tests"
 ```
@@ -60,6 +63,31 @@ The agent will:
 4. Display real-time progress
 5. Retry up to 3 times if approaches fail
 6. Save all state for crash recovery
+
+#### Orchestrator Mode (Multi-Agent Conversation)
+
+```bash
+python orchestrator_main.py
+```
+
+Interactive mode with conversational orchestrator:
+- Chat naturally with the orchestrator
+- Orchestrator clarifies requirements when needed
+- Automatically delegates coding tasks to TaskExecutor
+- Receive results and continue conversation
+- Each delegation runs in isolated workspace
+
+**Example conversation:**
+```
+You: make a simple HTML calculator
+Orchestrator: → Delegating to TaskExecutor...
+[TaskExecutor creates calculator.html]
+Orchestrator: Task completed! Files created in workspace.
+
+You: add support for keyboard input
+Orchestrator: → Delegating to TaskExecutor...
+[TaskExecutor adds keyboard support]
+```
 
 ### Example Session
 
@@ -99,7 +127,12 @@ TASK TREE (0/3 completed):
 
 ```
 jetbox/
-├── agent.py                    # Main agent with hierarchical execution
+├── agent.py                    # TaskExecutor - hierarchical execution
+├── orchestrator_main.py        # Orchestrator entry point
+├── orchestrator_agent.py       # Conversational orchestrator
+├── agent_registry.py           # Multi-agent registry
+├── base_agent.py               # Base agent class
+│
 ├── context_manager.py          # Hierarchical state management
 ├── workspace_manager.py        # Workspace isolation system
 ├── status_display.py           # Real-time progress visualization
@@ -107,12 +140,14 @@ jetbox/
 │
 ├── agent_config.yaml           # ⚙️ User configuration
 ├── agent_config.py             # Configuration loader
+├── agents.yaml                 # Multi-agent configuration
 ├── prompts.yaml                # 📝 All agent prompts
 ├── prompt_loader.py            # Prompt loading utility
 │
 ├── tests/                      # Test infrastructure
 │   ├── run_stress_tests.py    # Stress test suite
 │   ├── run_l3_l7_x5.py         # L3-L7 evaluation (5 iterations)
+│   ├── test_orchestrator_*.py  # Orchestrator tests
 │   └── test_*.py               # Unit tests
 │
 ├── .agent_context/             # Runtime state (auto-created)
@@ -172,6 +207,40 @@ context:
   enable_compression: true        # Summarize old messages
   compression_threshold: 20       # Compress when > N messages
 ```
+
+## Multi-Agent Architecture
+
+Jetbox now supports two modes of operation:
+
+### 1. TaskExecutor Mode (Single Agent)
+Direct execution mode for straightforward tasks:
+- Run with `python agent.py "task description"`
+- Hierarchical task decomposition
+- Autonomous execution with progress tracking
+- Best for: Scripts, tools, testing, batch operations
+
+### 2. Orchestrator Mode (Multi-Agent)
+Conversational mode with task delegation:
+- Run with `python orchestrator_main.py`
+- Natural language conversation interface
+- Orchestrator clarifies requirements and delegates to TaskExecutor
+- TaskExecutor runs in isolated workspace per task
+- Best for: Interactive development, complex projects, iterative work
+
+**Architecture:**
+```
+User ↔ Orchestrator (conversation + planning)
+          ↓ delegates
+        TaskExecutor (autonomous execution)
+```
+
+**Key Benefits:**
+- **Separation of concerns** - Orchestrator handles conversation, TaskExecutor handles work
+- **Workspace isolation** - Each delegation gets clean workspace
+- **Context preservation** - Orchestrator maintains conversation history
+- **Failure handling** - TaskExecutor failures reported back to Orchestrator
+
+**See:** `ORCHESTRATOR_TEST_RESULTS.md` for test results and benchmarks
 
 ## Key Features Explained
 
@@ -339,6 +408,8 @@ PERFORMANCE:
 
 - **`CLAUDE.md`** - Project instructions for AI assistants
 - **`QUICK_START.md`** - Quick reference guide
+- **`ORCHESTRATOR_TEST_RESULTS.md`** - Multi-agent test results
+- **`ORCHESTRATOR_TEST_FINDINGS.md`** - Multi-agent issue analysis
 
 ### Architecture Documentation (`docs/architecture/`)
 System design and component documentation
@@ -459,4 +530,4 @@ Built with:
 
 **Status:** Production-ready, actively maintained
 
-**Version:** 2.1 (Timeout Protection + Smart Zoom-Out)
+**Version:** 2.2 (Multi-Agent Orchestration)

@@ -29,9 +29,10 @@ if sys.platform == "win32":
 # ----------------------------
 # Config (loaded from agent_config.yaml)
 # ----------------------------
-MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
-TEMP = 0.2
-HISTORY_KEEP = 5  # Keep last 5 message exchanges
+from agent_config import config
+MODEL = config.llm.model
+TEMP = config.llm.temperature
+HISTORY_KEEP = config.context.history_keep
 
 
 # ----------------------------
@@ -1044,31 +1045,11 @@ Return ONLY the JSON array, no other text.
 # ----------------------------
 # Context building
 # ----------------------------
-SYSTEM_PROMPT = """You are a local coding agent that helps build software projects.
-
-Your workflow:
-1. Work on your current subtask using the available tools
-2. When you complete a subtask, call mark_subtask_complete(success=True)
-3. If you cannot complete it, call mark_subtask_complete(success=False, reason="...")
-4. The system will automatically advance you to the next subtask
-
-Guidelines:
-- Use tools to read, write files, and run commands
-- You can work with any programming language or technology stack (Python, JavaScript, HTML/CSS, TypeScript, etc.)
-- For Python projects: use pytest for testing and ruff for linting
-- For web projects: create HTML, CSS, and JavaScript files as needed
-- For other languages: use appropriate tools and conventions for that ecosystem
-- Only python, pytest, ruff, and pip commands are allowed for security
-- When you finish your current subtask, ALWAYS call mark_subtask_complete
-- Be concise and focused on the current subtask
-- Adapt your approach based on the project type and requirements
-"""
-
 def build_context(ctx: ContextManager, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build context with: system prompt + current task info + last N messages."""
 
-    # Start with system prompt
-    context = [{"role": "system", "content": SYSTEM_PROMPT}]
+    # Start with system prompt (from config)
+    context = [{"role": "system", "content": config.llm.system_prompt}]
 
     # Add current goal/task/subtask context
     if ctx.state.goal:

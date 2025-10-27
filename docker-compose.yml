@@ -4,20 +4,80 @@ services:
   jetbox:
     build: .
     container_name: jetbox
+    user: "1000:1000"  # Run as non-root agent user
+    read_only: true    # Read-only root filesystem for security
+
     volumes:
-      # Mount current directory to persist changes
-      - .:/workspace
-      # Mount Ollama models cache (optional, saves re-downloading)
-      - ollama-models:/root/.ollama
+      # Writable directories for agent work
+      - ./.agent_workspace:/workspace/.agent_workspace
+      - ./.agent_context:/workspace/.agent_context
+      - ./agent_ledger.log:/workspace/agent_ledger.log
+      - ./agent_v2.log:/workspace/agent_v2.log
+
+      # Core agent code (read-only)
+      - ./agent.py:/workspace/agent.py:ro
+      - ./context_manager.py:/workspace/context_manager.py:ro
+      - ./workspace_manager.py:/workspace/workspace_manager.py:ro
+      - ./status_display.py:/workspace/status_display.py:ro
+      - ./completion_detector.py:/workspace/completion_detector.py:ro
+      - ./agent_config.py:/workspace/agent_config.py:ro
+      - ./prompt_loader.py:/workspace/prompt_loader.py:ro
+
+      # Configuration files (read-only)
+      - ./agent_config.yaml:/workspace/agent_config.yaml:ro
+      - ./prompts.yaml:/workspace/prompts.yaml:ro
+      - ./pyproject.toml:/workspace/pyproject.toml:ro
+
+      # Mount sub-projects (read-only for code, writable for outputs)
+      - ./hrm-jepa:/workspace/hrm-jepa:ro
+      - ./mathx:/workspace/mathx:ro
+      - ./data_processing:/workspace/data_processing:ro
+      - ./todo:/workspace/todo:ro
+      - ./tests:/workspace/tests:ro
+      - ./docs:/workspace/docs:ro
+
+      # Ollama models cache (read-only, shared from host)
+      - ollama-models:/home/agent/.ollama:ro
+
+    tmpfs:
+      # Writable tmp directories
+      - /tmp:size=2G,mode=1777
+      - /home/agent/.cache:size=1G
+
     environment:
       # Use host's Ollama instance (recommended for model sharing)
       - OLLAMA_HOST=http://host.docker.internal:11434
-      # Or set specific model
+      # Set specific model
       - OLLAMA_MODEL=gpt-oss:20b
-    # Use host network to connect to Ollama on host machine
+      # Python environment
+      - PYTHONUNBUFFERED=1
+      - HOME=/home/agent
+
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'      # Max 4 CPU cores
+          memory: 8G       # Max 8GB RAM
+        reservations:
+          cpus: '1.0'      # Reserve at least 1 core
+          memory: 2G       # Reserve at least 2GB
+
+    cap_drop:
+      - ALL                # Drop all Linux capabilities
+    cap_add:
+      - CHOWN              # Allow changing file ownership
+      - DAC_OVERRIDE       # Allow bypassing file permissions in workspace
+      - SETUID             # Allow changing user IDs (for su/sudo if needed)
+      - SETGID             # Allow changing group IDs
+
+    security_opt:
+      - no-new-privileges:true  # Prevent privilege escalation
+
+    # Use bridge network to connect to Ollama on host machine
     network_mode: bridge
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
     stdin_open: true
     tty: true
     working_dir: /workspace

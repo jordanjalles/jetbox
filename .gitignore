@@ -13,3 +13,5 @@ agent_ledger.log
 .venv/
 venv/
 
+# Testing directory
+jetprojects/

@@ -12,13 +12,40 @@ def slugify(text: str, max_length: int = 50) -> str:
     return slug or 'workspace'
 
 class WorkspaceManager:
-    def __init__(self, goal: str, base_dir: Path | None = None, auto_cleanup: bool = False) -> None:
+    def __init__(self, goal: str, base_dir: Path | None = None, auto_cleanup: bool = False,
+                 workspace_path: Path | str | None = None) -> None:
+        """
+        Initialize workspace manager.
+
+        Args:
+            goal: The goal/task description
+            base_dir: Base directory for isolated workspaces (default: .agent_workspace)
+            auto_cleanup: Whether to auto-cleanup on destruction
+            workspace_path: If provided, use this existing directory (edit mode)
+                           If None, create isolated workspace (isolate mode)
+        """
         self.goal = goal
-        self.base_dir = base_dir or Path(".agent_workspace")
         self.auto_cleanup = auto_cleanup
-        self.workspace_name = slugify(goal)
-        self.workspace_dir = self.base_dir / self.workspace_name
-        self.workspace_dir.mkdir(parents=True, exist_ok=True)
+
+        # Edit mode: use specified existing directory
+        if workspace_path is not None:
+            self.workspace_dir = Path(workspace_path).resolve()
+            self.is_edit_mode = True
+            self.base_dir = self.workspace_dir.parent
+            self.workspace_name = self.workspace_dir.name
+
+            # Ensure directory exists
+            if not self.workspace_dir.exists():
+                raise ValueError(f"Edit mode workspace path does not exist: {workspace_path}")
+
+        # Isolate mode: create new isolated workspace under .agent_workspace
+        else:
+            self.is_edit_mode = False
+            self.base_dir = base_dir or Path(".agent_workspace")
+            self.workspace_name = slugify(goal)
+            self.workspace_dir = self.base_dir / self.workspace_name
+            self.workspace_dir.mkdir(parents=True, exist_ok=True)
+
         self.created_files: list[str] = []
 
     def resolve_path(self, path: str | Path) -> Path:
