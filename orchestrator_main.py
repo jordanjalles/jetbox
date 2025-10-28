@@ -6,7 +6,7 @@ and delegates coding tasks to TaskExecutor.
 """
 from __future__ import annotations
 import sys
-import os
+import json
 from pathlib import Path
 
 # Ensure UTF-8 encoding on Windows
@@ -16,6 +16,7 @@ if sys.platform == "win32":
 
 from agent_registry import AgentRegistry
 from agent_config import config
+from server_manager import ServerManager
 
 
 def _get_workspace_info(task_description: str) -> dict | None:
@@ -28,7 +29,6 @@ def _get_workspace_info(task_description: str) -> dict | None:
     Returns:
         Dict with 'workspace' and 'files' keys, or None if not found
     """
-    import os
     import re
 
     # Create workspace slug from task description (matches workspace_manager.py logic)
@@ -73,6 +73,10 @@ def main():
     # Get orchestrator agent
     orchestrator = registry.get_agent("orchestrator")
 
+    # Initialize ServerManager
+    server_manager = ServerManager(workspace)
+    server_manager.start_monitoring()
+
     print("=" * 60)
     print("JETBOX ORCHESTRATOR")
     print("=" * 60)
@@ -80,69 +84,18 @@ def main():
     print("Type your request, or 'quit' to exit.")
     print()
 
-    # If initial message provided, process it
-    if initial_message:
-        print(f"User: {initial_message}")
-        print()
-        orchestrator.add_user_message(initial_message)
+    try:
+        # If initial message provided, process it
+        if initial_message:
+            print(f"User: {initial_message}")
+            print()
 
-        # Execute orchestrator round
-        response = orchestrator.execute_round(
-            model=config.llm.model,
-            temperature=config.llm.temperature,
-        )
+            # Clean up old server requests before task
+            server_manager.cleanup_old_requests()
 
-        # Display response
-        if "message" in response:
-            msg = response["message"]
+            orchestrator.add_user_message(initial_message)
 
-            # Show content if present
-            if msg.get("content"):
-                print(f"Orchestrator: {msg['content']}")
-                print()
-
-            # Execute tool calls (show important ones)
-            if "tool_calls" in msg:
-                tool_results = []
-                for tc in msg["tool_calls"]:
-                    tool_name = tc["function"]["name"]
-                    args = tc["function"]["arguments"]
-
-                    # Show clarification questions
-                    if tool_name == "clarify_with_user":
-                        question = args.get("question", "")
-                        print(f"Orchestrator: {question}\n")
-
-                    # Show delegation events
-                    elif tool_name == "delegate_to_executor":
-                        task_desc = args.get("task_description", "")
-                        print(f"→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
-
-                    result = execute_orchestrator_tool(tc, registry)
-                    tool_results.append(result)
-
-                # Add tool results to conversation
-                orchestrator.add_message({
-                    "role": "tool",
-                    "content": str(tool_results),
-                })
-
-    # Interactive loop
-    while True:
-        try:
-            user_input = input("You: ").strip()
-
-            if not user_input:
-                continue
-
-            if user_input.lower() in ["quit", "exit", "q"]:
-                print("\nGoodbye!")
-                break
-
-            # Add user message
-            orchestrator.add_user_message(user_input)
-
-            # Execute round
+            # Execute orchestrator round
             response = orchestrator.execute_round(
                 model=config.llm.model,
                 temperature=config.llm.temperature,
@@ -152,9 +105,10 @@ def main():
             if "message" in response:
                 msg = response["message"]
 
-                # Show content first if present
+                # Show content if present
                 if msg.get("content"):
-                    print(f"\nOrchestrator: {msg['content']}\n")
+                    print(f"Orchestrator: {msg['content']}")
+                    print()
 
                 # Execute tool calls (show important ones)
                 if "tool_calls" in msg:
@@ -166,14 +120,14 @@ def main():
                         # Show clarification questions
                         if tool_name == "clarify_with_user":
                             question = args.get("question", "")
-                            print(f"\nOrchestrator: {question}\n")
+                            print(f"Orchestrator: {question}\n")
 
                         # Show delegation events
                         elif tool_name == "delegate_to_executor":
                             task_desc = args.get("task_description", "")
-                            print(f"\n→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
+                            print(f"→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
 
-                        result = execute_orchestrator_tool(tc, registry)
+                        result = execute_orchestrator_tool(tc, registry, server_manager)
                         tool_results.append(result)
 
                     # Add tool results to conversation
@@ -182,18 +136,84 @@ def main():
                         "content": str(tool_results),
                     })
 
-        except KeyboardInterrupt:
-            print("\n\nInterrupted. Goodbye!")
-            break
-        except Exception as e:
-            print(f"\nError: {e}")
-            import traceback
-            traceback.print_exc()
+        # Interactive loop
+        while True:
+            try:
+                user_input = input("You: ").strip()
+
+                if not user_input:
+                    continue
+
+                if user_input.lower() in ["quit", "exit", "q"]:
+                    print("\nShutting down...")
+                    break
+
+                # Clean up old server requests before each task
+                server_manager.cleanup_old_requests()
+
+                # Add user message
+                orchestrator.add_user_message(user_input)
+
+                # Execute round
+                response = orchestrator.execute_round(
+                    model=config.llm.model,
+                    temperature=config.llm.temperature,
+                )
+
+                # Display response
+                if "message" in response:
+                    msg = response["message"]
+
+                    # Show content first if present
+                    if msg.get("content"):
+                        print(f"\nOrchestrator: {msg['content']}\n")
+
+                    # Execute tool calls (show important ones)
+                    if "tool_calls" in msg:
+                        tool_results = []
+                        for tc in msg["tool_calls"]:
+                            tool_name = tc["function"]["name"]
+                            args = tc["function"]["arguments"]
+
+                            # Show clarification questions
+                            if tool_name == "clarify_with_user":
+                                question = args.get("question", "")
+                                print(f"\nOrchestrator: {question}\n")
+
+                            # Show delegation events
+                            elif tool_name == "delegate_to_executor":
+                                task_desc = args.get("task_description", "")
+                                print(f"\n→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
+
+                            result = execute_orchestrator_tool(tc, registry, server_manager)
+                            tool_results.append(result)
+
+                        # Add tool results to conversation
+                        orchestrator.add_message({
+                            "role": "tool",
+                            "content": str(tool_results),
+                        })
+
+            except KeyboardInterrupt:
+                print("\n\nInterrupted. Shutting down...")
+                break
+            except Exception as e:
+                print(f"\nError: {e}")
+                import traceback
+                traceback.print_exc()
+
+    finally:
+        # Clean shutdown
+        print("\n[Orchestrator] Stopping all servers...")
+        server_manager.stop_all_servers()
+        server_manager.stop_monitoring()
+        print("Goodbye!")
 
 
 def execute_orchestrator_tool(
     tool_call: dict,
     registry: AgentRegistry,
+    server_manager: ServerManager = None,
 ) -> dict:
     """
     Execute an orchestrator tool call.
@@ -212,7 +232,44 @@ def execute_orchestrator_tool(
         # Delegate to TaskExecutor and run it
         task_description = args.get("task_description", "")
         context = args.get("context", "")
-        workspace = args.get("workspace", "")
+        workspace_mode = args.get("workspace_mode", "")
+        workspace_path = args.get("workspace_path", "")
+
+        # Validate workspace_mode parameter
+        if not workspace_mode:
+            return {
+                "success": False,
+                "message": "ERROR: workspace_mode parameter is REQUIRED. Must be 'new' or 'existing'."
+            }
+
+        if workspace_mode not in ["new", "existing"]:
+            return {
+                "success": False,
+                "message": f"ERROR: workspace_mode must be 'new' or 'existing', got: {workspace_mode}"
+            }
+
+        # Validate workspace_path based on mode
+        if workspace_mode == "existing":
+            if not workspace_path:
+                return {
+                    "success": False,
+                    "message": "ERROR: workspace_path is REQUIRED when workspace_mode='existing'. Use find_workspace tool first to get the path."
+                }
+            # Verify the workspace exists
+            if not Path(workspace_path).exists():
+                return {
+                    "success": False,
+                    "message": f"ERROR: workspace_path does not exist: {workspace_path}. Use find_workspace to get a valid path."
+                }
+        elif workspace_mode == "new":
+            if workspace_path:
+                return {
+                    "success": False,
+                    "message": "ERROR: workspace_path should NOT be provided when workspace_mode='new'. Remove workspace_path parameter."
+                }
+
+        # For backward compatibility, map workspace_mode to workspace parameter
+        workspace = workspace_path if workspace_mode == "existing" else ""
 
         try:
             # Set up the task
@@ -221,6 +278,7 @@ def execute_orchestrator_tool(
                 to_agent="task_executor",
                 task_description=task_description,
                 context=context,
+                workspace=workspace,
             )
 
             if not result.get("success"):
@@ -235,11 +293,14 @@ def execute_orchestrator_tool(
             import subprocess
             import sys
 
-            # Build command with optional workspace parameter
+            # Build command with optional workspace and context parameters
             cmd = [sys.executable, "agent.py"]
             if workspace:
                 cmd.extend(["--workspace", workspace])
                 print(f"[orchestrator] Using existing workspace: {workspace}\n")
+            if context:
+                cmd.extend(["--context", context])
+                print("[orchestrator] Additional context provided\n")
             cmd.append(task_description)
 
             try:
@@ -254,7 +315,55 @@ def execute_orchestrator_tool(
                 print("TASK EXECUTOR COMPLETED")
                 print("=" * 60 + "\n")
 
+                # Read messages from TaskExecutor if any
+                messages_from_executor = []
+                msg_file = Path(".agent_context/messages_to_orchestrator.jsonl")
+                if msg_file.exists():
+                    try:
+                        with open(msg_file, "r", encoding="utf-8") as f:
+                            for line in f:
+                                if line.strip():
+                                    messages_from_executor.append(json.loads(line))
+                        # Clear the file after reading
+                        msg_file.unlink()
+                    except Exception as e:
+                        print(f"[orchestrator] Warning: Failed to read executor messages: {e}")
+
+                # Display messages from executor
+                if messages_from_executor:
+                    print("Messages from TaskExecutor:")
+                    for msg in messages_from_executor:
+                        severity = msg.get("severity", "info").upper()
+                        content = msg.get("message", "")
+                        print(f"  [{severity}] {content}")
+                    print()
+
+                # Verify actual task completion by checking state.json
+                # Exit code 0 means success, 1 means failure/incomplete
+                task_completed = proc.returncode == 0
+
+                # Double-check with state.json to ensure tasks were actually completed
                 if proc.returncode == 0:
+                    state_file = Path(".agent_context/state.json")
+                    if state_file.exists():
+                        try:
+                            with open(state_file, encoding="utf-8") as f:
+                                state = json.load(f)
+                                # Verify all tasks are marked completed
+                                if state.get("goal", {}).get("tasks"):
+                                    all_completed = all(
+                                        t.get("status") == "completed"
+                                        for t in state["goal"]["tasks"]
+                                    )
+                                    if not all_completed:
+                                        # Exit code was 0 but tasks not completed - this shouldn't happen
+                                        # but handle it defensively
+                                        task_completed = False
+                                        print("[orchestrator] Warning: Exit code 0 but not all tasks completed in state.json")
+                        except Exception as e:
+                            print(f"[orchestrator] Warning: Could not verify state.json: {e}")
+
+                if task_completed:
                     # Try to determine workspace location and files created
                     workspace_info = _get_workspace_info(task_description)
 
@@ -264,14 +373,31 @@ def execute_orchestrator_tool(
                         if workspace_info.get('files'):
                             result_msg += f"\nFiles created: {', '.join(workspace_info['files'])}"
 
+                    # Include executor messages in result
+                    if messages_from_executor:
+                        result_msg += "\n\nTaskExecutor Messages:"
+                        for msg in messages_from_executor:
+                            result_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
+
                     return {
                         "success": True,
                         "message": result_msg,
                         "workspace": workspace_info.get('workspace') if workspace_info else None,
                         "files": workspace_info.get('files') if workspace_info else [],
+                        "executor_messages": messages_from_executor,
                     }
                 else:
-                    return {"success": False, "message": f"Task execution failed with code {proc.returncode}"}
+                    error_msg = f"Task execution failed (exit code {proc.returncode})"
+                    if messages_from_executor:
+                        error_msg += "\n\nTaskExecutor Messages:"
+                        for msg in messages_from_executor:
+                            error_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
+
+                    return {
+                        "success": False,
+                        "message": error_msg,
+                        "executor_messages": messages_from_executor,
+                    }
 
             except subprocess.TimeoutExpired:
                 return {"success": False, "message": "Task execution timed out"}
@@ -339,6 +465,114 @@ def execute_orchestrator_tool(
             import traceback
             traceback.print_exc()
             return {"success": False, "message": f"Could not list workspaces: {e}"}
+
+    elif tool_name == "find_workspace":
+        # Find best matching workspace for a project name
+        project_name = args.get("project_name", "").lower()
+
+        try:
+            workspace_dir = Path.cwd() / ".agent_workspace"
+            if not workspace_dir.exists():
+                return {
+                    "success": False,
+                    "message": f"No workspaces found. Cannot find workspace for '{project_name}'."
+                }
+
+            # Get all workspaces
+            workspaces = []
+            for item in workspace_dir.iterdir():
+                if item.is_dir() and not item.name.startswith('.'):
+                    workspaces.append({
+                        "name": item.name,
+                        "path": str(item),
+                        "modified": item.stat().st_mtime,
+                    })
+
+            if not workspaces:
+                return {
+                    "success": False,
+                    "message": f"No workspaces found. Cannot find workspace for '{project_name}'."
+                }
+
+            # Score each workspace by how well it matches project_name
+            def score_match(workspace_name: str, query: str) -> int:
+                """Score how well a workspace name matches a query. Higher is better."""
+                ws_lower = workspace_name.lower()
+                query_lower = query.lower()
+
+                # Exact match
+                if query_lower in ws_lower:
+                    # Bonus for matching at word boundaries
+                    words = ws_lower.split('-')
+                    for word in words:
+                        if word == query_lower:
+                            return 100  # Exact word match
+                        if word.startswith(query_lower):
+                            return 80  # Word starts with query
+                    return 60  # Contains query
+
+                # Fuzzy match - check if all characters appear in order
+                query_idx = 0
+                for char in ws_lower:
+                    if query_idx < len(query_lower) and char == query_lower[query_idx]:
+                        query_idx += 1
+                if query_idx == len(query_lower):
+                    return 30  # All chars present in order
+
+                # Check individual words
+                query_words = query_lower.split()
+                ws_words = ws_lower.split('-')
+                matches = sum(1 for qw in query_words if any(qw in wsw for wsw in ws_words))
+                if matches > 0:
+                    return 20 * matches
+
+                return 0
+
+            # Score all workspaces
+            scored = []
+            for ws in workspaces:
+                score = score_match(ws["name"], project_name)
+                if score > 0:
+                    scored.append((score, ws))
+
+            if not scored:
+                # No matches - return list of available workspaces
+                ws_list = "\n".join(f"  - {ws['name']}" for ws in workspaces[:10])
+                return {
+                    "success": False,
+                    "message": f"No workspace found matching '{project_name}'.\n\nAvailable workspaces:\n{ws_list}"
+                }
+
+            # Sort by score (descending), then by recency
+            scored.sort(key=lambda x: (x[0], x[1]["modified"]), reverse=True)
+
+            best_match = scored[0][1]
+            best_score = scored[0][0]
+
+            # If we have multiple good matches, show them
+            other_matches = [ws for score, ws in scored[1:3] if score >= 30]
+
+            msg = f"Found workspace for '{project_name}':\n"
+            msg += f"  Best match: {best_match['name']}\n"
+            msg += f"  Path: {best_match['path']}\n"
+
+            if other_matches:
+                msg += "\nOther possible matches:\n"
+                for ws in other_matches:
+                    msg += f"  - {ws['name']}\n"
+
+            return {
+                "success": True,
+                "workspace": best_match["path"],
+                "workspace_name": best_match["name"],
+                "message": msg,
+                "confidence": "high" if best_score >= 60 else "medium" if best_score >= 30 else "low",
+            }
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "message": f"Error finding workspace: {e}"}
 
     else:
         return {"success": False, "message": f"Unknown tool: {tool_name}"}

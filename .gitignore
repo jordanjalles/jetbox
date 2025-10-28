@@ -15,3 +15,6 @@ venv/
 
 # Testing directory
 jetprojects/
+
+# Documentation and analysis (except README)
+docs/

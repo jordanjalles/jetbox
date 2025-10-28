@@ -29,7 +29,6 @@ if sys.platform == "win32":
 # ----------------------------
 # Config (loaded from agent_config.yaml)
 # ----------------------------
-from agent_config import config
 MODEL = config.llm.model
 TEMP = config.llm.temperature
 HISTORY_KEEP = config.context.history_keep
@@ -152,6 +151,35 @@ def _ledger_append(kind: str, detail: str) -> None:
     else:
         LEDGER.write_text(line, encoding="utf-8")
 
+def send_message_to_orchestrator(message: str, severity: str = "info") -> None:
+    """
+    Send a message from TaskExecutor to Orchestrator.
+
+    Messages are written to .agent_context/messages_to_orchestrator.jsonl
+    and can be read by the orchestrator to understand issues.
+
+    Args:
+        message: Message content
+        severity: "info", "warning", or "error"
+    """
+    import time
+    from datetime import datetime
+
+    msg_file = Path(".agent_context/messages_to_orchestrator.jsonl")
+    msg_file.parent.mkdir(exist_ok=True)
+
+    msg_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "severity": severity,
+        "message": message,
+    }
+
+    # Append to file
+    with open(msg_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(msg_entry) + "\n")
+
+    log(f"MESSAGE_TO_ORCHESTRATOR [{severity}]: {message}")
+
 # ----------------------------
 # Generic state probe
 # ----------------------------
@@ -167,9 +195,33 @@ def probe_state_generic() -> dict[str, Any]:
         "files_missing": [],      # Which we wrote but are now gone
         "commands_run": [],       # Commands we executed
         "recent_errors": [],      # Last few errors
+        "workspace_empty": False, # Whether workspace is empty
+        "warning": None,          # Workspace mismatch warning if applicable
     }
 
     if not LEDGER.exists():
+        # Check for empty workspace with read/modify task
+        if _workspace:
+            ws_files = [f for f in _workspace.workspace_dir.glob("*") if f.is_file() and not f.name.startswith(".")]
+            if not ws_files and _ctx:
+                task = _ctx._get_current_task()
+                current_subtask = task.active_subtask() if task else None
+                if current_subtask:
+                    desc_lower = current_subtask.description.lower()
+                    read_keywords = ["read", "modify", "update", "edit", "load", "open", "inspect"]
+                    if any(keyword in desc_lower for keyword in read_keywords):
+                        state["workspace_empty"] = True
+                        state["warning"] = (
+                            "⚠️ WORKSPACE MISMATCH: Workspace is empty but task requires reading/modifying files. "
+                            "This likely indicates the wrong workspace was used. Consider escalating or checking "
+                            "if files should exist in a different workspace."
+                        )
+                        # Send message to orchestrator
+                        send_message_to_orchestrator(
+                            f"Workspace mismatch detected: Empty workspace but task '{current_subtask.description}' "
+                            f"requires reading/modifying files. Current workspace: {_workspace.workspace_dir}",
+                            severity="warning"
+                        )
         return state
 
     # Read ledger and find last SESSION_START marker
@@ -214,6 +266,23 @@ def probe_state_generic() -> dict[str, Any]:
     state["commands_run"] = list(dict.fromkeys(state["commands_run"]))[-5:]
     state["recent_errors"] = state["recent_errors"][-3:]
 
+    # Check for empty workspace with read/modify task (even with ledger)
+    if _workspace:
+        ws_files = [f for f in _workspace.workspace_dir.glob("*") if f.is_file() and not f.name.startswith(".")]
+        if not ws_files and _ctx:
+            task = _ctx._get_current_task()
+            current_subtask = task.active_subtask() if task else None
+            if current_subtask:
+                desc_lower = current_subtask.description.lower()
+                read_keywords = ["read", "modify", "update", "edit", "load", "open", "inspect"]
+                if any(keyword in desc_lower for keyword in read_keywords):
+                    state["workspace_empty"] = True
+                    state["warning"] = (
+                        "⚠️ WORKSPACE MISMATCH: Workspace is empty but task requires reading/modifying files. "
+                        "This likely indicates the wrong workspace was used. Consider escalating or checking "
+                        "if files should exist in a different workspace."
+                    )
+
     return state
 
 # ----------------------------
@@ -234,8 +303,8 @@ def list_dir(path: str | None = ".", **kwargs) -> list[str]:
     except FileNotFoundError as e:
         return [f"__error__: {e}"]
 
-def read_file(path: str, max_bytes: int = 200_000) -> str:
-    """Read a text file (truncated, workspace-aware)."""
+def read_file(path: str, max_bytes: int = 200_000, offset: int = 0) -> str:
+    """Read a text file with optional offset for pagination (workspace-aware)."""
     global _workspace
 
     # Resolve path through workspace if available
@@ -245,7 +314,86 @@ def read_file(path: str, max_bytes: int = 200_000) -> str:
         resolved_path = Path(path)
 
     with open(resolved_path, encoding="utf-8", errors="replace") as f:
-        return f.read(max_bytes)
+        if offset > 0:
+            f.seek(offset)
+        content = f.read(max_bytes)
+
+        # Add helpful metadata if file was truncated or offset was used
+        file_size = resolved_path.stat().st_size
+        if offset > 0 or len(content) == max_bytes:
+            end_pos = offset + len(content)
+            metadata = f"\n[FILE READ: bytes {offset}-{end_pos} of {file_size} total]"
+            if end_pos < file_size:
+                metadata += f"\n[NOTE: {file_size - end_pos} bytes remaining. Use offset={end_pos} to continue reading]"
+            return content + metadata
+        return content
+
+def grep_file(path: str, pattern: str, context_lines: int = 3, max_matches: int = 50) -> str:
+    """
+    Search for pattern in file and return matching lines with context.
+    Uses Python regex. Returns line numbers and surrounding context.
+    """
+    import re
+    global _workspace
+
+    # Resolve path through workspace if available
+    if _workspace:
+        resolved_path = _workspace.resolve_path(path)
+    else:
+        resolved_path = Path(path)
+
+    try:
+        regex = re.compile(pattern)
+    except re.error as e:
+        return f"[ERROR] Invalid regex pattern: {e}"
+
+    matches = []
+    try:
+        with open(resolved_path, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+
+        # Find all matching lines
+        matching_line_nums = []
+        for i, line in enumerate(lines):
+            if regex.search(line):
+                matching_line_nums.append(i)
+                if len(matching_line_nums) >= max_matches:
+                    break
+
+        if not matching_line_nums:
+            return f"[NO MATCHES] Pattern '{pattern}' not found in {path}"
+
+        # Build output with context
+        result_lines = []
+        result_lines.append(f"[GREP] Found {len(matching_line_nums)} match(es) for '{pattern}' in {path}")
+        result_lines.append("")
+
+        # For each match, include context lines
+        included_lines = set()
+        for line_num in matching_line_nums:
+            start = max(0, line_num - context_lines)
+            end = min(len(lines), line_num + context_lines + 1)
+
+            # Add separator if there's a gap from previous match
+            if included_lines and start > max(included_lines) + 1:
+                result_lines.append("...")
+                result_lines.append("")
+
+            for i in range(start, end):
+                if i not in included_lines:
+                    prefix = ">>> " if i == line_num else "    "
+                    result_lines.append(f"{prefix}{i+1:4d} | {lines[i].rstrip()}")
+                    included_lines.add(i)
+
+            result_lines.append("")
+
+        if len(matching_line_nums) >= max_matches:
+            result_lines.append(f"[NOTE] Showing first {max_matches} matches. File may contain more.")
+
+        return "\n".join(result_lines)
+
+    except Exception as e:
+        return f"[ERROR] Failed to search file: {e}"
 
 def write_file(path: str, content: str, create_dirs: bool = True) -> str:
     """Write/overwrite a text file (workspace-aware)."""
@@ -318,6 +466,128 @@ def run_cmd(cmd: list[str], timeout_sec: int = 60) -> dict[str, Any]:
 # Global context manager and workspace manager references
 _ctx: ContextManager | None = None
 _workspace: WorkspaceManager | None = None
+
+# ----------------------------
+# Server management tools
+# ----------------------------
+
+def start_server(cmd: list[str], name: str = None) -> dict[str, Any]:
+    """
+    Request orchestrator to start a server in the background.
+
+    Args:
+        cmd: Command to run (e.g., ['python', '-m', 'http.server', '8000'])
+        name: Optional server name (auto-generated if not provided)
+
+    Returns:
+        Server info or error
+    """
+    global _workspace
+
+    # Validate command
+    if not cmd or cmd[0] not in SAFE_BIN:
+        return {"error": f"Command not allowed: {cmd!r}. Use only {sorted(SAFE_BIN)}."}
+
+    # Generate server ID
+    server_id = name or f"server_{int(time.time())}"
+
+    # Set up paths
+    cwd = str(_workspace.workspace_dir) if _workspace else os.getcwd()
+    log_file = os.path.join(cwd, f"{server_id}.log")
+
+    # Write request
+    request_file = Path(".agent_context/server_requests.jsonl")
+    request_file.parent.mkdir(parents=True, exist_ok=True)
+
+    request = {
+        "action": "start",
+        "server_id": server_id,
+        "cmd": cmd,
+        "cwd": cwd,
+        "log_file": log_file,
+    }
+
+    with open(request_file, 'a') as f:
+        f.write(json.dumps(request) + '\n')
+
+    # Poll for response (wait up to 5 seconds)
+    response = _wait_for_server_response(timeout=5.0)
+
+    if response:
+        _ledger_append("SERVER", f"start {server_id} -> {response.get('success', False)}")
+        return response
+    else:
+        return {"error": "Timeout waiting for orchestrator to start server"}
+
+
+def stop_server(server_id: str) -> dict[str, Any]:
+    """Request orchestrator to stop a server."""
+    request = {"action": "stop", "server_id": server_id}
+
+    with open(".agent_context/server_requests.jsonl", 'a') as f:
+        f.write(json.dumps(request) + '\n')
+
+    response = _wait_for_server_response(timeout=5.0)
+
+    if response:
+        _ledger_append("SERVER", f"stop {server_id} -> {response.get('success', False)}")
+
+    return response or {"error": "Timeout waiting for response"}
+
+
+def check_server(server_id: str, tail_lines: int = 20) -> dict[str, Any]:
+    """Check server status and get recent logs."""
+    request = {"action": "check", "server_id": server_id, "tail_lines": tail_lines}
+
+    with open(".agent_context/server_requests.jsonl", 'a') as f:
+        f.write(json.dumps(request) + '\n')
+
+    response = _wait_for_server_response(timeout=5.0)
+    return response or {"error": "Timeout waiting for response"}
+
+
+def list_servers() -> dict[str, Any]:
+    """List all running servers."""
+    request = {"action": "list"}
+
+    with open(".agent_context/server_requests.jsonl", 'a') as f:
+        f.write(json.dumps(request) + '\n')
+
+    response = _wait_for_server_response(timeout=5.0)
+    return response or {"error": "Timeout waiting for response"}
+
+
+def _wait_for_server_response(timeout: float = 5.0) -> dict[str, Any] | None:
+    """
+    Wait for orchestrator response.
+
+    Polls response file for new line matching our request.
+    """
+    response_file = Path(".agent_context/server_responses.jsonl")
+
+    # Count existing lines to know where to start reading
+    existing_lines = 0
+    if response_file.exists():
+        with open(response_file, 'r') as f:
+            existing_lines = len(f.readlines())
+
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        if response_file.exists():
+            with open(response_file, 'r') as f:
+                lines = f.readlines()
+
+            # Check for new lines
+            if len(lines) > existing_lines:
+                # Return the newest response
+                response_line = lines[-1].strip()
+                if response_line:
+                    return json.loads(response_line)
+
+        time.sleep(0.1)
+
+    return None
 
 def mark_subtask_complete(success: bool = True, reason: str = "") -> dict[str, Any]:
     """
@@ -936,8 +1206,13 @@ Your decomposition (JSON only - be VERY GRANULAR):"""
 TOOLS = {
     "list_dir": list_dir,
     "read_file": read_file,
+    "grep_file": grep_file,
     "write_file": write_file,
     "run_cmd": run_cmd,
+    "start_server": start_server,
+    "stop_server": stop_server,
+    "check_server": check_server,
+    "list_servers": list_servers,
     "mark_subtask_complete": mark_subtask_complete,
 }
 
@@ -957,9 +1232,16 @@ def tool_specs() -> list[dict[str, Any]]:
         }
     return [
         spec("list_dir", "List files (non-recursive).", {"path": {"type": "string"}}),
-        spec("read_file", "Read a text file (truncated).", {
+        spec("read_file", "Read a text file with optional pagination. Use offset to read large files in chunks.", {
             "path": {"type": "string", "required": True},
-            "max_bytes": {"type": "number"},
+            "max_bytes": {"type": "number", "description": "Maximum bytes to read (default: 200000). Files are truncated if larger."},
+            "offset": {"type": "number", "description": "Byte offset to start reading from (default: 0). Use for pagination of large files."},
+        }),
+        spec("grep_file", "Search for regex pattern in a file and return matching lines with context. More efficient than read_file for finding specific content.", {
+            "path": {"type": "string", "required": True},
+            "pattern": {"type": "string", "required": True, "description": "Python regex pattern to search for"},
+            "context_lines": {"type": "number", "description": "Number of context lines before/after each match (default: 3)"},
+            "max_matches": {"type": "number", "description": "Maximum number of matches to return (default: 50)"},
         }),
         spec("write_file", "Write/overwrite a text file.", {
             "path": {"type": "string", "required": True},
@@ -970,6 +1252,21 @@ def tool_specs() -> list[dict[str, Any]]:
             "cmd": {"type": "array", "items": {"type": "string"}, "required": True},
             "timeout_sec": {"type": "number"},
         }),
+        spec("start_server", "Start a web server or long-running process in background (managed by orchestrator). "
+             "Server persists across task executions. Use for HTTP servers, dev servers, etc. "
+             "Returns immediately - server runs in background.", {
+            "cmd": {"type": "array", "items": {"type": "string"}, "required": True,
+                    "description": "Command to run, e.g. ['python', '-m', 'http.server', '8000']"},
+            "name": {"type": "string", "description": "Optional server name (e.g. 'webapp'). Auto-generated if not provided."},
+        }),
+        spec("stop_server", "Stop a running background server.", {
+            "server_id": {"type": "string", "required": True, "description": "Server ID returned by start_server"},
+        }),
+        spec("check_server", "Check server status and get recent log output.", {
+            "server_id": {"type": "string", "required": True, "description": "Server ID to check"},
+            "tail_lines": {"type": "number", "description": "Number of recent log lines to return (default: 20)"},
+        }),
+        spec("list_servers", "List all running background servers.", {}),
         spec("mark_subtask_complete", "Mark current subtask as complete. Call this when you finish a subtask.", {
             "success": {"type": "boolean", "description": "True if completed successfully, False if failed"},
             "reason": {"type": "string", "description": "Optional explanation (required if failed)"},
@@ -979,12 +1276,31 @@ def tool_specs() -> list[dict[str, Any]]:
 # ----------------------------
 # Task decomposition
 # ----------------------------
-def decompose_goal(goal: str) -> list[dict[str, Any]]:
+def decompose_goal(goal: str, is_edit_mode: bool = False, additional_context: str = "") -> list[dict[str, Any]]:
     """Ask LLM to decompose goal into tasks and subtasks."""
+
+    # If in edit mode, add exploration context to the prompt
+    edit_mode_guidance = ""
+    if is_edit_mode:
+        edit_mode_guidance = """
+IMPORTANT: This is an EDIT MODE task - you are modifying an existing project.
+- The first task MUST be to explore and understand the current project structure
+- Use list_dir and read_file to understand what exists before making changes
+- Do NOT assume the project structure - you must discover it first
+"""
+
+    # Add additional context if provided
+    context_section = ""
+    if additional_context:
+        context_section = f"""
+Additional Context:
+{additional_context}
+"""
+
     prompt = f"""Break down this goal into CONCRETE, ACTIONABLE tasks and subtasks.
 
 Goal: {goal}
-
+{edit_mode_guidance}{context_section}
 Rules:
 - Each subtask must require using a tool (write_file, run_cmd, read_file, list_dir)
 - No abstract decision-making tasks like "choose" or "decide"
@@ -1006,6 +1322,13 @@ Example for "Create a math package":
   {{"description": "Verify quality", "subtasks": ["Run ruff check", "Run pytest"]}}
 ]
 
+Example for "Add feature to existing project" (EDIT MODE):
+[
+  {{"description": "Understand current project structure", "subtasks": ["List files in current directory", "Read main application files", "Identify where feature should be added"]}},
+  {{"description": "Implement new feature", "subtasks": ["Modify relevant files with new feature code"]}},
+  {{"description": "Test changes", "subtasks": ["Run tests to verify feature works"]}}
+]
+
 Return ONLY the JSON array, no other text.
 """
 
@@ -1020,11 +1343,18 @@ Return ONLY the JSON array, no other text.
     except TimeoutError as e:
         log(f"Ollama stopped responding during decomposition: {e}")
         # Fallback: create a basic task structure
-        return [
-            {"description": "Understand and plan", "subtasks": ["Read relevant files", "Identify what needs to be done"]},
-            {"description": "Implement changes", "subtasks": ["Make necessary code changes"]},
-            {"description": "Verify and test", "subtasks": ["Run tests", "Check code quality"]}
-        ]
+        if is_edit_mode:
+            return [
+                {"description": "Understand current project", "subtasks": ["List files in workspace", "Read key files to understand structure"]},
+                {"description": "Implement changes", "subtasks": ["Make necessary code changes"]},
+                {"description": "Verify and test", "subtasks": ["Run tests", "Check code quality"]}
+            ]
+        else:
+            return [
+                {"description": "Understand and plan", "subtasks": ["Read relevant files", "Identify what needs to be done"]},
+                {"description": "Implement changes", "subtasks": ["Make necessary code changes"]},
+                {"description": "Verify and test", "subtasks": ["Run tests", "Check code quality"]}
+            ]
 
     content = resp["message"]["content"].strip()
     # Extract JSON from markdown code blocks if present
@@ -1036,11 +1366,39 @@ Return ONLY the JSON array, no other text.
     try:
         tasks_data = json.loads(content)
         log(f"Decomposed into {len(tasks_data)} tasks")
+
+        # If in edit mode and LLM forgot to add exploration task, inject it
+        if is_edit_mode and tasks_data:
+            first_task = tasks_data[0]
+            # Check if first task involves exploration
+            has_exploration = any(
+                keyword in first_task["description"].lower()
+                for keyword in ["understand", "explore", "analyze", "examine", "inspect", "review"]
+            )
+            if not has_exploration:
+                # Inject exploration task at the beginning
+                log("Injecting exploration task for edit mode")
+                exploration_task = {
+                    "description": "Understand current project structure",
+                    "subtasks": [
+                        "List all files in workspace directory",
+                        "Read key project files to understand architecture",
+                        "Document current structure for subsequent tasks"
+                    ]
+                }
+                tasks_data.insert(0, exploration_task)
+
         return tasks_data
     except json.JSONDecodeError as e:
         log(f"Failed to parse task decomposition: {e}")
         # Fallback: create a single generic task
-        return [{"description": goal, "subtasks": ["Complete the goal"]}]
+        if is_edit_mode:
+            return [
+                {"description": "Understand project structure", "subtasks": ["List workspace files", "Read main files"]},
+                {"description": goal, "subtasks": ["Complete the goal"]}
+            ]
+        else:
+            return [{"description": goal, "subtasks": ["Complete the goal"]}]
 
 # ----------------------------
 # Context building
@@ -1093,6 +1451,13 @@ def build_context(ctx: ContextManager, messages: list[dict[str, Any]]) -> list[d
 
         # Add generic filesystem state
         probe = probe_state_generic()
+
+        # Add workspace warning if present
+        if probe.get("warning"):
+            context_info.append("")
+            context_info.append(probe["warning"])
+            context_info.append("")
+
         if probe["files_exist"]:
             context_info.append(f"FILES CREATED: {', '.join(probe['files_exist'])}")
         if probe["recent_errors"]:
@@ -1115,12 +1480,35 @@ def dispatch(call: dict[str, Any]) -> dict[str, Any]:
     args = call["function"].get("arguments", "{}")
 
     log(f"TOOL→ {name} args={args[:200] if isinstance(args, str) else str(args)[:200]}")
+
+    # Check if action is blocked (loop detected)
+    data = json.loads(args) if isinstance(args, str) else (args or {})
+    action_sig = f"{name}::{json.dumps(data, sort_keys=True)}"
+
+    if _ctx and action_sig in _ctx.state.blocked_actions:
+        # Track repeated blocked attempts
+        attempt_count = _ctx.add_blocked_attempt(action_sig)
+
+        # If too many blocked attempts, force escalation
+        if attempt_count >= 3:
+            log(f"TOOL✖ {name} blocked and repeatedly attempted ({attempt_count}x) - FORCING ESCALATION")
+            return {
+                "error": f"Action blocked due to repetition (attempted {attempt_count} times after blocking). "
+                         f"This indicates a fundamental issue. Please try a COMPLETELY different approach or escalate.",
+                "force_escalate": True,
+            }
+
+        log(f"TOOL✖ {name} blocked (loop detected, attempt {attempt_count})")
+        return {
+            "error": f"Action blocked due to repetition (tried {_ctx.state.loop_counts.get(action_sig, 0)} times). "
+                     f"Try a different approach.",
+        }
+
     fn = TOOLS.get(name)
     if not fn:
         log(f"TOOL✖ unknown: {name}")
         return {"error": f"unknown tool {name}"}
     try:
-        data = json.loads(args) if isinstance(args, str) else (args or {})
         out = fn(**data) if data else fn()
         log(f"TOOL✓ {name} → {type(out).__name__}")
         return {"result": out}
@@ -1187,10 +1575,13 @@ def main() -> None:
     parser.add_argument("goal", nargs="*", help="Goal/task description")
     parser.add_argument("--workspace", "-w", type=str, default=None,
                        help="Edit mode: work in this existing directory (default: create isolated workspace)")
+    parser.add_argument("--context", "-c", type=str, default=None,
+                       help="Additional context about the task (e.g., specific requirements, constraints)")
     args = parser.parse_args()
 
     goal = " ".join(args.goal) if args.goal else "Write a hello world script"
     workspace_path = args.workspace
+    additional_context = args.context
 
     # Check Ollama health BEFORE doing anything else
     if not wait_for_ollama(max_wait=30, check_interval=5):
@@ -1226,7 +1617,11 @@ def main() -> None:
 
     # If new goal, decompose into tasks
     if not _ctx.state.goal or not _ctx.state.goal.tasks:
-        tasks_data = decompose_goal(goal)
+        tasks_data = decompose_goal(
+            goal,
+            is_edit_mode=_workspace.is_edit_mode,
+            additional_context=additional_context or ""
+        )
 
         # Build task hierarchy
         from context_manager import Task, Subtask
@@ -1271,11 +1666,16 @@ def main() -> None:
         _ctx.update_probe_state(probe)
 
         # Phase 2: Get current subtask and track rounds
+        # IMPORTANT: Capture subtask at START of round for accurate counter tracking
+        round_start_subtask = None
+        round_start_sig = None
         current_task = _ctx._get_current_task()
         if current_task:
             current_subtask = current_task.active_subtask()
             if current_subtask:
                 current_sig = current_subtask.signature()
+                round_start_subtask = current_subtask
+                round_start_sig = current_sig
 
                 # Reset counter if subtask changed
                 if current_sig != last_subtask_sig:
@@ -1575,6 +1975,22 @@ def main() -> None:
                 # Execute tool
                 try:
                     tool_result = dispatch(c)
+
+                    # Check if force_escalate flag is set
+                    if isinstance(tool_result, dict) and tool_result.get("force_escalate"):
+                        log(f"Force escalation triggered for blocked action")
+                        # Trigger escalation immediately
+                        current_task = _ctx._get_current_task()
+                        if current_task:
+                            current_subtask = current_task.active_subtask()
+                            if current_subtask:
+                                # Force rounds to max to trigger escalation
+                                current_subtask_rounds = MAX_ROUNDS_PER_SUBTASK
+                                subtask_rounds[current_sig] = current_subtask_rounds
+                                current_subtask.rounds_used = current_subtask_rounds
+                                _ctx._save_state()
+                                log(f"Forced subtask rounds to {MAX_ROUNDS_PER_SUBTASK} to trigger escalation")
+
                 except Exception as e:
                     tool_result = {"error": f"dispatch-failed: {e}"}
                     log(f"Dispatch error: {e}")
@@ -1585,9 +2001,20 @@ def main() -> None:
                         args_dict = json.loads(c["function"]["arguments"]) if isinstance(c["function"]["arguments"], str) else c["function"]["arguments"]
                         result_status = "success" if "result" in tool_result else "error"
                         error_msg = str(tool_result.get("error", ""))
+
+                        # Extract result content for hash computation
+                        result_content = ""
+                        if "result" in tool_result:
+                            # For list_dir and read_file, use the result content
+                            if tool_name in ["list_dir", "read_file"]:
+                                result_content = str(tool_result.get("result", ""))
+                            # For other tools, use a shorter representation
+                            else:
+                                result_content = str(tool_result.get("result", ""))[:1000]
+
                         # Don't let record_action fail - just log if it does
                         try:
-                            _ctx.record_action(tool_name, args_dict, result_status, error_msg)
+                            _ctx.record_action(tool_name, args_dict, result_status, error_msg, result_content)
                             status.record_action(result_status == "success")
                         except Exception as record_err:
                             log(f"Failed to record action: {record_err}")
@@ -1621,19 +2048,17 @@ def main() -> None:
                     print(f"Goal achieved: {goal}")
                     if probe["files_exist"]:
                         print(f"Files created: {', '.join(probe['files_exist'])}")
-                    return
+                    sys.exit(0)  # Exit with success code for orchestrator
 
             # Increment round counters at end of round
-            current_task = _ctx._get_current_task()
-            if current_task:
-                current_subtask = current_task.active_subtask()
-                if current_subtask:
-                    current_sig = current_subtask.signature()
-                    current_subtask_rounds += 1
-                    subtask_rounds[current_sig] = current_subtask_rounds
-                    current_subtask.rounds_used = current_subtask_rounds
-                    task_total_rounds += 1
-                    _ctx._save_state()
+            # Use the subtask that was active at START of round, not end
+            # (mark_subtask_complete may have changed the active subtask mid-round)
+            if round_start_subtask and round_start_sig:
+                current_subtask_rounds += 1
+                subtask_rounds[round_start_sig] = current_subtask_rounds
+                round_start_subtask.rounds_used = current_subtask_rounds
+                task_total_rounds += 1
+                _ctx._save_state()
             continue
 
         # No tool calls - check for completion signals before giving final answer
@@ -1659,21 +2084,23 @@ def main() -> None:
             })
             # Continue to next round to let agent respond with mark_subtask_complete
             # Increment round counters at end of round
-            current_subtask_rounds += 1
-            subtask_rounds[current_sig if current_sig else "unknown"] = current_subtask_rounds
-            if current_subtask:
-                current_subtask.rounds_used = current_subtask_rounds
-            task_total_rounds += 1
+            # Use the subtask that was active at START of round
+            if round_start_subtask and round_start_sig:
+                current_subtask_rounds += 1
+                subtask_rounds[round_start_sig] = current_subtask_rounds
+                round_start_subtask.rounds_used = current_subtask_rounds
+                task_total_rounds += 1
             continue
 
         # No completion signal - this is a real final answer
         print("\n=== Agent Reply ===")
         print(msg["content"])
-        return
+        sys.exit(1)  # Exit with failure - agent gave up without completing
 
     # Hit max rounds
     print(f"\n[stopped] Hit MAX_ROUNDS ({MAX_ROUNDS}) without completion.")
     print(f"Current task: {_ctx._get_current_task().description if _ctx._get_current_task() else 'none'}")
+    sys.exit(1)  # Exit with failure code for orchestrator
 
 if __name__ == "__main__":
     main()
