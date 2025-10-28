@@ -47,11 +47,19 @@ class Action:
     result: str | None = None  # "success", "error", or None if pending
     error_msg: str = ""
     attempt_count: int = 1
+    result_hash: str = ""  # Hash of result content for detecting new discoveries
 
     def signature(self) -> str:
         """Unique signature for deduplication."""
         args_str = json.dumps(self.args, sort_keys=True)
         return f"{self.name}::{args_str}"
+
+    def result_signature(self) -> str:
+        """Signature combining action and result for detecting repeated failures."""
+        import hashlib
+        if self.result_hash:
+            return f"{self.signature()}::{self.result_hash[:16]}"
+        return self.signature()
 
 
 @dataclass
@@ -108,10 +116,33 @@ class Task:
     failed_approaches: list[str] = field(default_factory=list)  # Track what didn't work
 
     def active_subtask(self) -> Subtask | None:
-        """Get current in-progress subtask."""
+        """
+        Get current in-progress subtask (recursively finds deepest active subtask).
+
+        This searches through the subtask hierarchy to find the deepest subtask
+        that is currently being worked on. This ensures round limits apply to
+        the actual working subtask, not its parent.
+        """
         for st in self.subtasks:
             if st.status == "in_progress":
                 return st
+            # If subtask is decomposed, search its children recursively
+            if st.status == "decomposed" and st.child_subtasks:
+                active_child = self._find_active_child(st)
+                if active_child:
+                    return active_child
+        return None
+
+    def _find_active_child(self, parent: Subtask) -> Subtask | None:
+        """Recursively find active child subtask."""
+        for child in parent.child_subtasks:
+            if child.status == "in_progress":
+                return child
+            # Recurse deeper if child is also decomposed
+            if child.status == "decomposed" and child.child_subtasks:
+                active_grandchild = self._find_active_child(child)
+                if active_grandchild:
+                    return active_grandchild
         return None
 
     def next_pending_subtask(self) -> Subtask | None:
@@ -148,6 +179,7 @@ class ContextState:
     current_subtask_idx: int = 0
     loop_counts: dict[str, int] = field(default_factory=dict)
     blocked_actions: set[str] = field(default_factory=set)
+    blocked_attempt_counts: dict[str, int] = field(default_factory=dict)
     last_probe_state: dict[str, Any] = field(default_factory=dict)
     session_start: float = field(default_factory=lambda: datetime.now().timestamp())
 
@@ -257,6 +289,7 @@ class ContextManager:
             self.state.current_subtask_idx = data.get("current_subtask_idx", 0)
             self.state.loop_counts = data.get("loop_counts", {})
             self.state.blocked_actions = set(data.get("blocked_actions", []))
+            self.state.blocked_attempt_counts = data.get("blocked_attempt_counts", {})
         except Exception as e:
             print(f"[context] Failed to load state: {e}")
 
@@ -269,6 +302,7 @@ class ContextManager:
                 "current_subtask_idx": self.state.current_subtask_idx,
                 "loop_counts": self.state.loop_counts,
                 "blocked_actions": list(self.state.blocked_actions),
+                "blocked_attempt_counts": self.state.blocked_attempt_counts,
                 "last_probe_state": self.state.last_probe_state,
                 "session_start": self.state.session_start,
             }
@@ -282,14 +316,35 @@ class ContextManager:
         self._save_state()
 
     def record_action(
-        self, name: str, args: dict[str, Any], result: str, error_msg: str = ""
+        self, name: str, args: dict[str, Any], result: str, error_msg: str = "",
+        result_content: str = ""
     ) -> bool:
         """
         Record an action attempt and check for loops.
 
+        Args:
+            name: Action name (tool name)
+            args: Action arguments
+            result: Result status ("success" or "error")
+            error_msg: Error message if result is "error"
+            result_content: Content returned by action for hash computation
+
         Returns True if action should proceed, False if blocked (loop detected).
         """
-        action = Action(name=name, args=args, result=result, error_msg=error_msg)
+        import hashlib
+
+        # Compute result hash for loop detection
+        result_hash = ""
+        if result_content:
+            result_hash = hashlib.sha256(result_content.encode('utf-8', errors='ignore')).hexdigest()
+
+        action = Action(
+            name=name,
+            args=args,
+            result=result,
+            error_msg=error_msg,
+            result_hash=result_hash
+        )
         sig = action.signature()
 
         # Check if action is blocked
@@ -431,6 +486,12 @@ class ContextManager:
 
         if success:
             subtask.status = "completed"
+
+            # Clear blocked actions when advancing to next subtask
+            # This gives each subtask a fresh start for exploration
+            # while still protecting against loops within a single subtask
+            self.state.blocked_actions.clear()
+            self.state.blocked_attempt_counts.clear()
         else:
             subtask.status = "failed"
             subtask.failure_reason = reason
@@ -523,6 +584,26 @@ class ContextManager:
             lines.append(f"  - {sig[:60]}: {count} attempts")
         return "\n".join(lines)
 
+    def add_blocked_attempt(self, action_sig: str) -> int:
+        """
+        Track attempt to execute a blocked action.
+
+        Args:
+            action_sig: Action signature that was attempted
+
+        Returns:
+            Number of attempts for this blocked action
+        """
+        self.state.blocked_attempt_counts[action_sig] = (
+            self.state.blocked_attempt_counts.get(action_sig, 0) + 1
+        )
+        self._save_state()
+        return self.state.blocked_attempt_counts[action_sig]
+
+    def get_blocked_attempt_count(self, action_sig: str) -> int:
+        """Get number of attempts for a blocked action."""
+        return self.state.blocked_attempt_counts.get(action_sig, 0)
+
 
 # ----------------------------
 # Loop Detector
@@ -532,27 +613,57 @@ class LoopDetector:
 
     def __init__(self) -> None:
         self.signature_counts: defaultdict[str, int] = defaultdict(int)
+        self.result_signature_counts: defaultdict[str, int] = defaultdict(int)
 
     def is_loop(self, action: Action, history: list[Action]) -> bool:
         """
         Check if this action represents a loop.
 
         A loop is detected if:
-        1. Same action signature appears MAX_ACTION_REPEATS+ times
-        2. Recent history shows alternating pattern (A→B→A→B)
-        3. Action failed with same error multiple times
+        1. Same action signature appears MAX_ACTION_REPEATS+ times WITH SAME RESULTS
+        2. For exploratory actions (list_dir, read_file), only count if results are identical
+        3. Recent history shows alternating pattern (A→B→A→B)
+        4. Action failed with same error multiple times
         """
         sig = action.signature()
-        self.signature_counts[sig] += 1
+        result_sig = action.result_signature()
 
-        # Simple repeat check
-        if self.signature_counts[sig] >= MAX_ACTION_REPEATS:
-            return True
+        # For exploratory actions (list_dir, read_file), check result signatures
+        # These should only be blocked if they return the SAME result repeatedly
+        is_exploratory = action.name in ["list_dir", "read_file"]
 
-        # Check recent history for same signature
+        if is_exploratory:
+            # Count based on result signature (action + result hash)
+            self.result_signature_counts[result_sig] += 1
+
+            # Only block if same action returns SAME result repeatedly
+            if self.result_signature_counts[result_sig] >= MAX_ACTION_REPEATS:
+                # Check if results are actually identical in recent history
+                recent = history[-10:]
+                same_result_count = sum(
+                    1 for a in recent
+                    if a.signature() == sig and a.result_hash == action.result_hash
+                )
+                if same_result_count >= MAX_ACTION_REPEATS - 1:
+                    return True
+        else:
+            # For mutation actions (write_file, run_cmd), use simpler signature check
+            self.signature_counts[sig] += 1
+
+            # Simple repeat check
+            if self.signature_counts[sig] >= MAX_ACTION_REPEATS:
+                return True
+
+        # Check recent history for same signature (regardless of type)
         recent = history[-10:]  # Last 10 actions
         same_sig_count = sum(1 for a in recent if a.signature() == sig)
         if same_sig_count >= MAX_ACTION_REPEATS - 1:
+            # For exploratory actions, check if results differ
+            if is_exploratory:
+                # If results are changing, this is exploration, not a loop
+                unique_results = set(a.result_hash for a in recent if a.signature() == sig and a.result_hash)
+                if len(unique_results) > 1:
+                    return False  # Different results = exploring, not looping
             return True
 
         # Check for alternating pattern (A-B-A-B)

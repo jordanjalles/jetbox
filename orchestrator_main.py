@@ -59,8 +59,16 @@ def main():
     """Main entry point - launches Orchestrator."""
 
     # Parse command line args
-    if len(sys.argv) > 1:
-        initial_message = " ".join(sys.argv[1:])
+    exit_after_initial = False
+    args = sys.argv[1:]
+
+    # Check for --once flag
+    if "--once" in args:
+        exit_after_initial = True
+        args.remove("--once")
+
+    if args:
+        initial_message = " ".join(args)
     else:
         initial_message = None
 
@@ -95,48 +103,59 @@ def main():
 
             orchestrator.add_user_message(initial_message)
 
-            # Execute orchestrator round
-            response = orchestrator.execute_round(
-                model=config.llm.model,
-                temperature=config.llm.temperature,
-            )
+            # Keep executing rounds until no more tool calls
+            max_rounds = 10
+            for round_num in range(max_rounds):
+                # Execute orchestrator round
+                response = orchestrator.execute_round(
+                    model=config.llm.model,
+                    temperature=config.llm.temperature,
+                )
 
-            # Display response
-            if "message" in response:
-                msg = response["message"]
+                # Display response
+                if "message" in response:
+                    msg = response["message"]
 
-                # Show content if present
-                if msg.get("content"):
-                    print(f"Orchestrator: {msg['content']}")
-                    print()
+                    # Show content if present
+                    if msg.get("content"):
+                        print(f"Orchestrator: {msg['content']}")
+                        print()
 
-                # Execute tool calls (show important ones)
-                if "tool_calls" in msg:
-                    tool_results = []
-                    for tc in msg["tool_calls"]:
-                        tool_name = tc["function"]["name"]
-                        args = tc["function"]["arguments"]
+                    # Execute tool calls (show important ones)
+                    if "tool_calls" in msg:
+                        tool_results = []
+                        for tc in msg["tool_calls"]:
+                            tool_name = tc["function"]["name"]
+                            args = tc["function"]["arguments"]
 
-                        # Show clarification questions
-                        if tool_name == "clarify_with_user":
-                            question = args.get("question", "")
-                            print(f"Orchestrator: {question}\n")
+                            # Show clarification questions
+                            if tool_name == "clarify_with_user":
+                                question = args.get("question", "")
+                                print(f"Orchestrator: {question}\n")
 
-                        # Show delegation events
-                        elif tool_name == "delegate_to_executor":
-                            task_desc = args.get("task_description", "")
-                            print(f"→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
+                            # Show delegation events
+                            elif tool_name == "delegate_to_executor":
+                                task_desc = args.get("task_description", "")
+                                print(f"→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
 
-                        result = execute_orchestrator_tool(tc, registry, server_manager)
-                        tool_results.append(result)
+                            result = execute_orchestrator_tool(tc, registry, server_manager)
+                            tool_results.append(result)
 
-                    # Add tool results to conversation
-                    orchestrator.add_message({
-                        "role": "tool",
-                        "content": str(tool_results),
-                    })
+                        # Add tool results to conversation
+                        orchestrator.add_message({
+                            "role": "tool",
+                            "content": str(tool_results),
+                        })
+                    else:
+                        # No more tool calls, task is complete
+                        break
 
-        # Interactive loop
+            # Exit if --once flag was provided
+            if exit_after_initial:
+                print("\nTask completed. Exiting...")
+                return
+
+        # Interactive loop (only if not --once)
         while True:
             try:
                 user_input = input("You: ").strip()
@@ -154,45 +173,55 @@ def main():
                 # Add user message
                 orchestrator.add_user_message(user_input)
 
-                # Execute round
-                response = orchestrator.execute_round(
-                    model=config.llm.model,
-                    temperature=config.llm.temperature,
-                )
+                # Keep executing rounds until no more tool calls
+                # This allows orchestrator to:
+                # 1. Think/analyze user request
+                # 2. Call find_workspace if needed
+                # 3. Then delegate_to_executor
+                max_rounds = 10
+                for round_num in range(max_rounds):
+                    # Execute round
+                    response = orchestrator.execute_round(
+                        model=config.llm.model,
+                        temperature=config.llm.temperature,
+                    )
 
-                # Display response
-                if "message" in response:
-                    msg = response["message"]
+                    # Display response
+                    if "message" in response:
+                        msg = response["message"]
 
-                    # Show content first if present
-                    if msg.get("content"):
-                        print(f"\nOrchestrator: {msg['content']}\n")
+                        # Show content first if present
+                        if msg.get("content"):
+                            print(f"\nOrchestrator: {msg['content']}\n")
 
-                    # Execute tool calls (show important ones)
-                    if "tool_calls" in msg:
-                        tool_results = []
-                        for tc in msg["tool_calls"]:
-                            tool_name = tc["function"]["name"]
-                            args = tc["function"]["arguments"]
+                        # Execute tool calls (show important ones)
+                        if "tool_calls" in msg:
+                            tool_results = []
+                            for tc in msg["tool_calls"]:
+                                tool_name = tc["function"]["name"]
+                                args = tc["function"]["arguments"]
 
-                            # Show clarification questions
-                            if tool_name == "clarify_with_user":
-                                question = args.get("question", "")
-                                print(f"\nOrchestrator: {question}\n")
+                                # Show clarification questions
+                                if tool_name == "clarify_with_user":
+                                    question = args.get("question", "")
+                                    print(f"\nOrchestrator: {question}\n")
 
-                            # Show delegation events
-                            elif tool_name == "delegate_to_executor":
-                                task_desc = args.get("task_description", "")
-                                print(f"\n→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
+                                # Show delegation events
+                                elif tool_name == "delegate_to_executor":
+                                    task_desc = args.get("task_description", "")
+                                    print(f"\n→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
 
-                            result = execute_orchestrator_tool(tc, registry, server_manager)
-                            tool_results.append(result)
+                                result = execute_orchestrator_tool(tc, registry, server_manager)
+                                tool_results.append(result)
 
-                        # Add tool results to conversation
-                        orchestrator.add_message({
-                            "role": "tool",
-                            "content": str(tool_results),
-                        })
+                            # Add tool results to conversation
+                            orchestrator.add_message({
+                                "role": "tool",
+                                "content": str(tool_results),
+                            })
+                        else:
+                            # No more tool calls, orchestrator is done
+                            break
 
             except KeyboardInterrupt:
                 print("\n\nInterrupted. Shutting down...")
