@@ -165,7 +165,7 @@ class BaseAgent(ABC):
             LLM response dict with 'message' key
         """
         from ollama import chat
-        from agent import chat_with_inactivity_timeout
+        from llm_utils import chat_with_inactivity_timeout
 
         context = self.build_context()
         tools = self.get_tools()
