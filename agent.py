@@ -17,6 +17,8 @@ from status_display import StatusDisplay
 from workspace_manager import WorkspaceManager
 from completion_detector import analyze_llm_response
 from agent_config import config
+import tools  # Shared tool implementations
+from llm_utils import chat_with_inactivity_timeout, check_ollama_health  # LLM utilities
 
 # Initialize Ollama client with proper host configuration
 OLLAMA_CLIENT = Client(host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"))
@@ -35,98 +37,13 @@ HISTORY_KEEP = config.context.history_keep
 
 
 # ----------------------------
-# Timeout wrapper for LLM calls
+# Timeout wrapper for LLM calls - NOW IN llm_utils.py
 # ----------------------------
-def chat_with_inactivity_timeout(
-    model: str,
-    messages: list,
-    options: dict,
-    inactivity_timeout: int = 30,
-    tools: list | None = None,
-):
-    """
-    Call ollama chat with INACTIVITY timeout (not total time timeout).
-
-    This allows complex tasks to take as long as needed, but detects
-    when Ollama has actually stopped responding (no chunks for N seconds).
-
-    Args:
-        model: Model name
-        messages: List of messages
-        options: Options dict (temperature, etc)
-        inactivity_timeout: Max seconds without activity (default 30s)
-        tools: Optional list of tool specifications for function calling
-
-    Returns:
-        Response dict from ollama
-
-    Raises:
-        TimeoutError: If no response activity for inactivity_timeout seconds
-    """
-    from queue import Queue, Empty
-
-    result_queue = Queue()
-
-    def _stream_chat():
-        try:
-            # Build chat arguments
-            chat_args = {
-                "model": model,
-                "messages": messages,
-                "options": options,
-                "stream": True
-            }
-            if tools is not None:
-                chat_args["tools"] = tools
-
-            full_response = {"message": {"role": "assistant", "content": ""}}
-
-            # Use streaming to detect activity
-            for chunk in OLLAMA_CLIENT.chat(**chat_args):
-                # Signal activity
-                result_queue.put(("chunk", chunk))
-
-                # Accumulate content
-                content = chunk.get("message", {}).get("content", "")
-                if content:
-                    full_response["message"]["content"] += content
-
-                # Get tool calls from final chunk
-                tool_calls = chunk.get("message", {}).get("tool_calls")
-                if tool_calls:
-                    full_response["message"]["tool_calls"] = tool_calls
-
-            # Stream complete
-            result_queue.put(("done", full_response))
-        except Exception as e:
-            result_queue.put(("error", e))
-
-    thread = Thread(target=_stream_chat, daemon=True)
-    thread.start()
-
-    # Monitor for inactivity
-    while True:
-        try:
-            msg_type, data = result_queue.get(timeout=inactivity_timeout)
-
-            if msg_type == "chunk":
-                # Activity detected, keep waiting
-                continue
-            elif msg_type == "done":
-                # Success - return full response
-                return data
-            elif msg_type == "error":
-                # Error during streaming
-                raise data
-
-        except Empty:
-            # No activity for inactivity_timeout seconds = Ollama is hung
-            raise TimeoutError(
-                f"No response from Ollama for {inactivity_timeout}s - likely hung or dead"
-            )
+# chat_with_inactivity_timeout moved to llm_utils.py
+# (imported at top of file - see: from llm_utils import chat_with_inactivity_timeout)
 LOGFILE = "agent_v2.log"
 LEDGER = Path("agent_ledger.log")
-SAFE_BIN = {"python", "pytest", "ruff", "pip"}
+# SAFE_BIN moved to tools.py
 
 # Load from config file
 MAX_ROUNDS = config.rounds.max_global
@@ -286,8 +203,11 @@ def probe_state_generic() -> dict[str, Any]:
     return state
 
 # ----------------------------
-# Tools
+# Tools - NOW IN tools.py
+# All tool implementations moved to tools.py for code reuse
 # ----------------------------
+# (Tool functions removed - import from tools module instead)
+
 def list_dir(path: str | None = ".", **kwargs) -> list[str]:
     """List files (non-recursive, workspace-aware)."""
     global _workspace
@@ -1203,20 +1123,33 @@ Your decomposition (JSON only - be VERY GRANULAR):"""
         return []
 
 
+# Tool dispatch - uses tools module
+# Wrapper functions inject global context (_ctx, _workspace) into tool calls
+def _mark_subtask_complete_wrapper(success: bool = True, reason: str = "") -> dict[str, Any]:
+    """Wrapper to inject context manager into tools.mark_subtask_complete."""
+    global _ctx
+    return tools.mark_subtask_complete(success, reason, context_manager=_ctx)
+
 TOOLS = {
-    "list_dir": list_dir,
-    "read_file": read_file,
-    "grep_file": grep_file,
-    "write_file": write_file,
-    "run_cmd": run_cmd,
-    "start_server": start_server,
-    "stop_server": stop_server,
-    "check_server": check_server,
-    "list_servers": list_servers,
-    "mark_subtask_complete": mark_subtask_complete,
+    "list_dir": tools.list_dir,
+    "read_file": tools.read_file,
+    "grep_file": tools.grep_file,
+    "write_file": tools.write_file,
+    "run_cmd": tools.run_cmd,
+    "start_server": tools.start_server,
+    "stop_server": tools.stop_server,
+    "check_server": tools.check_server,
+    "list_servers": tools.list_servers,
+    "mark_subtask_complete": _mark_subtask_complete_wrapper,
 }
 
 def tool_specs() -> list[dict[str, Any]]:
+    """Return tool specifications for LLM function calling."""
+    # Use tool definitions from tools.py module
+    return tools.get_tool_definitions()
+
+def tool_specs_legacy() -> list[dict[str, Any]]:
+    """Legacy tool specs function - kept for reference, not used."""
     def spec(fn: str, desc: str, params: dict[str, Any]) -> dict[str, Any]:
         return {
             "type": "function",
@@ -1230,7 +1163,7 @@ def tool_specs() -> list[dict[str, Any]]:
                 },
             },
         }
-    return [
+    return_legacy = [
         spec("list_dir", "List files (non-recursive).", {"path": {"type": "string"}}),
         spec("read_file", "Read a text file with optional pagination. Use offset to read large files in chunks.", {
             "path": {"type": "string", "required": True},
@@ -1518,23 +1451,10 @@ def dispatch(call: dict[str, Any]) -> dict[str, Any]:
         return {"error": str(e)}
 
 # ----------------------------
-# Ollama Health Check
+# Ollama Health Check - NOW IN llm_utils.py
 # ----------------------------
-def check_ollama_health(timeout: int = 5) -> bool:
-    """Check if Ollama is responsive using stdlib only."""
-    try:
-        import urllib.request
-        # Use OLLAMA_HOST environment variable, fallback to localhost
-        ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-        # Ensure URL has proper format
-        if not ollama_host.startswith("http"):
-            ollama_host = f"http://{ollama_host}"
-        health_url = f"{ollama_host}/api/tags"
-        req = urllib.request.Request(health_url)
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return response.status == 200
-    except Exception:
-        return False
+# check_ollama_health moved to llm_utils.py
+# (imported at top of file)
 
 
 def wait_for_ollama(max_wait: int = 30, check_interval: int = 5) -> bool:
@@ -1606,6 +1526,10 @@ def main() -> None:
         _workspace = WorkspaceManager(goal)
         log(f"Mode: ISOLATE (isolated workspace)")
         log(f"Workspace: {_workspace.workspace_dir}")
+
+    # Configure tools module with workspace and ledger
+    tools.set_workspace(_workspace)
+    tools.set_ledger(LEDGER)
 
     # Initialize context manager
     _ctx = ContextManager()
