@@ -19,6 +19,7 @@ from completion_detector import analyze_llm_response
 from agent_config import config
 import tools  # Shared tool implementations
 from llm_utils import chat_with_inactivity_timeout, check_ollama_health  # LLM utilities
+from context_strategies import build_hierarchical_context  # Context building
 
 # Initialize Ollama client with proper host configuration
 OLLAMA_CLIENT = Client(host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"))
@@ -1338,71 +1339,14 @@ Return ONLY the JSON array, no other text.
 # ----------------------------
 def build_context(ctx: ContextManager, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build context with: system prompt + current task info + last N messages."""
-
-    # Start with system prompt (from config)
-    context = [{"role": "system", "content": config.llm.system_prompt}]
-
-    # Add current goal/task/subtask context
-    if ctx.state.goal:
-        task = ctx._get_current_task()
-        subtask = task.active_subtask() if task else None
-
-        context_info = [
-            f"GOAL: {ctx.state.goal.description}",
-        ]
-
-        if task:
-            context_info.append(f"CURRENT TASK: {task.description}")
-
-        if subtask:
-            context_info.append(f"ACTIVE SUBTASK: {subtask.description}")
-            context_info.append(f"Subtask Depth: {subtask.depth}/{MAX_SUBTASK_DEPTH}")
-            context_info.append(f"Rounds Used: {subtask.rounds_used}/{MAX_ROUNDS_PER_SUBTASK}")
-        else:
-            context_info.append("ACTIVE SUBTASK: (none - call mark_subtask_complete to advance)")
-
-        # Phase 2: Add loop detection nudge
-        if ctx.state.loop_counts:
-            loop_warnings = []
-            for sig, count in ctx.state.loop_counts.items():
-                if count > 0:
-                    loop_warnings.append(f"  • Action repeated {count}x: {sig[:80]}")
-
-            if loop_warnings:
-                context_info.append("")
-                context_info.append("⚠️  LOOP DETECTION WARNING:")
-                context_info.append("You appear to be repeating actions. Consider:")
-                context_info.append("- Trying a COMPLETELY DIFFERENT approach")
-                context_info.append("- Reading error messages carefully")
-                context_info.append("- Checking if assumptions are wrong")
-                context_info.append("- Asking yourself: 'Why didn't the last attempt work?'")
-                context_info.append("")
-                context_info.append("Detected loops:")
-                context_info.extend(loop_warnings)
-                context_info.append("")
-                context_info.append("Try something NEW this round.")
-
-        # Add generic filesystem state
-        probe = probe_state_generic()
-
-        # Add workspace warning if present
-        if probe.get("warning"):
-            context_info.append("")
-            context_info.append(probe["warning"])
-            context_info.append("")
-
-        if probe["files_exist"]:
-            context_info.append(f"FILES CREATED: {', '.join(probe['files_exist'])}")
-        if probe["recent_errors"]:
-            context_info.append(f"RECENT ERRORS: {probe['recent_errors'][-1][:100]}")
-
-        context.append({"role": "user", "content": "\n".join(context_info)})
-
-    # Add last N message exchanges (keep it simple)
-    recent = messages[-HISTORY_KEEP * 2:] if len(messages) > HISTORY_KEEP * 2 else messages
-    context.extend(recent)
-
-    return context
+    # Use shared hierarchical context strategy
+    return build_hierarchical_context(
+        context_manager=ctx,
+        messages=messages,
+        system_prompt=config.llm.system_prompt,
+        config=config,
+        probe_state_func=probe_state_generic,  # Pass probe function for filesystem state
+    )
 
 # ----------------------------
 # Dispatch tool calls

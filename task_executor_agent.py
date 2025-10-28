@@ -11,6 +11,7 @@ from pathlib import Path
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
+from context_strategies import build_simple_hierarchical_context
 
 
 class TaskExecutorAgent(BaseAgent):
@@ -168,41 +169,13 @@ class TaskExecutorAgent(BaseAgent):
         Returns:
             [system_prompt, task_info, last_N_messages]
         """
-        # Start with system prompt
-        context = [{"role": "system", "content": self.get_system_prompt()}]
-
-        # Add current goal/task/subtask context
-        if self.context_manager.state.goal:
-            task = self.context_manager._get_current_task()
-            subtask = task.active_subtask() if task else None
-
-            context_info = [
-                f"GOAL: {self.context_manager.state.goal.description}",
-            ]
-
-            if task:
-                context_info.append(f"CURRENT TASK: {task.description}")
-
-            if subtask:
-                context_info.append(f"ACTIVE SUBTASK: {subtask.description}")
-                context_info.append(
-                    f"Subtask Depth: {subtask.depth}/{self.config.hierarchy.max_depth}"
-                )
-                context_info.append(
-                    f"Rounds Used: {subtask.rounds_used}/{self.config.rounds.max_per_subtask}"
-                )
-            else:
-                context_info.append("ACTIVE SUBTASK: (none - call mark_subtask_complete to advance)")
-
-            context.append({"role": "user", "content": "\n".join(context_info)})
-
-        # Add last N message exchanges (N from config)
-        messages = self.state.messages
-        history_keep = self.config.context.history_keep
-        recent = messages[-history_keep * 2:] if len(messages) > history_keep * 2 else messages
-        context.extend(recent)
-
-        return context
+        # Use shared hierarchical context strategy
+        return build_simple_hierarchical_context(
+            context_manager=self.context_manager,
+            messages=self.state.messages,
+            system_prompt=self.get_system_prompt(),
+            config=self.config,
+        )
 
     def execute_round(self, model: str, temperature: float) -> dict[str, Any]:
         """
