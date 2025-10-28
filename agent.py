@@ -1655,7 +1655,7 @@ def main() -> None:
     messages: list[dict[str, Any]] = []
 
     # Phase 2: Track rounds per subtask
-    subtask_rounds = {}  # key: subtask.signature() → rounds used
+    # Turn counter increments by 1 per turn, resets to 0 when moving to next subtask
     current_subtask_rounds = 0
     last_subtask_sig = None
     task_total_rounds = 0  # Safety cap per task
@@ -1678,8 +1678,9 @@ def main() -> None:
                 round_start_sig = current_sig
 
                 # Reset counter if subtask changed
+                # Turn counter always resets to 0 when moving to next task/subtask
                 if current_sig != last_subtask_sig:
-                    current_subtask_rounds = subtask_rounds.get(current_sig, 0)
+                    current_subtask_rounds = 0
                     last_subtask_sig = current_sig
 
                 # Check per-subtask round limit
@@ -1986,7 +1987,6 @@ def main() -> None:
                             if current_subtask:
                                 # Force rounds to max to trigger escalation
                                 current_subtask_rounds = MAX_ROUNDS_PER_SUBTASK
-                                subtask_rounds[current_sig] = current_subtask_rounds
                                 current_subtask.rounds_used = current_subtask_rounds
                                 _ctx._save_state()
                                 log(f"Forced subtask rounds to {MAX_ROUNDS_PER_SUBTASK} to trigger escalation")
@@ -2053,9 +2053,9 @@ def main() -> None:
             # Increment round counters at end of round
             # Use the subtask that was active at START of round, not end
             # (mark_subtask_complete may have changed the active subtask mid-round)
+            # Turn counter always increments by 1 per turn
             if round_start_subtask and round_start_sig:
                 current_subtask_rounds += 1
-                subtask_rounds[round_start_sig] = current_subtask_rounds
                 round_start_subtask.rounds_used = current_subtask_rounds
                 task_total_rounds += 1
                 _ctx._save_state()
@@ -2085,9 +2085,9 @@ def main() -> None:
             # Continue to next round to let agent respond with mark_subtask_complete
             # Increment round counters at end of round
             # Use the subtask that was active at START of round
+            # Turn counter always increments by 1 per turn
             if round_start_subtask and round_start_sig:
                 current_subtask_rounds += 1
-                subtask_rounds[round_start_sig] = current_subtask_rounds
                 round_start_subtask.rounds_used = current_subtask_rounds
                 task_total_rounds += 1
             continue
