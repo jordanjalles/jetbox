@@ -60,17 +60,23 @@ def build_hierarchical_context(
         if task:
             context_info.append(f"CURRENT TASK: {task.description}")
 
-        if subtask:
-            context_info.append(f"ACTIVE SUBTASK: {subtask.description}")
+            if subtask:
+                context_info.append(f"ACTIVE SUBTASK: {subtask.description}")
 
-            # Add depth/rounds info if config provided
-            if hasattr(config, 'hierarchy') and hasattr(config.hierarchy, 'max_depth'):
-                context_info.append(f"Subtask Depth: {subtask.depth}/{config.hierarchy.max_depth}")
+                # Add depth/rounds info if config provided
+                if hasattr(config, 'hierarchy') and hasattr(config.hierarchy, 'max_depth'):
+                    context_info.append(f"Subtask Depth: {subtask.depth}/{config.hierarchy.max_depth}")
 
-            if hasattr(config, 'rounds') and hasattr(config.rounds, 'max_per_subtask'):
-                context_info.append(f"Rounds Used: {subtask.rounds_used}/{config.rounds.max_per_subtask}")
+                if hasattr(config, 'rounds') and hasattr(config.rounds, 'max_per_subtask'):
+                    context_info.append(f"Rounds Used: {subtask.rounds_used}/{config.rounds.max_per_subtask}")
+            else:
+                context_info.append("ACTIVE SUBTASK: (none - call mark_subtask_complete to advance)")
         else:
-            context_info.append("ACTIVE SUBTASK: (none - call mark_subtask_complete to advance)")
+            # No tasks yet - need to decompose goal
+            context_info.append("")
+            context_info.append("⚠️  NO TASKS YET")
+            context_info.append("The goal has not been broken down into tasks.")
+            context_info.append("Use decompose_task to create an initial task/subtask structure.")
 
         # Add loop detection warnings
         if context_manager.state.loop_counts:

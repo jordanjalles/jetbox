@@ -189,6 +189,48 @@ class TaskExecutorAgent(BaseAgent):
         """TaskExecutor uses hierarchical context management."""
         return "hierarchical"
 
+    def dispatch_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
+        """
+        Dispatch tool calls with context_manager injection.
+
+        Overrides BaseAgent.dispatch_tool to inject context_manager
+        for tools that need it (mark_subtask_complete, decompose_task).
+        """
+        import tools
+
+        # Get tool name and args
+        tool_name = tool_call["function"]["name"]
+        args = tool_call["function"]["arguments"].copy()
+
+        # Tools that need context_manager injection
+        tools_needing_context = {"mark_subtask_complete", "decompose_task"}
+
+        # Inject context_manager if needed
+        if tool_name in tools_needing_context:
+            args["context_manager"] = self.context_manager
+
+        # Map tool names to functions
+        tool_map = {
+            "list_dir": tools.list_dir,
+            "read_file": tools.read_file,
+            "grep_file": tools.grep_file,
+            "write_file": tools.write_file,
+            "run_cmd": tools.run_cmd,
+            "start_server": tools.start_server,
+            "stop_server": tools.stop_server,
+            "check_server": tools.check_server,
+            "list_servers": tools.list_servers,
+            "mark_subtask_complete": tools.mark_subtask_complete,
+            "decompose_task": tools.decompose_task,
+        }
+
+        # Execute the tool
+        if tool_name in tool_map:
+            result = tool_map[tool_name](**args)
+            return {"result": result}
+        else:
+            return {"result": {"status": "error", "message": f"Unknown tool: {tool_name}"}}
+
     def build_context(self) -> list[dict[str, Any]]:
         """
         Build context using FULL hierarchical strategy.
@@ -250,8 +292,8 @@ class TaskExecutorAgent(BaseAgent):
         if existing_notes:
             print(f"[jetbox] Loaded notes: {len(existing_notes)} chars")
 
-        # Initialize status display
-        self.status_display = StatusDisplay(ctx=self.context_manager)
+        # Initialize status display (reset stats for new goal)
+        self.status_display = StatusDisplay(ctx=self.context_manager, reset_stats=True)
 
     def _llm_caller_for_jetbox(self, messages, temperature=0.2, timeout=30):
         """LLM caller for jetbox notes."""
@@ -297,7 +339,33 @@ class TaskExecutorAgent(BaseAgent):
         for round_no in range(1, max_rounds + 1):
             # Show status
             if self.status_display:
-                self.status_display.show_status(round_no, self.status_display.stats)
+                # Get current subtask rounds (with defensive checks)
+                subtask_rounds = 0
+                try:
+                    if (self.context_manager
+                        and self.context_manager.state.goal
+                        and self.context_manager.state.goal.tasks
+                        and self.context_manager.state.current_task_idx is not None
+                        and self.context_manager.state.current_task_idx < len(self.context_manager.state.goal.tasks)):
+
+                        task = self.context_manager.state.goal.tasks[self.context_manager.state.current_task_idx]
+                        if task.active_subtask():
+                            subtask_rounds = task.active_subtask().rounds_spent
+                except (AttributeError, IndexError, TypeError):
+                    # If anything goes wrong, just use 0
+                    subtask_rounds = 0
+
+                # Render and print status
+                try:
+                    status_output = self.status_display.render(
+                        round_no=round_no,
+                        subtask_rounds=subtask_rounds,
+                        max_rounds=self.config.rounds.max_per_subtask
+                    )
+                    print(status_output)
+                except Exception as e:
+                    # If status display fails, don't crash the agent
+                    print(f"[status_display] Error rendering status: {e}")
 
             # Build context
             context = self.build_context()
@@ -314,7 +382,7 @@ class TaskExecutorAgent(BaseAgent):
 
             # Track performance
             if self.status_display:
-                self.status_display.stats.record_llm_call(duration, response.get("eval_count", 0))
+                self.status_display.record_llm_call(duration, response.get("eval_count", 0))
 
             # Add assistant message
             if "message" in response:
@@ -326,6 +394,11 @@ class TaskExecutorAgent(BaseAgent):
                 if "tool_calls" in msg:
                     for tool_call in msg["tool_calls"]:
                         result = self.dispatch_tool(tool_call)
+
+                        # Record action in stats
+                        if self.status_display:
+                            success = not (isinstance(result, dict) and result.get("error"))
+                            self.status_display.record_action(success)
 
                         # Unwrap result
                         actual_result = result.get("result") if isinstance(result, dict) and "result" in result else result

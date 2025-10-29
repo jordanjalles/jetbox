@@ -38,6 +38,7 @@ def dispatch(call):
         "check_server": tools.check_server,
         "list_servers": tools.list_servers,
         "mark_subtask_complete": tools.mark_subtask_complete,
+        "decompose_task": tools.decompose_task,
     }
 
     # Execute the tool

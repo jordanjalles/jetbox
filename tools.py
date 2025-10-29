@@ -528,6 +528,106 @@ def mark_subtask_complete(
         # Failed - stay on current subtask
         return {"status": "failed", "reason": reason}
 
+def decompose_task(subtasks: list[str], context_manager=None) -> dict[str, Any]:
+    """
+    Break down the goal/task into subtasks.
+
+    This creates the initial task structure from the goal when no tasks exist yet,
+    or adds subtasks to the current task.
+
+    Args:
+        subtasks: List of subtask descriptions (strings)
+        context_manager: ContextManager instance (required)
+
+    Returns:
+        Success dict or error
+    """
+    from context_manager import Task, Subtask
+
+    if not context_manager:
+        return {"error": "No context manager provided"}
+
+    if not context_manager.state.goal:
+        return {"error": "No active goal"}
+
+    # Normalize subtasks - handle both list[str] and list[dict]
+    normalized_subtasks = []
+    for item in subtasks:
+        if isinstance(item, dict) and 'description' in item:
+            normalized_subtasks.append(item['description'])
+        elif isinstance(item, str):
+            normalized_subtasks.append(item)
+        else:
+            return {"error": f"Invalid subtask format: {item}"}
+
+    subtasks = normalized_subtasks  # Use normalized version
+
+    # If no tasks exist yet, create initial task structure
+    if not context_manager.state.goal.tasks:
+        # Create a single task for the goal
+        task = Task(
+            description=context_manager.state.goal.description,
+            parent_goal=context_manager.state.goal.description
+        )
+
+        # Add subtasks to this task
+        for subtask_desc in subtasks:
+            subtask = Subtask(
+                description=subtask_desc,
+                depth=0
+            )
+            task.subtasks.append(subtask)
+
+        # Add task to goal
+        context_manager.state.goal.tasks.append(task)
+        context_manager.state.current_task_idx = 0
+
+        # Mark first subtask as in_progress
+        if task.subtasks:
+            task.subtasks[0].status = "in_progress"
+
+        # Save state
+        context_manager._save_state()
+
+        _ledger_append("DECOMPOSE", f"Created task with {len(subtasks)} subtasks")
+        print(f"\n{'='*70}")
+        print(f"🔀 TASK DECOMPOSED")
+        print(f"Created 1 task with {len(subtasks)} subtasks:")
+        for i, desc in enumerate(subtasks, 1):
+            print(f"  {i}. {desc}")
+        print(f"{'='*70}\n")
+
+        return {"status": "success", "task_count": 1, "subtask_count": len(subtasks)}
+    else:
+        # Task already exists - add subtasks to current task
+        task = context_manager._get_current_task()
+        if not task:
+            return {"error": "No active task"}
+
+        # Track how many subtasks existed before
+        old_count = len(task.subtasks)
+
+        for subtask_desc in subtasks:
+            subtask = Subtask(
+                description=subtask_desc,
+                depth=0
+            )
+            task.subtasks.append(subtask)
+
+        # If this was the first subtask added, mark it as in_progress
+        if old_count == 0 and task.subtasks:
+            task.subtasks[0].status = "in_progress"
+
+        context_manager._save_state()
+        _ledger_append("DECOMPOSE", f"Added {len(subtasks)} subtasks to current task")
+        print(f"\n{'='*70}")
+        print(f"🔀 SUBTASKS ADDED")
+        print(f"Added {len(subtasks)} subtasks to current task")
+        print(f"{'='*70}\n")
+
+        return {"status": "success", "subtasks_added": len(subtasks)}
+
+
 
 # ----------------------------
 # Tool Definitions for LLM
@@ -660,6 +760,24 @@ def get_tool_definitions() -> list[dict]:
                         }
                     },
                     "required": ["success"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "decompose_task",
+                "description": "Break down the goal into tasks and subtasks. Use this when NO TASKS YET to create initial structure.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "subtasks": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of subtask descriptions (e.g., ['Create file structure', 'Write code', 'Run tests'])"
+                        }
+                    },
+                    "required": ["subtasks"]
                 }
             }
         },
