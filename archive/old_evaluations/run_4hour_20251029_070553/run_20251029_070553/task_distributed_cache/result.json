@@ -1,0 +1,11 @@
+{
+  "task": "distributed_cache",
+  "level": 7,
+  "success": false,
+  "duration": 100.84359765052795,
+  "rounds_used": 4097,
+  "files_created": [],
+  "validation_passed": false,
+  "failure_category": "missing_files",
+  "error_message": null
+}

@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from math_utils import add, divide; assert add(2,3)==5; assert divide(10,2)==5
+Exit code: 0
+Stdout:
+
+

@@ -1,0 +1,14 @@
+=== Command 1 ===
+Command: python -c from config import Config; c=Config(); assert hasattr(c, 'load')
+Exit code: 1
+Stdout:
+
+Stderr:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/tmp/tmp76ulzblw/create-config-py-with-config-class-that-loads-yaml/config.py", line 156
+    """
+    ^
+SyntaxError: unterminated triple-quoted string literal (detected at line 156)
+
+

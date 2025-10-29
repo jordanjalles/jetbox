@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from file_ops import write_file, read_file; write_file('test.txt', 'hello'); assert read_file('test.txt')=='hello'
+Exit code: 0
+Stdout:
+
+

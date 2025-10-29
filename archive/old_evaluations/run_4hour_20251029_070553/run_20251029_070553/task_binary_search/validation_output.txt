@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from search import binary_search; assert binary_search([1,2,3,4,5], 3)==2; assert binary_search([1,2,3,4,5], 6)==-1
+Exit code: 0
+Stdout:
+
+

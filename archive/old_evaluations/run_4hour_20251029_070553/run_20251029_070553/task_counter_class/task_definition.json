@@ -1,0 +1,14 @@
+{
+  "name": "counter_class",
+  "level": 2,
+  "description": "Stateful counter class",
+  "goal": "Create counter.py with Counter class: increment(), decrement(), reset(), get_value()",
+  "expected_files": [
+    "counter.py"
+  ],
+  "tags": [
+    "oop",
+    "state"
+  ],
+  "timeout_rounds": 30
+}

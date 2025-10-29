@@ -1,0 +1,14 @@
+{
+  "name": "simple_math",
+  "level": 1,
+  "description": "Basic arithmetic operations",
+  "goal": "Create math_ops.py with functions add(a,b), subtract(a,b), multiply(a,b), divide(a,b)",
+  "expected_files": [
+    "math_ops.py"
+  ],
+  "tags": [
+    "single-file",
+    "arithmetic"
+  ],
+  "timeout_rounds": 20
+}

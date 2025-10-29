@@ -1,0 +1,15 @@
+{
+  "name": "test_framework",
+  "level": 4,
+  "description": "Mini testing framework",
+  "goal": "Create test_framework.py with: TestCase base class, assertEqual/assertTrue/assertRaises methods, TestRunner that discovers and runs tests, generates reports.",
+  "expected_files": [
+    "test_framework.py"
+  ],
+  "tags": [
+    "testing",
+    "framework",
+    "complex"
+  ],
+  "timeout_rounds": 40
+}

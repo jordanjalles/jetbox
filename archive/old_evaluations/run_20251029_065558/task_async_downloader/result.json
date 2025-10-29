@@ -1,0 +1,13 @@
+{
+  "task": "async_downloader",
+  "level": 4,
+  "success": false,
+  "duration": 33.93599581718445,
+  "rounds_used": 385,
+  "files_created": [
+    "async_downloader.py"
+  ],
+  "validation_passed": false,
+  "failure_category": "import_error",
+  "error_message": null
+}

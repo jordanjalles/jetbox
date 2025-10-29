@@ -1,0 +1,14 @@
+=== Command 1 ===
+Command: python -c from sorting import bubble_sort, quick_sort, merge_sort; assert bubble_sort([3,1,2])==[1,2,3]; assert quick_sort([3,1,2])==[1,2,3]
+Exit code: 1
+Stdout:
+
+Stderr:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/tmp/tmp0n_im5rl/create-sorting-py-with-implementations-of-bubble/sorting.py", line 22
+    +def bubble_sort(lst: List[T]) -> List[T]:
+     ^^^
+SyntaxError: invalid syntax
+
+

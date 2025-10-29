@@ -1,0 +1,11 @@
+{
+  "task": "rate_limiter",
+  "level": 7,
+  "success": false,
+  "duration": 221.0620436668396,
+  "rounds_used": 4000,
+  "files_created": [],
+  "validation_passed": false,
+  "failure_category": "missing_files",
+  "error_message": null
+}

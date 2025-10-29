@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from list_utils import get_max, remove_duplicates; assert get_max([1,5,3])==5; assert remove_duplicates([1,2,2,3])==[1,2,3]
+Exit code: 0
+Stdout:
+
+

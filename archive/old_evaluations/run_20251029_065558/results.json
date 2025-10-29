@@ -1,0 +1,121 @@
+{
+  "run_id": "20251029_065558",
+  "elapsed_time": 735.6222913265228,
+  "elapsed_minutes": 12.260371522108715,
+  "tasks_completed": 14,
+  "tasks_total": 14,
+  "results": [
+    {
+      "task": "simple_function",
+      "level": 1,
+      "success": true,
+      "duration": 18.378268480300903,
+      "rounds_used": 95,
+      "failure_category": null
+    },
+    {
+      "task": "simple_math",
+      "level": 1,
+      "success": true,
+      "duration": 24.39491367340088,
+      "rounds_used": 115,
+      "failure_category": null
+    },
+    {
+      "task": "list_operations",
+      "level": 1,
+      "success": true,
+      "duration": 21.55815315246582,
+      "rounds_used": 135,
+      "failure_category": null
+    },
+    {
+      "task": "class_definition",
+      "level": 2,
+      "success": true,
+      "duration": 113.07406091690063,
+      "rounds_used": 151,
+      "failure_category": null
+    },
+    {
+      "task": "multi_file_package",
+      "level": 2,
+      "success": true,
+      "duration": 60.76287817955017,
+      "rounds_used": 176,
+      "failure_category": null
+    },
+    {
+      "task": "file_io",
+      "level": 2,
+      "success": true,
+      "duration": 25.032920122146606,
+      "rounds_used": 196,
+      "failure_category": null
+    },
+    {
+      "task": "data_validation",
+      "level": 2,
+      "success": false,
+      "duration": 29.634540796279907,
+      "rounds_used": 216,
+      "failure_category": "syntax_error"
+    },
+    {
+      "task": "sorting_algorithms",
+      "level": 3,
+      "success": false,
+      "duration": 70.25244927406311,
+      "rounds_used": 246,
+      "failure_category": "syntax_error"
+    },
+    {
+      "task": "json_api_client",
+      "level": 3,
+      "success": true,
+      "duration": 35.57488775253296,
+      "rounds_used": 276,
+      "failure_category": null
+    },
+    {
+      "task": "csv_processor",
+      "level": 3,
+      "success": false,
+      "duration": 35.01539206504822,
+      "rounds_used": 306,
+      "failure_category": "syntax_error"
+    },
+    {
+      "task": "cache_decorator",
+      "level": 3,
+      "success": false,
+      "duration": 44.96622323989868,
+      "rounds_used": 319,
+      "failure_category": "syntax_error"
+    },
+    {
+      "task": "database_orm",
+      "level": 4,
+      "success": false,
+      "duration": 212.94971299171448,
+      "rounds_used": 359,
+      "failure_category": "test_failure"
+    },
+    {
+      "task": "async_downloader",
+      "level": 4,
+      "success": false,
+      "duration": 33.93599581718445,
+      "rounds_used": 385,
+      "failure_category": "import_error"
+    },
+    {
+      "task": "test_framework",
+      "level": 4,
+      "success": false,
+      "duration": 8.835003852844238,
+      "rounds_used": 386,
+      "failure_category": "missing_files"
+    }
+  ]
+}

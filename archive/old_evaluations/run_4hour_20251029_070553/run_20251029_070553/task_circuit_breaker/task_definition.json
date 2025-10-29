@@ -1,0 +1,17 @@
+{
+  "name": "circuit_breaker",
+  "level": 7,
+  "description": "Circuit breaker pattern",
+  "goal": "Create circuit breaker: failure detection, half-open state, automatic recovery, metrics tracking",
+  "expected_files": [
+    "circuit_breaker.py",
+    "states.py",
+    "metrics.py"
+  ],
+  "tags": [
+    "expert",
+    "resilience",
+    "production"
+  ],
+  "timeout_rounds": 80
+}

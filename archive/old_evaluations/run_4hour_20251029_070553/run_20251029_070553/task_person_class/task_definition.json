@@ -1,0 +1,14 @@
+{
+  "name": "person_class",
+  "level": 2,
+  "description": "Simple class with properties",
+  "goal": "Create person.py with a Person class having name, age properties and a greet() method",
+  "expected_files": [
+    "person.py"
+  ],
+  "tags": [
+    "oop",
+    "class"
+  ],
+  "timeout_rounds": 30
+}

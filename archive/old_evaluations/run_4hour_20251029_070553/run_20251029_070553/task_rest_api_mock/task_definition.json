@@ -1,0 +1,14 @@
+{
+  "name": "rest_api_mock",
+  "level": 4,
+  "description": "Mock REST API with Flask",
+  "goal": "Create api.py with Flask app having GET /users and POST /users endpoints with in-memory storage",
+  "expected_files": [
+    "api.py"
+  ],
+  "tags": [
+    "flask",
+    "api"
+  ],
+  "timeout_rounds": 50
+}

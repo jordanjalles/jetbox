@@ -1,0 +1,14 @@
+{
+  "name": "async_downloader",
+  "level": 4,
+  "description": "Async file downloader",
+  "goal": "Create downloader.py with async download_file(url, path) and download_multiple(urls)",
+  "expected_files": [
+    "downloader.py"
+  ],
+  "tags": [
+    "async",
+    "network"
+  ],
+  "timeout_rounds": 50
+}

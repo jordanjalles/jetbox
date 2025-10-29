@@ -1,0 +1,15 @@
+{
+  "name": "json_api_client",
+  "level": 3,
+  "description": "REST API client with JSON",
+  "goal": "Create api_client.py with a class JSONClient that has methods: get(url), post(url, data), parse_response(). Use requests library. Include error handling for network errors.",
+  "expected_files": [
+    "api_client.py"
+  ],
+  "tags": [
+    "api",
+    "dependencies",
+    "error-handling"
+  ],
+  "timeout_rounds": 30
+}

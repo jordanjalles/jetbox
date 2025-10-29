@@ -1,0 +1,16 @@
+{
+  "name": "observer_pattern",
+  "level": 6,
+  "description": "Implement observer design pattern",
+  "goal": "Create observer pattern: Subject, Observer classes, event system with subscribe/unsubscribe/notify",
+  "expected_files": [
+    "observer.py",
+    "subject.py",
+    "events.py"
+  ],
+  "tags": [
+    "design-pattern",
+    "architecture"
+  ],
+  "timeout_rounds": 70
+}

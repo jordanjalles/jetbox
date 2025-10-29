@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from shapes import Circle, Rectangle; import math; c=Circle(5); assert abs(c.area()-math.pi*25)<0.1
+Exit code: 0
+Stdout:
+
+

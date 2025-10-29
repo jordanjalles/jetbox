@@ -1,0 +1,15 @@
+{
+  "name": "cache_decorator",
+  "level": 3,
+  "description": "Implement memoization decorator",
+  "goal": "Create decorators.py with a @memoize decorator that caches function results. Include a function to clear the cache. Test with fibonacci function.",
+  "expected_files": [
+    "decorators.py"
+  ],
+  "tags": [
+    "decorators",
+    "caching",
+    "advanced"
+  ],
+  "timeout_rounds": 30
+}

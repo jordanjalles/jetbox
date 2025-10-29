@@ -1,0 +1,16 @@
+{
+  "name": "plugin_system",
+  "level": 6,
+  "description": "Plugin architecture",
+  "goal": "Create plugin system: Plugin base class, PluginManager for loading/registering, plugin discovery",
+  "expected_files": [
+    "plugin_manager.py",
+    "plugin.py",
+    "loader.py"
+  ],
+  "tags": [
+    "architecture",
+    "extensibility"
+  ],
+  "timeout_rounds": 70
+}

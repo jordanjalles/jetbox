@@ -1,0 +1,14 @@
+=== Command 1 ===
+Command: python -c from decorators import memoize; @memoize
+def fib(n): return n if n<2 else fib(n-1)+fib(n-2)
+assert fib(10)==55
+Exit code: 1
+Stdout:
+
+Stderr:
+  File "<string>", line 1
+    from decorators import memoize; @memoize
+                                    ^
+SyntaxError: invalid syntax
+
+

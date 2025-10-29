@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from math_ops import add, subtract, multiply, divide; assert add(2,3)==5; assert subtract(5,2)==3; assert multiply(4,5)==20; assert divide(10,2)==5
+Exit code: 0
+Stdout:
+
+

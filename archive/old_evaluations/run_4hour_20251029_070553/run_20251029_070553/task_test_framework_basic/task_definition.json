@@ -1,0 +1,14 @@
+{
+  "name": "test_framework_basic",
+  "level": 4,
+  "description": "Mini testing framework",
+  "goal": "Create test_framework.py with TestRunner class that can run test functions and report results",
+  "expected_files": [
+    "test_framework.py"
+  ],
+  "tags": [
+    "testing",
+    "framework"
+  ],
+  "timeout_rounds": 50
+}

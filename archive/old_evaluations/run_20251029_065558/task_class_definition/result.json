@@ -1,0 +1,13 @@
+{
+  "task": "class_definition",
+  "level": 2,
+  "success": true,
+  "duration": 113.07406091690063,
+  "rounds_used": 151,
+  "files_created": [
+    "person.py"
+  ],
+  "validation_passed": true,
+  "failure_category": null,
+  "error_message": null
+}

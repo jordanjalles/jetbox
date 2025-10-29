@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from counter import Counter; c=Counter(); c.increment(); c.increment(); assert c.get_value()==2; c.decrement(); assert c.get_value()==1; c.reset(); assert c.get_value()==0
+Exit code: 0
+Stdout:
+
+

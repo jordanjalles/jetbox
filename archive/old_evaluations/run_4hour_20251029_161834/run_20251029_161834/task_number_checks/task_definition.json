@@ -1,0 +1,14 @@
+{
+  "name": "number_checks",
+  "level": 1,
+  "description": "Number validation functions",
+  "goal": "Create number_checks.py with: is_even(n), is_odd(n), is_positive(n), is_negative(n)",
+  "expected_files": [
+    "number_checks.py"
+  ],
+  "tags": [
+    "single-file",
+    "validation"
+  ],
+  "timeout_rounds": 20
+}

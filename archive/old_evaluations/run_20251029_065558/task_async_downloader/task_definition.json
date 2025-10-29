@@ -1,0 +1,15 @@
+{
+  "name": "async_downloader",
+  "level": 4,
+  "description": "Async file downloader with progress",
+  "goal": "Create async_downloader.py using asyncio. Implement: download_file(url, filename), download_multiple(urls), with progress tracking. Handle errors gracefully.",
+  "expected_files": [
+    "async_downloader.py"
+  ],
+  "tags": [
+    "async",
+    "concurrency",
+    "complex"
+  ],
+  "timeout_rounds": 40
+}

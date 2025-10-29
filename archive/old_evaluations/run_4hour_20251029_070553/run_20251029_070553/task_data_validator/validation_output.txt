@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from validator import validate_email, validate_phone, validate_age; assert validate_email('test@example.com'); assert not validate_email('invalid'); assert validate_age(25); assert not validate_age(-5)
+Exit code: 0
+Stdout:
+
+

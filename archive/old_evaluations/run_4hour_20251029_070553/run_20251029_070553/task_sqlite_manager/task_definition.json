@@ -1,0 +1,14 @@
+{
+  "name": "sqlite_manager",
+  "level": 4,
+  "description": "SQLite database wrapper",
+  "goal": "Create db.py with Database class: create_table, insert, query, update, delete",
+  "expected_files": [
+    "db.py"
+  ],
+  "tags": [
+    "database",
+    "sqlite"
+  ],
+  "timeout_rounds": 50
+}

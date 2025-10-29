@@ -1,0 +1,925 @@
+[
+  {
+    "task": "simple_function",
+    "level": 1,
+    "success": true,
+    "duration": 118.68106627464294,
+    "rounds_used": 370,
+    "files_created": [
+      "greet.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "simple_math",
+    "level": 1,
+    "success": true,
+    "duration": 27.909647226333618,
+    "rounds_used": 390,
+    "files_created": [
+      "math_ops.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "list_operations",
+    "level": 1,
+    "success": true,
+    "duration": 21.098684549331665,
+    "rounds_used": 410,
+    "files_created": [
+      "list_utils.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "string_operations",
+    "level": 1,
+    "success": true,
+    "duration": 15.193557500839233,
+    "rounds_used": 430,
+    "files_created": [
+      "string_utils.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "number_checks",
+    "level": 1,
+    "success": true,
+    "duration": 9.012640714645386,
+    "rounds_used": 434,
+    "files_created": [
+      "number_checks.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "temperature_converter",
+    "level": 1,
+    "success": true,
+    "duration": 22.418147325515747,
+    "rounds_used": 454,
+    "files_created": [
+      "temp_converter.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "person_class",
+    "level": 2,
+    "success": true,
+    "duration": 69.40828132629395,
+    "rounds_used": 484,
+    "files_created": [
+      "person.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "calculator_class",
+    "level": 2,
+    "success": true,
+    "duration": 40.480775356292725,
+    "rounds_used": 514,
+    "files_created": [
+      "calculator.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "multi_file_package",
+    "level": 2,
+    "success": false,
+    "duration": 6.007861614227295,
+    "rounds_used": 517,
+    "files_created": [
+      "shapes/__init__.py",
+      "shapes/circle.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "file_reader_writer",
+    "level": 2,
+    "success": true,
+    "duration": 35.54212927818298,
+    "rounds_used": 547,
+    "files_created": [
+      "file_ops.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "data_validator",
+    "level": 2,
+    "success": true,
+    "duration": 61.36890125274658,
+    "rounds_used": 577,
+    "files_created": [
+      "validator.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "counter_class",
+    "level": 2,
+    "success": true,
+    "duration": 37.016165018081665,
+    "rounds_used": 607,
+    "files_created": [
+      "counter.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "bubble_sort",
+    "level": 3,
+    "success": true,
+    "duration": 92.83257555961609,
+    "rounds_used": 647,
+    "files_created": [
+      "sorting.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "binary_search",
+    "level": 3,
+    "success": true,
+    "duration": 66.0899441242218,
+    "rounds_used": 687,
+    "files_created": [
+      "search.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "json_parser",
+    "level": 3,
+    "success": false,
+    "duration": 91.26911783218384,
+    "rounds_used": 727,
+    "files_created": [
+      "json_utils.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "syntax_error",
+    "error_message": null
+  },
+  {
+    "task": "csv_processor",
+    "level": 3,
+    "success": false,
+    "duration": 103.83617639541626,
+    "rounds_used": 767,
+    "files_created": [
+      "csv_utils.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "timeout_exceeded",
+    "error_message": null
+  },
+  {
+    "task": "cache_decorator",
+    "level": 3,
+    "success": false,
+    "duration": 57.584577560424805,
+    "rounds_used": 800,
+    "files_created": [
+      "cache.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "syntax_error",
+    "error_message": null
+  },
+  {
+    "task": "linked_list",
+    "level": 3,
+    "success": true,
+    "duration": 139.13207817077637,
+    "rounds_used": 840,
+    "files_created": [
+      "linked_list.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "rest_api_mock",
+    "level": 4,
+    "success": true,
+    "duration": 86.58180546760559,
+    "rounds_used": 890,
+    "files_created": [
+      "api.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "sqlite_manager",
+    "level": 4,
+    "success": false,
+    "duration": 349.44236636161804,
+    "rounds_used": 940,
+    "files_created": [
+      "db.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "timeout_exceeded",
+    "error_message": null
+  },
+  {
+    "task": "async_downloader",
+    "level": 4,
+    "success": false,
+    "duration": 127.54395270347595,
+    "rounds_used": 990,
+    "files_created": [
+      "downloader.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "import_error",
+    "error_message": null
+  },
+  {
+    "task": "test_framework_basic",
+    "level": 4,
+    "success": false,
+    "duration": 7.174293279647827,
+    "rounds_used": 991,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "command_parser",
+    "level": 4,
+    "success": false,
+    "duration": 79.56846308708191,
+    "rounds_used": 1041,
+    "files_created": [
+      "cli_parser.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "timeout_exceeded",
+    "error_message": null
+  },
+  {
+    "task": "config_loader",
+    "level": 4,
+    "success": false,
+    "duration": 9.651478052139282,
+    "rounds_used": 1041,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "blog_system",
+    "level": 5,
+    "success": false,
+    "duration": 88.46023058891296,
+    "rounds_used": 1048,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "todo_app",
+    "level": 5,
+    "success": false,
+    "duration": 30.18418002128601,
+    "rounds_used": 1048,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "inventory_system",
+    "level": 5,
+    "success": false,
+    "duration": 30.17824625968933,
+    "rounds_used": 1048,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "url_shortener",
+    "level": 5,
+    "success": false,
+    "duration": 30.072689533233643,
+    "rounds_used": 1048,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "email_validator_service",
+    "level": 5,
+    "success": false,
+    "duration": 30.175763368606567,
+    "rounds_used": 1048,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "observer_pattern",
+    "level": 6,
+    "success": false,
+    "duration": 58.73837995529175,
+    "rounds_used": 1059,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "factory_pattern",
+    "level": 6,
+    "success": false,
+    "duration": 3.5781006813049316,
+    "rounds_used": 1066,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "dependency_injection",
+    "level": 6,
+    "success": false,
+    "duration": 2.9801273345947266,
+    "rounds_used": 1072,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "plugin_system",
+    "level": 6,
+    "success": false,
+    "duration": 3.0428457260131836,
+    "rounds_used": 1078,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "event_bus",
+    "level": 6,
+    "success": false,
+    "duration": 27.46380591392517,
+    "rounds_used": 1100,
+    "files_created": [
+      "event_bus.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "rate_limiter",
+    "level": 7,
+    "success": false,
+    "duration": 22.590930700302124,
+    "rounds_used": 1105,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "connection_pool",
+    "level": 7,
+    "success": false,
+    "duration": 2.389129400253296,
+    "rounds_used": 1110,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "circuit_breaker",
+    "level": 7,
+    "success": false,
+    "duration": 361.7218086719513,
+    "rounds_used": 1190,
+    "files_created": [
+      "circuit_breaker.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "distributed_cache",
+    "level": 7,
+    "success": false,
+    "duration": 229.05582809448242,
+    "rounds_used": 1251,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "simple_function",
+    "level": 1,
+    "success": true,
+    "duration": 18.888561487197876,
+    "rounds_used": 1271,
+    "files_created": [
+      "greet.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "simple_math",
+    "level": 1,
+    "success": true,
+    "duration": 15.744975328445435,
+    "rounds_used": 1290,
+    "files_created": [
+      "math_ops.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "list_operations",
+    "level": 1,
+    "success": true,
+    "duration": 337.13118410110474,
+    "rounds_used": 1306,
+    "files_created": [
+      "list_utils.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "string_operations",
+    "level": 1,
+    "success": false,
+    "duration": 30.093253135681152,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "number_checks",
+    "level": 1,
+    "success": false,
+    "duration": 30.101545333862305,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "temperature_converter",
+    "level": 1,
+    "success": false,
+    "duration": 30.117308139801025,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "person_class",
+    "level": 2,
+    "success": false,
+    "duration": 30.20095992088318,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "calculator_class",
+    "level": 2,
+    "success": false,
+    "duration": 30.08991312980652,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "multi_file_package",
+    "level": 2,
+    "success": false,
+    "duration": 30.090017795562744,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "file_reader_writer",
+    "level": 2,
+    "success": false,
+    "duration": 30.072283506393433,
+    "rounds_used": 1306,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "data_validator",
+    "level": 2,
+    "success": true,
+    "duration": 79.94236826896667,
+    "rounds_used": 1336,
+    "files_created": [
+      "validator.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "counter_class",
+    "level": 2,
+    "success": true,
+    "duration": 43.356865882873535,
+    "rounds_used": 1366,
+    "files_created": [
+      "counter.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "bubble_sort",
+    "level": 3,
+    "success": true,
+    "duration": 56.578213930130005,
+    "rounds_used": 1406,
+    "files_created": [
+      "sorting.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "binary_search",
+    "level": 3,
+    "success": true,
+    "duration": 47.19292426109314,
+    "rounds_used": 1446,
+    "files_created": [
+      "search.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "json_parser",
+    "level": 3,
+    "success": false,
+    "duration": 95.4155375957489,
+    "rounds_used": 1486,
+    "files_created": [
+      "json_utils.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "syntax_error",
+    "error_message": null
+  },
+  {
+    "task": "csv_processor",
+    "level": 3,
+    "success": true,
+    "duration": 42.65491580963135,
+    "rounds_used": 1526,
+    "files_created": [
+      "csv_utils.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "cache_decorator",
+    "level": 3,
+    "success": false,
+    "duration": 80.18061375617981,
+    "rounds_used": 1566,
+    "files_created": [
+      "cache.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "syntax_error",
+    "error_message": null
+  },
+  {
+    "task": "linked_list",
+    "level": 3,
+    "success": true,
+    "duration": 120.70115685462952,
+    "rounds_used": 1606,
+    "files_created": [
+      "linked_list.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "rest_api_mock",
+    "level": 4,
+    "success": true,
+    "duration": 395.5037612915039,
+    "rounds_used": 1656,
+    "files_created": [
+      "api.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "sqlite_manager",
+    "level": 4,
+    "success": false,
+    "duration": 380.02187991142273,
+    "rounds_used": 1706,
+    "files_created": [
+      "db.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "timeout_exceeded",
+    "error_message": null
+  },
+  {
+    "task": "async_downloader",
+    "level": 4,
+    "success": false,
+    "duration": 79.6723222732544,
+    "rounds_used": 1751,
+    "files_created": [
+      "downloader.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "import_error",
+    "error_message": null
+  },
+  {
+    "task": "test_framework_basic",
+    "level": 4,
+    "success": true,
+    "duration": 61.370102882385254,
+    "rounds_used": 1780,
+    "files_created": [
+      "test_framework.py"
+    ],
+    "validation_passed": true,
+    "failure_category": null,
+    "error_message": null
+  },
+  {
+    "task": "command_parser",
+    "level": 4,
+    "success": false,
+    "duration": 69.22963356971741,
+    "rounds_used": 1830,
+    "files_created": [
+      "cli_parser.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "timeout_exceeded",
+    "error_message": null
+  },
+  {
+    "task": "config_loader",
+    "level": 4,
+    "success": false,
+    "duration": 237.55382204055786,
+    "rounds_used": 1880,
+    "files_created": [
+      "config.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "timeout_exceeded",
+    "error_message": null
+  },
+  {
+    "task": "blog_system",
+    "level": 5,
+    "success": false,
+    "duration": 339.4269709587097,
+    "rounds_used": 1931,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "todo_app",
+    "level": 5,
+    "success": false,
+    "duration": 1470.7446172237396,
+    "rounds_used": 1991,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "inventory_system",
+    "level": 5,
+    "success": false,
+    "duration": 86.51534295082092,
+    "rounds_used": 2021,
+    "files_created": [
+      "inventory.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "url_shortener",
+    "level": 5,
+    "success": false,
+    "duration": 30.835673809051514,
+    "rounds_used": 2045,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "email_validator_service",
+    "level": 5,
+    "success": false,
+    "duration": 2.999744415283203,
+    "rounds_used": 2047,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "observer_pattern",
+    "level": 6,
+    "success": false,
+    "duration": 13.44655466079712,
+    "rounds_used": 2049,
+    "files_created": [
+      "observer.py"
+    ],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "factory_pattern",
+    "level": 6,
+    "success": false,
+    "duration": 412.08609104156494,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "dependency_injection",
+    "level": 6,
+    "success": false,
+    "duration": 30.073949575424194,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "plugin_system",
+    "level": 6,
+    "success": false,
+    "duration": 30.07262921333313,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "event_bus",
+    "level": 6,
+    "success": false,
+    "duration": 30.079267978668213,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "rate_limiter",
+    "level": 7,
+    "success": false,
+    "duration": 30.092851638793945,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "connection_pool",
+    "level": 7,
+    "success": false,
+    "duration": 30.07188606262207,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "circuit_breaker",
+    "level": 7,
+    "success": false,
+    "duration": 30.070910930633545,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  },
+  {
+    "task": "distributed_cache",
+    "level": 7,
+    "success": false,
+    "duration": 30.069379568099976,
+    "rounds_used": 2085,
+    "files_created": [],
+    "validation_passed": false,
+    "failure_category": "missing_files",
+    "error_message": null
+  }
+]

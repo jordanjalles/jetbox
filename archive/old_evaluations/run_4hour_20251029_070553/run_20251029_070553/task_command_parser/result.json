@@ -1,0 +1,11 @@
+{
+  "task": "command_parser",
+  "level": 4,
+  "success": false,
+  "duration": 7.5795886516571045,
+  "rounds_used": 3657,
+  "files_created": [],
+  "validation_passed": false,
+  "failure_category": "missing_files",
+  "error_message": null
+}

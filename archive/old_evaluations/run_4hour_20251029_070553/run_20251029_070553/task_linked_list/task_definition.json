@@ -1,0 +1,13 @@
+{
+  "name": "linked_list",
+  "level": 3,
+  "description": "Linked list data structure",
+  "goal": "Create linked_list.py with LinkedList class: append(val), remove(val), contains(val), to_list()",
+  "expected_files": [
+    "linked_list.py"
+  ],
+  "tags": [
+    "data-structure"
+  ],
+  "timeout_rounds": 40
+}

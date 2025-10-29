@@ -1,0 +1,16 @@
+{
+  "name": "blog_system",
+  "level": 5,
+  "description": "Simple blog with posts and comments",
+  "goal": "Create blog system: Post model, Comment model, BlogManager with CRUD operations, persistence to JSON",
+  "expected_files": [
+    "blog.py",
+    "models.py",
+    "storage.py"
+  ],
+  "tags": [
+    "integration",
+    "crud"
+  ],
+  "timeout_rounds": 60
+}

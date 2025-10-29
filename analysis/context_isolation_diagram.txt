@@ -1,0 +1,137 @@
+CONTEXT ISOLATION - BEFORE vs AFTER FIX
+=====================================================
+
+BEFORE FIX (BROKEN - Information Leaks Between Subtasks)
+---------------------------------------------------------
+
+Session Start:
+  messages = []
+
+Subtask 1: "write hello.py"
+  Turn 1: messages = []
+    Context sent: [system, goal, subtask1, [empty]]
+
+  Turn 2: messages = [assistant_msg1, tool_result1]
+    Context sent: [system, goal, subtask1, [assistant_msg1, tool_result1]]
+
+  Turn 3: messages = [assistant_msg1, tool_result1, assistant_msg2, tool_result2]
+    Context sent: [system, goal, subtask1, [assistant_msg1, tool_result1, assistant_msg2, tool_result2]]
+
+  Turn 4: mark_subtask_complete() → Transition to Subtask 2
+  ❌ messages NOT CLEARED = [assistant_msg1, tool_result1, assistant_msg2, tool_result2, ...]
+
+Subtask 2: "write world.py"
+  Turn 5: messages = [assistant_msg1, tool_result1, ..., tool_result4]  ❌ LEAK!
+    Context sent: [system, goal, subtask2, [messages from Subtask 1]]
+    ⚠️  Agent can see what happened in Subtask 1!
+
+
+AFTER FIX (CORRECT - Subtasks Isolated)
+----------------------------------------
+
+Session Start:
+  messages = []
+
+Subtask 1: "write hello.py"
+  Turn 1: messages = []
+    Context sent: [system, goal, subtask1, [empty]]
+
+  Turn 2: messages = [assistant_msg1, tool_result1]
+    Context sent: [system, goal, subtask1, [assistant_msg1, tool_result1]]
+
+  Turn 3: messages = [assistant_msg1, tool_result1, assistant_msg2, tool_result2]
+    Context sent: [system, goal, subtask1, [assistant_msg1, tool_result1, assistant_msg2, tool_result2]]
+
+  Turn 4: mark_subtask_complete() → Transition to Subtask 2
+  ✅ messages CLEARED = []
+
+Subtask 2: "write world.py"
+  Turn 5: messages = []  ✅ ISOLATED!
+    Context sent: [system, goal, subtask2, [empty]]
+    ✓ Agent cannot see Subtask 1's messages
+    ✓ Must read files to see Subtask 1's work
+
+
+EXPECTED CONTEXT AT EACH TURN
+==============================
+
+Turn N (within a subtask):
+┌─────────────────────────────────────┐
+│ [1] System Prompt                   │  ← Always present
+│     "You are a coding agent..."     │
+├─────────────────────────────────────┤
+│ [2] Goal/Task/Subtask Context       │  ← Always present
+│     GOAL: "Create hello & world"    │
+│     CURRENT TASK: "Create files"    │
+│     ACTIVE SUBTASK: "write hello.py"│
+├─────────────────────────────────────┤
+│ [3] Message History (last N turns)  │  ← Accumulates within subtask
+│     - assistant: "I'll write..."    │
+│     - tool: {"result": "..."}       │
+│     - assistant: "I'll test..."     │
+│     - tool: {"result": "..."}       │
+└─────────────────────────────────────┘
+
+Turn N+1 (AFTER subtask transition):
+┌─────────────────────────────────────┐
+│ [1] System Prompt                   │  ← Same
+│     "You are a coding agent..."     │
+├─────────────────────────────────────┤
+│ [2] Goal/Task/Subtask Context       │  ← UPDATED
+│     GOAL: "Create hello & world"    │
+│     CURRENT TASK: "Create files"    │
+│     ACTIVE SUBTASK: "write world.py"│  ← NEW SUBTASK
+├─────────────────────────────────────┤
+│ [3] Message History                 │  ← CLEARED!
+│     (empty - fresh start)           │
+└─────────────────────────────────────┘
+
+
+COMMUNICATION BETWEEN SUBTASKS
+================================
+
+BEFORE FIX (Implicit via leaked context):
+  Subtask 1: "I found 5 files in src/"
+  Subtask 2: Can see that message → "I'll process those 5 files"
+  ❌ Implicit, unreliable, design violation
+
+AFTER FIX (Explicit via filesystem):
+  Subtask 1: Writes finding to "analysis.txt"
+  Subtask 2: Must read "analysis.txt" → "I see 5 files listed"
+  ✅ Explicit, reliable, matches design
+
+
+VERIFICATION COMMANDS
+=====================
+
+1. Run agent with diagnostic logging:
+   $ python agent.py "Create hello.py then world.py"
+
+2. Analyze for leakage:
+   $ python analyze_context_log.py
+
+   Expected output:
+   ✓ Clean transition: Message history correctly cleared
+
+3. Automated test:
+   $ python test_context_leakage.py
+
+   Expected output:
+   ✅ TEST PASSED: No context leakage detected
+
+
+KEY INSIGHT
+===========
+
+The hierarchical decomposition strategy ONLY works if subtasks are
+truly isolated. Without proper isolation:
+- Agent behavior becomes unpredictable
+- "Understanding" leaks between unrelated subtasks
+- Testing/debugging becomes impossible
+- Design intent is violated
+
+With proper isolation:
+- Each subtask is a clean slate
+- Agent must use files for cross-subtask state
+- Behavior is predictable and testable
+- Design intent is preserved

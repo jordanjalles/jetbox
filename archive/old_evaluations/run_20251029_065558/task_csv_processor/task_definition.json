@@ -1,0 +1,14 @@
+{
+  "name": "csv_processor",
+  "level": 3,
+  "description": "CSV file processing with statistics",
+  "goal": "Create csv_analyzer.py with: load_csv(filename), get_column_stats(data, column), filter_rows(data, condition), export_csv(data, filename). Handle missing values.",
+  "expected_files": [
+    "csv_analyzer.py"
+  ],
+  "tags": [
+    "data-processing",
+    "csv"
+  ],
+  "timeout_rounds": 30
+}

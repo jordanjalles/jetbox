@@ -1,0 +1,13 @@
+{
+  "task": "linked_list",
+  "level": 3,
+  "success": true,
+  "duration": 130.97498679161072,
+  "rounds_used": 3502,
+  "files_created": [
+    "linked_list.py"
+  ],
+  "validation_passed": true,
+  "failure_category": null,
+  "error_message": null
+}

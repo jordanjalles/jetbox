@@ -1,0 +1,14 @@
+{
+  "name": "config_loader",
+  "level": 4,
+  "description": "Configuration file loader",
+  "goal": "Create config.py with Config class that loads YAML/JSON config files with environment variable interpolation",
+  "expected_files": [
+    "config.py"
+  ],
+  "tags": [
+    "config",
+    "yaml"
+  ],
+  "timeout_rounds": 50
+}

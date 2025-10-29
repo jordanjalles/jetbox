@@ -1,0 +1,14 @@
+{
+  "name": "cache_decorator",
+  "level": 3,
+  "description": "Memoization decorator",
+  "goal": "Create cache.py with @cache decorator that memoizes function results",
+  "expected_files": [
+    "cache.py"
+  ],
+  "tags": [
+    "decorator",
+    "optimization"
+  ],
+  "timeout_rounds": 40
+}

@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from test_framework import TestRunner; runner=TestRunner(); assert hasattr(runner, 'run')
+Exit code: 0
+Stdout:
+
+

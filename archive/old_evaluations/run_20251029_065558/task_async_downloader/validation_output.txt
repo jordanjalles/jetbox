@@ -1,0 +1,13 @@
+=== Command 1 ===
+Command: python -c import asyncio; from async_downloader import download_file; assert callable(download_file)
+Exit code: 1
+Stdout:
+
+Stderr:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/tmp/tmp0n_im5rl/create-async-downloader-py-using-asyncio-implemen/async_downloader.py", line 26, in <module>
+    import aiohttp
+ModuleNotFoundError: No module named 'aiohttp'
+
+

@@ -1,0 +1,13 @@
+{
+  "task": "sorting_algorithms",
+  "level": 3,
+  "success": false,
+  "duration": 70.25244927406311,
+  "rounds_used": 246,
+  "files_created": [
+    "sorting.py"
+  ],
+  "validation_passed": false,
+  "failure_category": "syntax_error",
+  "error_message": null
+}

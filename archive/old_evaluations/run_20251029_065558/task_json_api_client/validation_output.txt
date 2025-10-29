@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from api_client import JSONClient; c=JSONClient(); assert hasattr(c, 'get'); assert hasattr(c, 'post')
+Exit code: 0
+Stdout:
+
+

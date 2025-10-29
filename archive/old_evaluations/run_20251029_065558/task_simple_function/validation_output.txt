@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from greet import greet; assert greet('World') == 'Hello, World!'
+Exit code: 0
+Stdout:
+
+

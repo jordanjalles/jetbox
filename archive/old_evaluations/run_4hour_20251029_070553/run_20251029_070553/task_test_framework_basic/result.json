@@ -1,0 +1,13 @@
+{
+  "task": "test_framework_basic",
+  "level": 4,
+  "success": true,
+  "duration": 519.312460899353,
+  "rounds_used": 3657,
+  "files_created": [
+    "test_framework.py"
+  ],
+  "validation_passed": true,
+  "failure_category": null,
+  "error_message": null
+}

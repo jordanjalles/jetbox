@@ -1,0 +1,14 @@
+{
+  "name": "file_io",
+  "level": 2,
+  "description": "Read and write files",
+  "goal": "Create file_processor.py with: write_lines(filename, lines), read_lines(filename), count_words(filename). Include proper error handling for missing files.",
+  "expected_files": [
+    "file_processor.py"
+  ],
+  "tags": [
+    "file-io",
+    "error-handling"
+  ],
+  "timeout_rounds": 20
+}

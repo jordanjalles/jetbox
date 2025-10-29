@@ -1,0 +1,14 @@
+=== Command 1 ===
+Command: python -c from csv_analyzer import load_csv, get_column_stats; import csv; assert callable(load_csv)
+Exit code: 1
+Stdout:
+
+Stderr:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/tmp/tmp0n_im5rl/create-csv-analyzer-py-with-load-csv-filename-g/csv_analyzer.py", line 133
+    """
+    ^
+SyntaxError: unterminated triple-quoted string literal (detected at line 133)
+
+

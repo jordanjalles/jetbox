@@ -1,0 +1,11 @@
+{
+  "task": "test_framework",
+  "level": 4,
+  "success": false,
+  "duration": 8.835003852844238,
+  "rounds_used": 386,
+  "files_created": [],
+  "validation_passed": false,
+  "failure_category": "missing_files",
+  "error_message": null
+}

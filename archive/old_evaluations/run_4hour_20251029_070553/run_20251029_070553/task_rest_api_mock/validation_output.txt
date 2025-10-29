@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from api import app; assert app is not None
+Exit code: 0
+Stdout:
+
+

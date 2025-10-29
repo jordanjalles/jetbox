@@ -1,0 +1,14 @@
+=== Command 1 ===
+Command: python -c from db import Database; db=Database(':memory:'); db.create_table('users', 'name TEXT, age INTEGER'); db.insert('users', {'name':'Alice','age':30}); rows=db.query('users'); assert len(rows)==1
+Exit code: 1
+Stdout:
+
+Stderr:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/tmp/tmp76ulzblw/create-db-py-with-database-class-create-table-in/db.py", line 74, in create_table
+    clause = ", ".join(f"{name} {dtype}" for name, dtype in columns.items())
+                                                            ^^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'items'
+
+

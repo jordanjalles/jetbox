@@ -1,0 +1,13 @@
+{
+  "task": "simple_function",
+  "level": 1,
+  "success": true,
+  "duration": 17.37015390396118,
+  "rounds_used": 20,
+  "files_created": [
+    "greet.py"
+  ],
+  "validation_passed": true,
+  "failure_category": null,
+  "error_message": null
+}

@@ -1,0 +1,14 @@
+{
+  "name": "class_definition",
+  "level": 2,
+  "description": "Basic OOP with class",
+  "goal": "Create a Person class in person.py with attributes: name, age, email. Include __init__, __str__, and a method is_adult() that returns True if age >= 18.",
+  "expected_files": [
+    "person.py"
+  ],
+  "tags": [
+    "oop",
+    "single-file"
+  ],
+  "timeout_rounds": 20
+}

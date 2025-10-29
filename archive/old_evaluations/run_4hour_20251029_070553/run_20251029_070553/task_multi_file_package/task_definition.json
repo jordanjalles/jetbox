@@ -1,0 +1,16 @@
+{
+  "name": "multi_file_package",
+  "level": 2,
+  "description": "Package with multiple modules",
+  "goal": "Create package 'shapes' with circle.py (area, circumference) and square.py (area, perimeter)",
+  "expected_files": [
+    "shapes/__init__.py",
+    "shapes/circle.py",
+    "shapes/square.py"
+  ],
+  "tags": [
+    "multi-file",
+    "package"
+  ],
+  "timeout_rounds": 30
+}

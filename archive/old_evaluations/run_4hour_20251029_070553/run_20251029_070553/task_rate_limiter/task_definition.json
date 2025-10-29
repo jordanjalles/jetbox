@@ -1,0 +1,17 @@
+{
+  "name": "rate_limiter",
+  "level": 7,
+  "description": "Production-grade rate limiter",
+  "goal": "Create rate limiter: token bucket algorithm, sliding window, distributed support, Redis backend",
+  "expected_files": [
+    "rate_limiter.py",
+    "algorithms.py",
+    "backends.py"
+  ],
+  "tags": [
+    "expert",
+    "optimization",
+    "production"
+  ],
+  "timeout_rounds": 80
+}

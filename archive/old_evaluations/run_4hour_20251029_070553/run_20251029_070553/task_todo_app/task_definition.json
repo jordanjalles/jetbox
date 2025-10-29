@@ -1,0 +1,16 @@
+{
+  "name": "todo_app",
+  "level": 5,
+  "description": "Todo application with categories",
+  "goal": "Create todo app: Todo model, Category model, TodoManager with filtering, sorting, and JSON persistence",
+  "expected_files": [
+    "todo.py",
+    "models.py",
+    "manager.py"
+  ],
+  "tags": [
+    "integration",
+    "app"
+  ],
+  "timeout_rounds": 60
+}

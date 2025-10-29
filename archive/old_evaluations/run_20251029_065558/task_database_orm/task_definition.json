@@ -1,0 +1,15 @@
+{
+  "name": "database_orm",
+  "level": 4,
+  "description": "Simple ORM for SQLite",
+  "goal": "Create database.py with a simple ORM: Model base class, Database connection manager, methods for save(), find(), delete(). Use SQLite. Include a User model example.",
+  "expected_files": [
+    "database.py"
+  ],
+  "tags": [
+    "database",
+    "orm",
+    "complex"
+  ],
+  "timeout_rounds": 40
+}

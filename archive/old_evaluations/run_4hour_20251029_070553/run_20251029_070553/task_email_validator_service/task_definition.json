@@ -1,0 +1,16 @@
+{
+  "name": "email_validator_service",
+  "level": 5,
+  "description": "Email validation and verification",
+  "goal": "Create email service: syntax validation, domain verification, disposable email detection, bulk validation",
+  "expected_files": [
+    "email_service.py",
+    "validators.py",
+    "blacklist.py"
+  ],
+  "tags": [
+    "integration",
+    "validation"
+  ],
+  "timeout_rounds": 60
+}

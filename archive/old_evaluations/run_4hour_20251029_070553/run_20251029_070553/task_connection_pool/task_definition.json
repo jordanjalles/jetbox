@@ -1,0 +1,17 @@
+{
+  "name": "connection_pool",
+  "level": 7,
+  "description": "Database connection pooling",
+  "goal": "Create connection pool: acquire/release connections, max pool size, timeout handling, health checks",
+  "expected_files": [
+    "pool.py",
+    "connection.py",
+    "health.py"
+  ],
+  "tags": [
+    "expert",
+    "database",
+    "production"
+  ],
+  "timeout_rounds": 80
+}

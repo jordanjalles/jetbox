@@ -1,0 +1,14 @@
+{
+  "name": "csv_processor",
+  "level": 3,
+  "description": "CSV data processing",
+  "goal": "Create csv_utils.py with: read_csv(path), write_csv(path, rows), filter_rows(rows, condition)",
+  "expected_files": [
+    "csv_utils.py"
+  ],
+  "tags": [
+    "csv",
+    "data"
+  ],
+  "timeout_rounds": 40
+}

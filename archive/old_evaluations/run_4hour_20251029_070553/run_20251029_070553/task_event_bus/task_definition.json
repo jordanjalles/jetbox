@@ -1,0 +1,16 @@
+{
+  "name": "event_bus",
+  "level": 6,
+  "description": "Event-driven architecture",
+  "goal": "Create event bus: publish/subscribe system, event filtering, async event handling",
+  "expected_files": [
+    "event_bus.py",
+    "handlers.py",
+    "events.py"
+  ],
+  "tags": [
+    "architecture",
+    "events"
+  ],
+  "timeout_rounds": 70
+}

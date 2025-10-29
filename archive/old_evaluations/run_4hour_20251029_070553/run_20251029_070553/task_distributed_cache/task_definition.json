@@ -1,0 +1,17 @@
+{
+  "name": "distributed_cache",
+  "level": 7,
+  "description": "Distributed caching system",
+  "goal": "Create distributed cache: consistent hashing, replication, cache invalidation, TTL support",
+  "expected_files": [
+    "cache.py",
+    "hash_ring.py",
+    "replication.py"
+  ],
+  "tags": [
+    "expert",
+    "distributed",
+    "production"
+  ],
+  "timeout_rounds": 80
+}

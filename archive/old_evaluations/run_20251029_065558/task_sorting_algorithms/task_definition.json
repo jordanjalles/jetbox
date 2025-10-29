@@ -1,0 +1,14 @@
+{
+  "name": "sorting_algorithms",
+  "level": 3,
+  "description": "Implement sorting algorithms",
+  "goal": "Create sorting.py with implementations of: bubble_sort(lst), quick_sort(lst), merge_sort(lst). Include docstrings explaining the algorithms.",
+  "expected_files": [
+    "sorting.py"
+  ],
+  "tags": [
+    "algorithms",
+    "advanced"
+  ],
+  "timeout_rounds": 30
+}

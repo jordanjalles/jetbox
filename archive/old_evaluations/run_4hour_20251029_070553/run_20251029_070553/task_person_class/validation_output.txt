@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from person import Person; p=Person('Alice',30); assert p.name=='Alice'; assert p.age==30; assert 'Alice' in p.greet()
+Exit code: 0
+Stdout:
+
+

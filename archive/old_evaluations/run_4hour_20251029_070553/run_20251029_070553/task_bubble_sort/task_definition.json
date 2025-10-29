@@ -1,0 +1,14 @@
+{
+  "name": "bubble_sort",
+  "level": 3,
+  "description": "Implement bubble sort",
+  "goal": "Create sorting.py with bubble_sort(lst) function that sorts a list in ascending order",
+  "expected_files": [
+    "sorting.py"
+  ],
+  "tags": [
+    "algorithm",
+    "sorting"
+  ],
+  "timeout_rounds": 40
+}

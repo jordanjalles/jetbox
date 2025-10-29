@@ -1,0 +1,13 @@
+{
+  "task": "database_orm",
+  "level": 4,
+  "success": false,
+  "duration": 212.94971299171448,
+  "rounds_used": 359,
+  "files_created": [
+    "database.py"
+  ],
+  "validation_passed": false,
+  "failure_category": "test_failure",
+  "error_message": null
+}

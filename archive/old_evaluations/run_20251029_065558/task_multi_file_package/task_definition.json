@@ -1,0 +1,17 @@
+{
+  "name": "multi_file_package",
+  "level": 2,
+  "description": "Package with multiple modules",
+  "goal": "Create a package called 'shapes' with: shapes/__init__.py (exports all), shapes/circle.py (Circle class with area() method), shapes/rectangle.py (Rectangle class with area() method)",
+  "expected_files": [
+    "shapes/__init__.py",
+    "shapes/circle.py",
+    "shapes/rectangle.py"
+  ],
+  "tags": [
+    "multi-file",
+    "oop",
+    "package"
+  ],
+  "timeout_rounds": 25
+}

@@ -1,0 +1,16 @@
+{
+  "name": "inventory_system",
+  "level": 5,
+  "description": "Product inventory manager",
+  "goal": "Create inventory system: Product model, Inventory class with add/remove/search, low-stock alerts, CSV export",
+  "expected_files": [
+    "inventory.py",
+    "product.py",
+    "alerts.py"
+  ],
+  "tags": [
+    "integration",
+    "business"
+  ],
+  "timeout_rounds": 60
+}

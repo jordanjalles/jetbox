@@ -1,0 +1,14 @@
+{
+  "name": "list_operations",
+  "level": 1,
+  "description": "List manipulation functions",
+  "goal": "Create list_utils.py with functions: get_first(lst), get_last(lst), reverse_list(lst)",
+  "expected_files": [
+    "list_utils.py"
+  ],
+  "tags": [
+    "single-file",
+    "lists"
+  ],
+  "timeout_rounds": 20
+}

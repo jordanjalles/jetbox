@@ -1,0 +1,16 @@
+{
+  "name": "url_shortener",
+  "level": 5,
+  "description": "URL shortener service",
+  "goal": "Create URL shortener: generate short codes, store mappings, redirect lookup, statistics tracking",
+  "expected_files": [
+    "shortener.py",
+    "storage.py",
+    "stats.py"
+  ],
+  "tags": [
+    "integration",
+    "service"
+  ],
+  "timeout_rounds": 60
+}

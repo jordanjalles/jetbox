@@ -1,0 +1,14 @@
+{
+  "name": "data_validator",
+  "level": 2,
+  "description": "Input validation functions",
+  "goal": "Create validator.py with: validate_email(email), validate_phone(phone), validate_age(age)",
+  "expected_files": [
+    "validator.py"
+  ],
+  "tags": [
+    "validation",
+    "regex"
+  ],
+  "timeout_rounds": 30
+}

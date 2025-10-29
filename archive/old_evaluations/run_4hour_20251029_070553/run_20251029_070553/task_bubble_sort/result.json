@@ -1,0 +1,13 @@
+{
+  "task": "bubble_sort",
+  "level": 3,
+  "success": true,
+  "duration": 61.99367618560791,
+  "rounds_used": 3310,
+  "files_created": [
+    "sorting.py"
+  ],
+  "validation_passed": true,
+  "failure_category": null,
+  "error_message": null
+}

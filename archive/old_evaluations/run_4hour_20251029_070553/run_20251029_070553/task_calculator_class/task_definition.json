@@ -1,0 +1,14 @@
+{
+  "name": "calculator_class",
+  "level": 2,
+  "description": "Calculator class with methods",
+  "goal": "Create calculator.py with Calculator class having methods: add, subtract, multiply, divide, and history tracking",
+  "expected_files": [
+    "calculator.py"
+  ],
+  "tags": [
+    "oop",
+    "state"
+  ],
+  "timeout_rounds": 30
+}

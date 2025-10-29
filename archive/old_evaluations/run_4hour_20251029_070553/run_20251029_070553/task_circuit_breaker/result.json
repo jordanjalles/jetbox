@@ -1,0 +1,13 @@
+{
+  "task": "circuit_breaker",
+  "level": 7,
+  "success": false,
+  "duration": 195.81244826316833,
+  "rounds_used": 4085,
+  "files_created": [
+    "circuit_breaker.py"
+  ],
+  "validation_passed": false,
+  "failure_category": "missing_files",
+  "error_message": null
+}

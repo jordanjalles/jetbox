@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from json_utils import save_json, load_json; save_json('test.json', {'name':'Alice'}); data=load_json('test.json'); assert data['name']=='Alice'
+Exit code: 0
+Stdout:
+
+

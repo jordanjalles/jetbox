@@ -1,0 +1,14 @@
+{
+  "name": "command_parser",
+  "level": 4,
+  "description": "CLI argument parser",
+  "goal": "Create cli_parser.py with Parser class that parses command line arguments with flags and options",
+  "expected_files": [
+    "cli_parser.py"
+  ],
+  "tags": [
+    "cli",
+    "parsing"
+  ],
+  "timeout_rounds": 50
+}

@@ -1,0 +1,14 @@
+{
+  "name": "json_parser",
+  "level": 3,
+  "description": "JSON file reader/writer",
+  "goal": "Create json_utils.py with: load_json(path), save_json(path, data), get_value(data, key)",
+  "expected_files": [
+    "json_utils.py"
+  ],
+  "tags": [
+    "json",
+    "file-io"
+  ],
+  "timeout_rounds": 40
+}

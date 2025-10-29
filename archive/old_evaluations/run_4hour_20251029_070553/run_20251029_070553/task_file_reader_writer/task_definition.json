@@ -1,0 +1,13 @@
+{
+  "name": "file_reader_writer",
+  "level": 2,
+  "description": "File I/O operations",
+  "goal": "Create file_ops.py with write_file(path, content) and read_file(path) functions",
+  "expected_files": [
+    "file_ops.py"
+  ],
+  "tags": [
+    "file-io"
+  ],
+  "timeout_rounds": 30
+}

@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from number_checks import is_even, is_odd, is_positive, is_negative; assert is_even(4); assert is_odd(5); assert is_positive(10); assert is_negative(-5)
+Exit code: 0
+Stdout:
+
+

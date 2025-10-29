@@ -1,0 +1,14 @@
+{
+  "name": "binary_search",
+  "level": 3,
+  "description": "Implement binary search",
+  "goal": "Create search.py with binary_search(lst, target) that returns index of target or -1",
+  "expected_files": [
+    "search.py"
+  ],
+  "tags": [
+    "algorithm",
+    "search"
+  ],
+  "timeout_rounds": 40
+}

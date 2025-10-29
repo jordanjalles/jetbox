@@ -1,0 +1,14 @@
+{
+  "name": "simple_function",
+  "level": 1,
+  "description": "Single file with one simple function",
+  "goal": "Create a Python file called greet.py with a function greet(name) that returns 'Hello, {name}!'",
+  "expected_files": [
+    "greet.py"
+  ],
+  "tags": [
+    "single-file",
+    "basic"
+  ],
+  "timeout_rounds": 20
+}

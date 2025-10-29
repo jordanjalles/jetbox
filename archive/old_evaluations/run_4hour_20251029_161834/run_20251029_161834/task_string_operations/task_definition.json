@@ -1,0 +1,14 @@
+{
+  "name": "string_operations",
+  "level": 1,
+  "description": "String manipulation functions",
+  "goal": "Create string_utils.py with: uppercase(s), lowercase(s), reverse_string(s), count_vowels(s)",
+  "expected_files": [
+    "string_utils.py"
+  ],
+  "tags": [
+    "single-file",
+    "strings"
+  ],
+  "timeout_rounds": 20
+}

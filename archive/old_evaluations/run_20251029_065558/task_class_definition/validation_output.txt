@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from person import Person; p=Person('Alice',25,'a@b.com'); assert p.is_adult()==True; assert 'Alice' in str(p)
+Exit code: 0
+Stdout:
+
+

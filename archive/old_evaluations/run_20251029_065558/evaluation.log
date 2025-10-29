@@ -1,0 +1,285 @@
+[06:55:58] 
+======================================================================
+[06:55:58] COMPREHENSIVE JETBOX EVALUATION
+[06:55:58] Run ID: 20251029_065558
+[06:55:58] Output directory: evaluation_results/run_20251029_065558
+[06:55:58] Model: default
+[06:55:58] ======================================================================
+[06:55:58] 
+######################################################################
+[06:55:58] Progress: Task 1/14
+[06:55:58] ######################################################################
+[06:55:58] 
+======================================================================
+[06:55:58] STARTING: Level 1 - simple_function
+[06:55:58] Goal: Create a Python file called greet.py with a function greet(name) that returns 'Hello, {name}!'
+[06:55:58] Timeout: 20 rounds
+[06:55:58] ======================================================================
+[06:55:58] Workspace: /tmp/tmp0n_im5rl/create-a-python-file-called-greet-py-with-a-functi
+[06:55:58] 🤖 Starting agent execution...
+[06:56:16] ✅ Agent execution completed
+[06:56:16]    Result: failure
+[06:56:16] 📁 Files created: ['greet.py']
+[06:56:16] 
+✅ PASS - simple_function
+[06:56:16]    Duration: 18.4s
+[06:56:16]    Rounds used: 95/20
+[06:56:16] 
+######################################################################
+[06:56:16] Progress: Task 2/14
+[06:56:16] ######################################################################
+[06:56:16] 
+======================================================================
+[06:56:16] STARTING: Level 1 - simple_math
+[06:56:16] Goal: Create math_utils.py with functions: add(a,b), subtract(a,b), multiply(a,b), divide(a,b). Include proper error handling for division by zero.
+[06:56:16] Timeout: 20 rounds
+[06:56:16] ======================================================================
+[06:56:16] Workspace: /tmp/tmp0n_im5rl/create-math-utils-py-with-functions-add-a-b-sub
+[06:56:16] 🤖 Starting agent execution...
+[06:56:41] ✅ Agent execution completed
+[06:56:41]    Result: failure
+[06:56:41] 📁 Files created: ['math_utils.py']
+[06:56:41] 
+✅ PASS - simple_math
+[06:56:41]    Duration: 24.4s
+[06:56:41]    Rounds used: 115/20
+[06:56:41] 
+######################################################################
+[06:56:41] Progress: Task 3/14
+[06:56:41] ######################################################################
+[06:56:41] 
+======================================================================
+[06:56:41] STARTING: Level 1 - list_operations
+[06:56:41] Goal: Create list_utils.py with functions: get_max(lst), get_min(lst), get_average(lst), remove_duplicates(lst)
+[06:56:41] Timeout: 20 rounds
+[06:56:41] ======================================================================
+[06:56:41] Workspace: /tmp/tmp0n_im5rl/create-list-utils-py-with-functions-get-max-lst
+[06:56:41] 🤖 Starting agent execution...
+[06:57:02] ✅ Agent execution completed
+[06:57:02]    Result: failure
+[06:57:02] 📁 Files created: ['list_utils.py']
+[06:57:02] 
+✅ PASS - list_operations
+[06:57:02]    Duration: 21.6s
+[06:57:02]    Rounds used: 135/20
+[06:57:02] 
+######################################################################
+[06:57:02] Progress: Task 4/14
+[06:57:02] ######################################################################
+[06:57:02] 
+======================================================================
+[06:57:02] STARTING: Level 2 - class_definition
+[06:57:02] Goal: Create a Person class in person.py with attributes: name, age, email. Include __init__, __str__, and a method is_adult() that returns True if age >= 18.
+[06:57:02] Timeout: 20 rounds
+[06:57:02] ======================================================================
+[06:57:02] Workspace: /tmp/tmp0n_im5rl/create-a-person-class-in-person-py-with-attributes
+[06:57:02] 🤖 Starting agent execution...
+[06:58:55] ⚠️  Agent execution error: No response from Ollama for 30s - likely hung or dead
+[06:58:55] 📁 Files created: ['person.py']
+[06:58:55] 
+✅ PASS - class_definition
+[06:58:55]    Duration: 113.1s
+[06:58:55]    Rounds used: 151/20
+[06:58:55] 
+######################################################################
+[06:58:55] Progress: Task 5/14
+[06:58:55] ######################################################################
+[06:58:55] 
+======================================================================
+[06:58:55] STARTING: Level 2 - multi_file_package
+[06:58:55] Goal: Create a package called 'shapes' with: shapes/__init__.py (exports all), shapes/circle.py (Circle class with area() method), shapes/rectangle.py (Rectangle class with area() method)
+[06:58:55] Timeout: 25 rounds
+[06:58:56] ======================================================================
+[06:58:56] Workspace: /tmp/tmp0n_im5rl/create-a-package-called-shapes-with-shapes-in
+[06:58:56] 🤖 Starting agent execution...
+[06:59:56] ✅ Agent execution completed
+[06:59:56]    Result: failure
+[06:59:56] 📁 Files created: ['shapes/__init__.py', 'shapes/circle.py', 'shapes/rectangle.py']
+[06:59:56] 
+✅ PASS - multi_file_package
+[06:59:56]    Duration: 60.8s
+[06:59:56]    Rounds used: 176/25
+[06:59:56] 
+######################################################################
+[06:59:56] Progress: Task 6/14
+[06:59:56] ######################################################################
+[06:59:56] 
+======================================================================
+[06:59:56] STARTING: Level 2 - file_io
+[06:59:56] Goal: Create file_processor.py with: write_lines(filename, lines), read_lines(filename), count_words(filename). Include proper error handling for missing files.
+[06:59:56] Timeout: 20 rounds
+[06:59:56] ======================================================================
+[06:59:56] Workspace: /tmp/tmp0n_im5rl/create-file-processor-py-with-write-lines-filenam
+[06:59:56] 🤖 Starting agent execution...
+[07:00:21] ✅ Agent execution completed
+[07:00:21]    Result: failure
+[07:00:21] 📁 Files created: ['file_processor.py']
+[07:00:21] 
+✅ PASS - file_io
+[07:00:21]    Duration: 25.0s
+[07:00:21]    Rounds used: 196/20
+[07:00:21] 
+######################################################################
+[07:00:21] Progress: Task 7/14
+[07:00:21] ######################################################################
+[07:00:21] 
+======================================================================
+[07:00:21] STARTING: Level 2 - data_validation
+[07:00:21] Goal: Create validator.py with: validate_email(email), validate_phone(phone), validate_url(url). Each returns True/False. Use regex patterns.
+[07:00:21] Timeout: 20 rounds
+[07:00:21] ======================================================================
+[07:00:21] Workspace: /tmp/tmp0n_im5rl/create-validator-py-with-validate-email-email-v
+[07:00:21] 🤖 Starting agent execution...
+[07:00:51] ✅ Agent execution completed
+[07:00:51]    Result: failure
+[07:00:51] 📁 Files created: ['validator.py']
+[07:00:51] 
+❌ FAIL - data_validation
+[07:00:51]    Duration: 29.6s
+[07:00:51]    Rounds used: 216/20
+[07:00:51]    Failure: syntax_error
+[07:00:51] 
+######################################################################
+[07:00:51] Progress: Task 8/14
+[07:00:51] ######################################################################
+[07:00:51] 
+======================================================================
+[07:00:51] STARTING: Level 3 - sorting_algorithms
+[07:00:51] Goal: Create sorting.py with implementations of: bubble_sort(lst), quick_sort(lst), merge_sort(lst). Include docstrings explaining the algorithms.
+[07:00:51] Timeout: 30 rounds
+[07:00:51] ======================================================================
+[07:00:51] Workspace: /tmp/tmp0n_im5rl/create-sorting-py-with-implementations-of-bubble
+[07:00:51] 🤖 Starting agent execution...
+[07:02:01] ✅ Agent execution completed
+[07:02:01]    Result: failure
+[07:02:01] 📁 Files created: ['sorting.py']
+[07:02:01] 
+❌ FAIL - sorting_algorithms
+[07:02:01]    Duration: 70.3s
+[07:02:01]    Rounds used: 246/30
+[07:02:01]    Failure: syntax_error
+[07:02:01] 
+######################################################################
+[07:02:01] Progress: Task 9/14
+[07:02:02] ######################################################################
+[07:02:02] 
+======================================================================
+[07:02:02] STARTING: Level 3 - json_api_client
+[07:02:02] Goal: Create api_client.py with a class JSONClient that has methods: get(url), post(url, data), parse_response(). Use requests library. Include error handling for network errors.
+[07:02:02] Timeout: 30 rounds
+[07:02:02] ======================================================================
+[07:02:02] Workspace: /tmp/tmp0n_im5rl/create-api-client-py-with-a-class-jsonclient-that
+[07:02:02] 🤖 Starting agent execution...
+[07:02:37] ✅ Agent execution completed
+[07:02:37]    Result: failure
+[07:02:37] 📁 Files created: ['api_client.py']
+[07:02:37] 
+✅ PASS - json_api_client
+[07:02:37]    Duration: 35.6s
+[07:02:37]    Rounds used: 276/30
+[07:02:37] 
+######################################################################
+[07:02:37] Progress: Task 10/14
+[07:02:37] ######################################################################
+[07:02:37] 
+======================================================================
+[07:02:37] STARTING: Level 3 - csv_processor
+[07:02:37] Goal: Create csv_analyzer.py with: load_csv(filename), get_column_stats(data, column), filter_rows(data, condition), export_csv(data, filename). Handle missing values.
+[07:02:37] Timeout: 30 rounds
+[07:02:37] ======================================================================
+[07:02:37] Workspace: /tmp/tmp0n_im5rl/create-csv-analyzer-py-with-load-csv-filename-g
+[07:02:37] 🤖 Starting agent execution...
+[07:03:12] ✅ Agent execution completed
+[07:03:12]    Result: failure
+[07:03:12] 📁 Files created: ['csv_analyzer.py']
+[07:03:12] 
+❌ FAIL - csv_processor
+[07:03:12]    Duration: 35.0s
+[07:03:12]    Rounds used: 306/30
+[07:03:12]    Failure: syntax_error
+[07:03:12] 
+######################################################################
+[07:03:12] Progress: Task 11/14
+[07:03:12] ######################################################################
+[07:03:12] 
+======================================================================
+[07:03:12] STARTING: Level 3 - cache_decorator
+[07:03:12] Goal: Create decorators.py with a @memoize decorator that caches function results. Include a function to clear the cache. Test with fibonacci function.
+[07:03:12] Timeout: 30 rounds
+[07:03:12] ======================================================================
+[07:03:12] Workspace: /tmp/tmp0n_im5rl/create-decorators-py-with-a-memoize-decorator-tha
+[07:03:12] 🤖 Starting agent execution...
+[07:03:57] ⚠️  Agent execution error: run_cmd() got an unexpected keyword argument 'command'
+[07:03:57] 📁 Files created: ['decorators.py']
+[07:03:57] 
+❌ FAIL - cache_decorator
+[07:03:57]    Duration: 45.0s
+[07:03:57]    Rounds used: 319/30
+[07:03:57]    Failure: syntax_error
+[07:03:57] 
+######################################################################
+[07:03:57] Progress: Task 12/14
+[07:03:57] ######################################################################
+[07:03:57] 
+======================================================================
+[07:03:57] STARTING: Level 4 - database_orm
+[07:03:57] Goal: Create database.py with a simple ORM: Model base class, Database connection manager, methods for save(), find(), delete(). Use SQLite. Include a User model example.
+[07:03:57] Timeout: 40 rounds
+[07:03:57] ======================================================================
+[07:03:57] Workspace: /tmp/tmp0n_im5rl/create-database-py-with-a-simple-orm-model-base-c
+[07:03:57] 🤖 Starting agent execution...
+[07:07:30] ✅ Agent execution completed
+[07:07:30]    Result: failure
+[07:07:30] 📁 Files created: ['database.py']
+[07:07:30] 
+❌ FAIL - database_orm
+[07:07:30]    Duration: 212.9s
+[07:07:30]    Rounds used: 359/40
+[07:07:30]    Failure: test_failure
+[07:07:30] 
+######################################################################
+[07:07:30] Progress: Task 13/14
+[07:07:30] ######################################################################
+[07:07:30] 
+======================================================================
+[07:07:30] STARTING: Level 4 - async_downloader
+[07:07:30] Goal: Create async_downloader.py using asyncio. Implement: download_file(url, filename), download_multiple(urls), with progress tracking. Handle errors gracefully.
+[07:07:30] Timeout: 40 rounds
+[07:07:30] ======================================================================
+[07:07:30] Workspace: /tmp/tmp0n_im5rl/create-async-downloader-py-using-asyncio-implemen
+[07:07:30] 🤖 Starting agent execution...
+[07:08:04] ⚠️  Agent execution error: run_cmd() got an unexpected keyword argument 'command'
+[07:08:04] 📁 Files created: ['async_downloader.py']
+[07:08:04] 
+❌ FAIL - async_downloader
+[07:08:04]    Duration: 33.9s
+[07:08:04]    Rounds used: 385/40
+[07:08:04]    Failure: import_error
+[07:08:04] 
+######################################################################
+[07:08:04] Progress: Task 14/14
+[07:08:04] ######################################################################
+[07:08:04] 
+======================================================================
+[07:08:04] STARTING: Level 4 - test_framework
+[07:08:04] Goal: Create test_framework.py with: TestCase base class, assertEqual/assertTrue/assertRaises methods, TestRunner that discovers and runs tests, generates reports.
+[07:08:04] Timeout: 40 rounds
+[07:08:04] ======================================================================
+[07:08:04] Workspace: /tmp/tmp0n_im5rl/create-test-framework-py-with-testcase-base-class
+[07:08:04] 🤖 Starting agent execution...
+[07:08:13] ⚠️  Agent execution error: write_file() got an unexpected keyword argument 'commentary'
+[07:08:13] 📁 Files created: None
+[07:08:13] ❌ Missing files: {'test_framework.py'}
+[07:08:13] ⚠️  Skipping validation - missing files
+[07:08:13] 
+❌ FAIL - test_framework
+[07:08:13]    Duration: 8.8s
+[07:08:13]    Rounds used: 386/40
+[07:08:13]    Failure: missing_files
+[07:08:13] 📊 Report generated: evaluation_results/run_20251029_065558/EVALUATION_REPORT.md
+[07:08:13] 
+======================================================================
+[07:08:13] ✅ EVALUATION COMPLETE!
+[07:08:13] Total duration: 12.3 minutes
+[07:08:13] Results saved to: evaluation_results/run_20251029_065558
+[07:08:13] ======================================================================

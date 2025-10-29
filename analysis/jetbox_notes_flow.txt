@@ -1,0 +1,230 @@
+JETBOX NOTES SYSTEM - VISUAL FLOW
+===================================
+
+SINGLE RUN FLOW
+---------------
+
+User: "Build REST API with 3 endpoints"
+    │
+    ├─ agent.py starts
+    │  └─ Load jetboxnotes.md (if exists from previous run)
+    │     [Currently: empty or has previous attempt notes]
+    │
+    ├─ Decompose into 3 tasks
+    │
+    ├─ Task 1: "Create FastAPI structure"
+    │  ├─ Subtask 1.1: Write server.py ✓
+    │  ├─ Subtask 1.2: Write models.py ✓
+    │  └─ Subtask 1.3: Write config.py ✓
+    │     │
+    │     └─ TASK COMPLETE → Prompt agent:
+    │        "Summarize what was accomplished"
+    │        │
+    │        Agent: "- Created FastAPI structure
+    │                 - Main: server.py
+    │                 - DB models in models.py"
+    │        │
+    │        └─ Append to jetboxnotes.md:
+    │           ## Task Complete - 15:30:22
+    │           - Created FastAPI structure
+    │           - Main: server.py
+    │           - DB models in models.py
+    │           ---
+    │
+    ├─ Task 2: "Implement API endpoints"
+    │  │  [Context now includes notes from Task 1!]
+    │  │
+    │  ├─ Subtask 2.1: Write routes/users.py ✓
+    │  ├─ Subtask 2.2: Write routes/posts.py ✓
+    │  └─ Subtask 2.3: Write routes/auth.py ✓
+    │     │
+    │     └─ TASK COMPLETE → Prompt + Append:
+    │        ## Task Complete - 15:45:10
+    │        - Implemented 3 endpoints
+    │        - Added JWT authentication
+    │        - Routes in routes/ directory
+    │        ---
+    │
+    └─ Task 3: "Write tests"
+       │  [Context includes notes from Task 1 + 2!]
+       │
+       ├─ Subtask 3.1: Write test_users.py ✓
+       ├─ Subtask 3.2: Write test_posts.py ✓
+       └─ Subtask 3.3: Write test_auth.py ✓
+          │
+          └─ TASK COMPLETE → Prompt + Append:
+             ## Task Complete - 16:00:05
+             - Added 15 integration tests
+             - All tests passing
+             - Coverage: 95%
+             ---
+             │
+             └─ GOAL COMPLETE → Prompt + Append + Pass Up:
+                ## ✓ GOAL COMPLETE - 16:00:05
+
+                Accomplished:
+                - Built complete REST API
+                - 3 endpoints with JWT auth
+                - 15 tests, all passing
+
+                Key files:
+                - server.py
+                - routes/*.py
+                - tests/*.py
+                ---
+                │
+                ├─ Print to console:
+                │  === Agent Complete ===
+                │  Goal: Build REST API
+                │
+                │  === Final Summary ===
+                │  [summary content]
+                │
+                │  Notes: .agent_workspace/build-rest-api/jetboxnotes.md
+                │
+                └─ If orchestrator: send_message_to_orchestrator(summary)
+
+
+MULTI-RUN FLOW (RESUMPTION)
+----------------------------
+
+Run 1: Goal fails
+    │
+    └─ GOAL FAILED → Append:
+       ## ✗ GOAL FAILED - 14:00:00
+       - Attempted to create API
+       - Failed: Missing DB credentials
+       - Got as far as: FastAPI structure created
+       - Learned: Need .env configuration
+       ---
+
+[jetboxnotes.md saved to workspace]
+
+Run 2: User reruns same goal
+    │
+    ├─ Load jetboxnotes.md
+    │  [Contains failure notes!]
+    │
+    ├─ Decompose goal (with notes as context)
+    │  Agent now knows: "Need .env configuration"
+    │
+    ├─ Task 1: Setup (with .env this time)
+    │  └─ Creates .env file ✓
+    │     └─ TASK COMPLETE → Append:
+    │        ## Task Complete - 15:00:00
+    │        - Fixed: Added .env configuration
+    │        - DB connection now working
+    │        ---
+    │
+    └─ Tasks 2-3 proceed successfully...
+
+
+CONTEXT WINDOW VIEW
+-------------------
+
+Every turn, agent sees:
+
+┌──────────────────────────────────────────────────────────┐
+│ SYSTEM PROMPT                                            │
+│ "You are a local coding agent..."                       │
+├──────────────────────────────────────────────────────────┤
+│ GOAL: Build REST API with 3 endpoints                   │
+│ CURRENT TASK: Implement API endpoints                   │
+│ ACTIVE SUBTASK: Write routes/users.py                   │
+├──────────────────────────────────────────────────────────┤
+│ === JETBOX NOTES ===                                    │
+│                                                          │
+│ # Jetbox Notes                                          │
+│                                                          │
+│ ## Task Complete - 15:30:22                             │
+│ - Created FastAPI structure                             │
+│ - Main: server.py                                       │
+│ - DB models in models.py                                │
+│ ---                                                      │
+│                                                          │
+│ === END NOTES ===                                       │
+├──────────────────────────────────────────────────────────┤
+│ [Empty message history - subtask isolated]              │
+└──────────────────────────────────────────────────────────┘
+
+Agent can see Task 1's summary while working on Task 2!
+But message history is still cleared between subtasks.
+
+
+FILE LOCATION & PERSISTENCE
+----------------------------
+
+Workspace structure:
+.agent_workspace/
+    └─ build-rest-api-with-3-endpoints/
+        ├─ server.py
+        ├─ models.py
+        ├─ routes/
+        │   ├─ users.py
+        │   ├─ posts.py
+        │   └─ auth.py
+        └─ jetboxnotes.md  ← Persists here!
+
+This workspace persists between runs.
+So jetboxnotes.md persists between runs.
+
+
+MULTI-AGENT FLOW
+----------------
+
+User: "Build REST API"
+    │
+    ├─ Orchestrator receives
+    │  └─ delegate_to_executor(task="Build REST API")
+    │     │
+    │     ├─ TaskExecutor starts
+    │     │  └─ Load jetboxnotes.md (in executor workspace)
+    │     │
+    │     ├─ Tasks 1-3 complete
+    │     │  └─ Each appends to jetboxnotes.md
+    │     │
+    │     └─ Goal Complete
+    │        └─ Final summary → Append + send_to_orchestrator()
+    │           │
+    │           ├─ Orchestrator receives summary message
+    │           │
+    │           └─ Orchestrator shows to user:
+    │              "TaskExecutor completed: Build REST API
+    │
+    │               Summary:
+    │               - Built complete REST API
+    │               - 3 endpoints with auth
+    │               - 15 tests passing"
+
+
+TRUNCATION (if notes get large)
+--------------------------------
+
+jetboxnotes.md actual size: 5000 chars
+
+Context sees:
+    === JETBOX NOTES ===
+    [... earlier notes truncated ...]
+
+    ## Task Complete - 16:45:00
+    [Most recent 2000 chars of file]
+
+    === END NOTES ===
+
+Tail of file is included (most recent = most relevant).
+
+
+KEY INSIGHT
+-----------
+
+Notes solve the cross-subtask context problem WITHOUT breaking isolation:
+
+✗ Before: Subtasks leak message history (bad isolation)
+✓ After: Subtasks isolated, but share structured summaries (good!)
+
+                Subtask 1        Subtask 2
+Message leak:   [msg history] → [msg history]  ✗ implicit
+Jetbox notes:   [summary] ────→ [summary]      ✓ explicit
+
+The summary is a deliberate, structured handoff.
+Not an accidental leak.

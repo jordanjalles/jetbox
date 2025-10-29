@@ -1,0 +1,6 @@
+=== Command 1 ===
+Command: python -c from list_utils import get_first, get_last, reverse_list; assert get_first([1,2,3])==1; assert get_last([1,2,3])==3; assert reverse_list([1,2,3])==[3,2,1]
+Exit code: 0
+Stdout:
+
+

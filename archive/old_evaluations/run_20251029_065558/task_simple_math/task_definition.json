@@ -1,0 +1,15 @@
+{
+  "name": "simple_math",
+  "level": 1,
+  "description": "Basic arithmetic operations",
+  "goal": "Create math_utils.py with functions: add(a,b), subtract(a,b), multiply(a,b), divide(a,b). Include proper error handling for division by zero.",
+  "expected_files": [
+    "math_utils.py"
+  ],
+  "tags": [
+    "single-file",
+    "basic",
+    "error-handling"
+  ],
+  "timeout_rounds": 20
+}

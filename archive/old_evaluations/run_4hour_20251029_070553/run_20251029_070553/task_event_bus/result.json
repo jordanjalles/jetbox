@@ -1,0 +1,11 @@
+{
+  "task": "event_bus",
+  "level": 6,
+  "success": false,
+  "duration": 41.5148561000824,
+  "rounds_used": 3963,
+  "files_created": [],
+  "validation_passed": false,
+  "failure_category": "missing_files",
+  "error_message": null
+}

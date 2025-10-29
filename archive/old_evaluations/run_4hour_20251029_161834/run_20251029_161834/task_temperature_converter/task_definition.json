@@ -1,0 +1,14 @@
+{
+  "name": "temperature_converter",
+  "level": 1,
+  "description": "Temperature conversion functions",
+  "goal": "Create temp_converter.py with: celsius_to_fahrenheit(c), fahrenheit_to_celsius(f)",
+  "expected_files": [
+    "temp_converter.py"
+  ],
+  "tags": [
+    "single-file",
+    "conversion"
+  ],
+  "timeout_rounds": 20
+}

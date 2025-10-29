@@ -1,0 +1,15 @@
+{
+  "name": "dependency_injection",
+  "level": 6,
+  "description": "Dependency injection container",
+  "goal": "Create DI container: register services, resolve dependencies, singleton/transient lifetimes",
+  "expected_files": [
+    "container.py",
+    "services.py"
+  ],
+  "tags": [
+    "design-pattern",
+    "di"
+  ],
+  "timeout_rounds": 70
+}

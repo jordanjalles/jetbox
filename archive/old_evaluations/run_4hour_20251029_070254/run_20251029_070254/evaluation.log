@@ -1,0 +1,61 @@
+[07:02:54] 
+######################################################################
+[07:02:54] STARTING RUN 1/1
+[07:02:54] ######################################################################
+
+[07:02:54] 
+======================================================================
+[07:02:54] STARTING: Level 1 - simple_function
+[07:02:54] Goal: Create a Python file called greet.py with a function greet(name) that returns 'Hello, {name}!'
+[07:02:54] Timeout: 20 rounds
+[07:02:54] ======================================================================
+[07:02:54] ❌ ERROR in simple_function: 'NoneType' object has no attribute 'model'
+[07:02:54]    Traceback:
+Traceback (most recent call last):
+  File "/workspace/comprehensive_evaluation.py", line 81, in run_task_with_agent
+    model=self.suite.model
+          ^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'model'
+
+[07:02:54] 
+======================================================================
+[07:02:54] STARTING: Level 1 - simple_math
+[07:02:54] Goal: Create math_ops.py with functions add(a,b), subtract(a,b), multiply(a,b), divide(a,b)
+[07:02:54] Timeout: 20 rounds
+[07:02:54] ======================================================================
+[07:02:54] ❌ ERROR in simple_math: 'NoneType' object has no attribute 'model'
+[07:02:54]    Traceback:
+Traceback (most recent call last):
+  File "/workspace/comprehensive_evaluation.py", line 81, in run_task_with_agent
+    model=self.suite.model
+          ^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'model'
+
+[07:02:54] 
+======================================================================
+[07:02:54] STARTING: Level 1 - list_operations
+[07:02:54] Goal: Create list_utils.py with functions: get_first(lst), get_last(lst), reverse_list(lst)
+[07:02:54] Timeout: 20 rounds
+[07:02:54] ======================================================================
+[07:02:55] ❌ ERROR in list_operations: 'NoneType' object has no attribute 'model'
+[07:02:55]    Traceback:
+Traceback (most recent call last):
+  File "/workspace/comprehensive_evaluation.py", line 81, in run_task_with_agent
+    model=self.suite.model
+          ^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'model'
+
+[07:02:55] 
+======================================================================
+[07:02:55] STARTING: Level 1 - string_operations
+[07:02:55] Goal: Create string_utils.py with: uppercase(s), lowercase(s), reverse_string(s), count_vowels(s)
+[07:02:55] Timeout: 20 rounds
+[07:02:55] ======================================================================
+[07:02:55] ❌ ERROR in string_operations: 'NoneType' object has no attribute 'model'
+[07:02:55]    Traceback:
+Traceback (most recent call last):
+  File "/workspace/comprehensive_evaluation.py", line 81, in run_task_with_agent
+    model=self.suite.model
+          ^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'model'
+

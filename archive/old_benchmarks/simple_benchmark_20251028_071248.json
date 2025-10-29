@@ -1,0 +1,361 @@
+{
+  "timestamp": "20251028_071248",
+  "gpt-oss:20b": {
+    "results": [
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "gpt-oss:20b",
+        "iteration": 1,
+        "success": true,
+        "duration": 62.53367519378662,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "gpt-oss:20b",
+        "iteration": 1,
+        "success": true,
+        "duration": 26.07351589202881,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "gpt-oss:20b",
+        "iteration": 1,
+        "success": true,
+        "duration": 51.76485013961792,
+        "rounds": 13,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "gpt-oss:20b",
+        "iteration": 2,
+        "success": false,
+        "duration": 24.53899908065796,
+        "rounds": 5,
+        "returncode": 1
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "gpt-oss:20b",
+        "iteration": 2,
+        "success": true,
+        "duration": 160.92188835144043,
+        "rounds": 27,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "gpt-oss:20b",
+        "iteration": 2,
+        "success": true,
+        "duration": 37.3568069934845,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "gpt-oss:20b",
+        "iteration": 3,
+        "success": true,
+        "duration": 19.205097198486328,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "gpt-oss:20b",
+        "iteration": 3,
+        "success": true,
+        "duration": 21.519142866134644,
+        "rounds": 8,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "gpt-oss:20b",
+        "iteration": 3,
+        "success": true,
+        "duration": 48.17574453353882,
+        "rounds": 10,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "gpt-oss:20b",
+        "iteration": 4,
+        "success": true,
+        "duration": 112.06587028503418,
+        "rounds": 23,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "gpt-oss:20b",
+        "iteration": 4,
+        "success": true,
+        "duration": 24.343517065048218,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "gpt-oss:20b",
+        "iteration": 4,
+        "success": true,
+        "duration": 38.59125876426697,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "gpt-oss:20b",
+        "iteration": 5,
+        "success": false,
+        "duration": 47.93047547340393,
+        "rounds": 11,
+        "returncode": 1
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "gpt-oss:20b",
+        "iteration": 5,
+        "success": true,
+        "duration": 23.482343673706055,
+        "rounds": 8,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "gpt-oss:20b",
+        "iteration": 5,
+        "success": true,
+        "duration": 98.15957999229431,
+        "rounds": 24,
+        "returncode": 0
+      }
+    ],
+    "stats": {
+      "total": 15,
+      "passed": 13,
+      "failed": 2,
+      "pass_rate": 86.66666666666667,
+      "avg_duration": 53.11085103352865,
+      "avg_rounds": 12.066666666666666,
+      "min_duration": 19.205097198486328,
+      "max_duration": 160.92188835144043
+    }
+  },
+  "qwen3:14b": {
+    "results": [
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "qwen3:14b",
+        "iteration": 1,
+        "success": true,
+        "duration": 71.17891693115234,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "qwen3:14b",
+        "iteration": 1,
+        "success": true,
+        "duration": 62.99544715881348,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "qwen3:14b",
+        "iteration": 1,
+        "success": false,
+        "duration": 222.79601335525513,
+        "rounds": 11,
+        "returncode": 1
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "qwen3:14b",
+        "iteration": 2,
+        "success": true,
+        "duration": 60.812209129333496,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "qwen3:14b",
+        "iteration": 2,
+        "success": true,
+        "duration": 83.97565126419067,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "qwen3:14b",
+        "iteration": 2,
+        "success": true,
+        "duration": 327.7045133113861,
+        "rounds": 12,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "qwen3:14b",
+        "iteration": 3,
+        "success": true,
+        "duration": 80.26304793357849,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "qwen3:14b",
+        "iteration": 3,
+        "success": true,
+        "duration": 73.04190373420715,
+        "rounds": 5,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "qwen3:14b",
+        "iteration": 3,
+        "success": true,
+        "duration": 208.89871883392334,
+        "rounds": 10,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "qwen3:14b",
+        "iteration": 4,
+        "success": true,
+        "duration": 45.294079303741455,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "qwen3:14b",
+        "iteration": 4,
+        "success": true,
+        "duration": 62.43122625350952,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "qwen3:14b",
+        "iteration": 4,
+        "success": true,
+        "duration": 164.98900961875916,
+        "rounds": 9,
+        "returncode": 0
+      },
+      {
+        "task_id": "L4-calc",
+        "task_name": "Calculator with Tests",
+        "level": 4,
+        "model": "qwen3:14b",
+        "iteration": 5,
+        "success": true,
+        "duration": 62.190979957580566,
+        "rounds": 7,
+        "returncode": 0
+      },
+      {
+        "task_id": "L5-refactor",
+        "task_name": "Refactor to Classes",
+        "level": 5,
+        "model": "qwen3:14b",
+        "iteration": 5,
+        "success": false,
+        "duration": 193.59202814102173,
+        "rounds": 7,
+        "returncode": 1
+      },
+      {
+        "task_id": "L6-api",
+        "task_name": "Simple API",
+        "level": 6,
+        "model": "qwen3:14b",
+        "iteration": 5,
+        "success": true,
+        "duration": 116.94003057479858,
+        "rounds": 12,
+        "returncode": 0
+      }
+    ],
+    "stats": {
+      "total": 15,
+      "passed": 13,
+      "failed": 2,
+      "pass_rate": 86.66666666666667,
+      "avg_duration": 122.47358503341675,
+      "avg_rounds": 8.4,
+      "min_duration": 45.294079303741455,
+      "max_duration": 327.7045133113861
+    }
+  }
+}
