@@ -17,8 +17,10 @@ from context_strategies import build_hierarchical_context  # Use FULL version
 from workspace_manager import WorkspaceManager
 from status_display import StatusDisplay, PerformanceStats
 from llm_utils import chat_with_inactivity_timeout
+from completion_detector import analyze_llm_response
 import jetbox_notes
 import tools
+import json
 
 
 class TaskExecutorAgent(BaseAgent):
@@ -392,13 +394,37 @@ class TaskExecutorAgent(BaseAgent):
 
                 # Execute tool calls
                 if "tool_calls" in msg:
-                    for tool_call in msg["tool_calls"]:
+                    tool_calls = msg["tool_calls"]
+
+                    # Analyze LLM response for completion signals
+                    current_task = self.context_manager._get_current_task()
+                    current_subtask = current_task.active_subtask() if current_task else None
+                    subtask_desc = current_subtask.description if current_subtask else None
+                    analysis = analyze_llm_response(msg.get("content", ""), tool_calls, subtask_desc)
+
+                    for idx, tool_call in enumerate(tool_calls):
+                        is_last_call = (idx == len(tool_calls) - 1)
+
                         result = self.dispatch_tool(tool_call)
 
                         # Record action in stats
                         if self.status_display:
                             success = not (isinstance(result, dict) and result.get("error"))
                             self.status_display.record_action(success)
+
+                        # Add nudge to last tool result if needed
+                        if is_last_call and analysis["should_nudge"]:
+                            result_with_nudge = result.copy() if isinstance(result, dict) else {"result": result}
+                            result_with_nudge["_nudge"] = analysis["nudge_message"]
+                            result = result_with_nudge
+                            print(f"[completion_detector] NUDGE: {analysis['reason']}")
+
+                        # Add tool result to messages
+                        tool_result_str = json.dumps(result)
+                        messages.append({
+                            "role": "tool",
+                            "content": tool_result_str,
+                        })
 
                         # Unwrap result
                         actual_result = result.get("result") if isinstance(result, dict) and "result" in result else result
