@@ -1,8 +1,8 @@
 # Integration Issues Found
 
-## Critical Issues (Need Fixing)
+## ✅ Fixed Issues
 
-### 1. Tool Definitions Duplicated
+### 1. Tool Definitions Duplicated - FIXED
 **File:** `task_executor_agent.py`
 **Line:** 93-184
 
@@ -18,17 +18,23 @@
 - `task_executor_agent.py.get_tools()` only defines 6 tools
 - Missing from get_tools(): grep_file, start_server, stop_server, check_server, list_servers
 
-**Solution:**
+**Solution Applied:**
 ```python
 def get_tools(self) -> list[dict[str, Any]]:
     """Return tools available to TaskExecutor."""
     return tools.get_tool_definitions()
 ```
 
-**Risk:** LOW - server tools and grep_file are in dispatch map but not advertised to LLM
+**Result:**
+- All 11 tools now advertised to LLM (was 6)
+- grep_file now available to LLM
+- Server tools now available to LLM
+- Single source of truth for tool definitions
+
+**Committed:** Commit [pending]
 
 
-### 2. orchestrator_status.py Not Integrated
+### 2. orchestrator_status.py Not Integrated - FIXED
 **File:** `orchestrator_status.py` (entire file)
 
 **Issue:** File exists with `OrchestratorStatusDisplay` class but is never imported or used.
@@ -44,12 +50,15 @@ orchestrator_status.py:class OrchestratorStatusDisplay:
 - Orchestrator has no status display (unlike TaskExecutor)
 - Architecture diagram claims it exists but it's not used
 
-**Solution:**
-- Either integrate into orchestrator_agent.py
-- Or delete if not needed
+**Solution Applied:**
+- File removed (not needed)
+- Orchestrator uses simple print statements for status
+- ARCHITECTURE.txt updated to reflect this
+
+**Committed:** Commit [pending]
 
 
-### 3. prompt_loader.py Not Used
+### 3. prompt_loader.py Not Used - FIXED
 **File:** `prompt_loader.py`
 
 **Issue:** Module exists with `load_prompts()` function but is never imported.
@@ -63,28 +72,33 @@ orchestrator_status.py:class OrchestratorStatusDisplay:
 - prompts.yaml is unused
 - Agent prompts are hardcoded in agent_config.yaml instead
 
-**Solution:**
-- Delete prompt_loader.py and prompts.yaml if not needed
-- Or integrate into agent_config.py to load prompts from YAML
+**Solution Applied:**
+- Deleted prompt_loader.py
+- Deleted prompts.yaml
+- Agent config remains in agent_config.yaml (YAML config works fine)
+
+**Committed:** Commit [pending]
 
 
 ## Medium Issues (Consider Fixing)
 
-### 4. grep_file Tool Missing from TaskExecutor
+### 4. grep_file Tool Missing from TaskExecutor - FIXED
 **File:** `task_executor_agent.py`
 **Line:** 81-184
 
 **Issue:** `grep_file` tool is defined in tools.py and in dispatch map, but not in get_tools() list.
 
-**Impact:**
-- LLM doesn't know grep_file exists
-- Tool works if called, but LLM won't call it
+**Impact:** Was not advertised to LLM
 
-**Solution:**
-- Add grep_file to get_tools() return value (or use tools.get_tool_definitions())
+**Solution Applied:**
+- Fixed by using tools.get_tool_definitions()
+- grep_file now advertised to LLM
+- Server tools also now advertised
+
+**Committed:** Commit [pending]
 
 
-### 5. Server Tools Missing from TaskExecutor Docstring
+### 5. Server Tools Missing from TaskExecutor Docstring - FIXED
 **File:** `task_executor_agent.py`
 **Line:** 81-92
 
@@ -107,9 +121,11 @@ Tools:
 - grep_file
 - start_server, stop_server, check_server, list_servers
 
-**Impact:**
-- Documentation out of sync with reality
-- Developers might not know these tools exist
+**Solution Applied:**
+- Updated docstring to mention all tool categories
+- Uses tools.get_tool_definitions() which is self-documenting
+
+**Committed:** Commit [pending]
 
 
 ## Low Priority Issues (Minor)
@@ -151,15 +167,22 @@ Tools:
 
 ## Summary Statistics
 
-- **Critical issues:** 3 (tool duplication, orchestrator_status, prompt_loader)
-- **Medium issues:** 2 (grep_file missing, docstring out of sync)
-- **Low priority:** 2 (unused utilities, legacy imports)
-- **Fixed:** 1 (completion_detector)
+- **Fixed issues:** 5 ✅
+  - Tool duplication (now uses tools.get_tool_definitions())
+  - orchestrator_status.py (removed)
+  - prompt_loader.py (removed)
+  - grep_file missing (now advertised)
+  - docstring out of sync (updated)
 
-## Recommended Actions
+- **Low priority remaining:** 2
+  - Unused utilities (diag_speed.py, dsl.py, sitecustomize.py)
+  - Legacy imports differences
 
-1. **HIGH PRIORITY:** Replace manual tool definitions with `tools.get_tool_definitions()`
-2. **HIGH PRIORITY:** Delete or integrate `orchestrator_status.py`
-3. **MEDIUM:** Delete or integrate `prompt_loader.py` and `prompts.yaml`
-4. **LOW:** Update docstrings to match actual tool availability
-5. **LOW:** Document utility scripts or move to separate directory
+## Actions Completed
+
+1. ✅ Replaced manual tool definitions with `tools.get_tool_definitions()`
+2. ✅ Deleted `orchestrator_status.py` (not needed)
+3. ✅ Deleted `prompt_loader.py` and `prompts.yaml` (config-based approach is fine)
+4. ✅ All tools now advertised to LLM (11 tools vs previous 6)
+5. ✅ Updated ARCHITECTURE.txt to reflect changes
+6. ✅ Tested agent still works correctly

@@ -84,13 +84,13 @@ CORE SYSTEMS (Used by Agents)
 DISPLAY & MONITORING
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                             │
-│  ┌──────────────────┐          ┌─────────────────────┐                    │
-│  │ StatusDisplay    │          │OrchestratorStatus   │                    │
-│  │                  │          │                     │                    │
-│  │ - Task tree      │          │ - Agent list        │                    │
-│  │ - Progress bars  │          │ - Status per agent  │                    │
-│  │ - Performance    │          │ - Message routing   │                    │
-│  │ - Loop warnings  │          └─────────────────────┘                    │
+│  ┌──────────────────┐                                                      │
+│  │ StatusDisplay    │                                                      │
+│  │                  │                                                      │
+│  │ - Task tree      │                                                      │
+│  │ - Progress bars  │                                                      │
+│  │ - Performance    │                                                      │
+│  │ - Loop warnings  │                                                      │
 │  └──────────────────┘                                                      │
 │           │                                                                │
 │           │ reads                                                          │
@@ -100,19 +100,23 @@ DISPLAY & MONITORING
 │  │   (state tree)   │                                                      │
 │  └──────────────────┘                                                      │
 │                                                                             │
+│  Note: Orchestrator uses simple print statements instead of StatusDisplay │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 
 HELPER UTILITIES
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                             │
-│  ┌───────────────────┐   ┌────────────────────┐   ┌──────────────────┐   │
-│  │completion_detector│   │  jetbox_notes.py   │   │ prompt_loader.py │   │
-│  │                   │   │                    │   │                  │   │
-│  │- Pattern matching │   │- Auto-summarize    │   │- Load YAML       │   │
-│  │- Nudge completion │   │- Persist context   │   │  prompts         │   │
-│  └───────────────────┘   │- Load on startup   │   └──────────────────┘   │
+│  ┌───────────────────┐   ┌────────────────────┐                           │
+│  │completion_detector│   │  jetbox_notes.py   │                           │
+│  │                   │   │                    │                           │
+│  │- Pattern matching │   │- Auto-summarize    │                           │
+│  │- Nudge completion │   │- Persist context   │                           │
+│  └───────────────────┘   │- Load on startup   │                           │
 │                          └────────────────────┘                           │
+│                                                                             │
+│  Note: Agent config loaded from agent_config.yaml (no prompt_loader)      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -204,7 +208,6 @@ CORE SYSTEMS:
 
 DISPLAY & MONITORING:
   status_display.py           - Task progress display
-  orchestrator_status.py      - Orchestrator status display
 
 UTILITIES:
   llm_utils.py                - LLM interaction wrapper
@@ -212,7 +215,6 @@ UTILITIES:
   agent_registry.py           - Agent registration
   completion_detector.py      - Completion detection
   jetbox_notes.py             - Persistent context
-  prompt_loader.py            - YAML prompt loading
 
 LEGACY/DEMO:
   agent_legacy.py             - Original monolithic implementation

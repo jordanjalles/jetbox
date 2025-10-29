@@ -82,106 +82,16 @@ class TaskExecutorAgent(BaseAgent):
         """
         Return tools available to TaskExecutor.
 
-        Tools:
-        - write_file: Write content to a file
-        - read_file: Read file contents
-        - list_dir: List directory contents
-        - run_cmd: Execute shell commands (whitelisted)
-        - mark_subtask_complete: Mark current subtask as done
-        - decompose_task: Break task into subtasks
+        Uses centralized tool definitions from tools.get_tool_definitions()
+        to avoid duplication and ensure consistency.
+
+        Tools include:
+        - File operations: write_file, read_file, list_dir, grep_file
+        - Command execution: run_cmd (whitelisted: python, pytest, ruff, pip)
+        - Task management: mark_subtask_complete, decompose_task
+        - Server management: start_server, stop_server, check_server, list_servers
         """
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "write_file",
-                    "description": "Write content to a file (creates parent dirs if needed)",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "path": {"type": "string", "description": "File path relative to workspace"},
-                            "content": {"type": "string", "description": "File content to write"},
-                        },
-                        "required": ["path", "content"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "read_file",
-                    "description": "Read file contents",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "path": {"type": "string", "description": "File path relative to workspace"},
-                        },
-                        "required": ["path"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "list_dir",
-                    "description": "List directory contents",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "path": {"type": "string", "description": "Directory path (default: workspace root)"},
-                        },
-                        "required": [],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "run_cmd",
-                    "description": "Run shell command (only python, pytest, ruff, pip allowed)",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "command": {"type": "string", "description": "Command to execute"},
-                        },
-                        "required": ["command"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "mark_subtask_complete",
-                    "description": "Mark current subtask as complete (success or failure)",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "success": {"type": "boolean", "description": "True if subtask completed successfully"},
-                            "reason": {"type": "string", "description": "Reason for failure (if success=False)"},
-                        },
-                        "required": ["success"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "decompose_task",
-                    "description": "Break current task into smaller subtasks",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "subtasks": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of subtask descriptions",
-                            },
-                        },
-                        "required": ["subtasks"],
-                    },
-                },
-            },
-        ]
+        return tools.get_tool_definitions()
 
     def get_system_prompt(self) -> str:
         """Return system prompt from config."""
