@@ -1,0 +1,116 @@
+================================
+EVALUATION COMPLETE: 27/27 tasks
+================================
+
+RESULTS: 9/27 passed (33%)
+
+By Level:
+  L5 (Integration):    7/9  = 78%  ⬆️ (was 44%)
+  L6 (Architecture):   0/9  = 0%   ⬇️ (was 44%)
+  L7 (Expert):         2/9  = 22%  ⬆️ (was 0%)
+
+Detailed Breakdown:
+
+L5 INTEGRATION (7/9):
+  ✓✓✓ blog_system:     3/3 = 100%
+  ✓✓✗ todo_app:        2/3 = 67%  (was 0/3)
+  ✓✓✗ inventory:       2/3 = 67%  (was 1/3)
+
+L6 ARCHITECTURE (0/9):
+  ✗✗✗ observer:        0/3 = 0%   (REGRESSION: was 3/3!)
+  ✗✗✗ factory:         0/3 = 0%
+  ✗✗✗ DI:              0/3 = 0%   (was 1/3)
+
+L7 EXPERT (2/9):
+  ✗✗✗ rate_limiter:    0/3 = 0%
+  ✗✗✗ connection_pool: 0/3 = 0%
+  ✓✓✗ circuit_breaker: 2/3 = 67%  (NEW: was incomplete)
+
+================================
+KEY FINDINGS
+================================
+
+✅ WINS:
+1. L5 tasks improved dramatically (44% → 78%)
+   - Todo app: 0/3 → 2/3 (detailed specs helped!)
+   - Inventory: 1/3 → 2/3 (better guidance)
+
+2. Circuit breaker now works! (0/1 → 2/3)
+   - Detailed algorithm explanation helped
+   - No more immediate hangs
+
+3. Overall stability: 30 rounds consistently
+   - No LLM timeouts
+   - Models working through problems
+
+❌ REGRESSIONS:
+1. Observer pattern catastrophic failure (3/3 → 0/3)
+   - Too much detail may confuse model
+   - Complex multi-step instructions overwhelming
+
+2. L6 completely failing now (44% → 0%)
+   - All architecture patterns struggling
+   - Detailed specs not helping (hurting?)
+
+3. DI also regressed (1/3 → 0/3)
+
+4. Still one parameter invention error (line_end)
+   - Circuit breaker run 3 failed with write_file(line_end=...)
+   - Bash migration mostly working but not 100%
+
+================================
+COMPARISON: Before vs After
+================================
+
+BEFORE (with context clearing, simple specs):
+  L5: 4/9  = 44%
+  L6: 4/9  = 44%  (observer was 3/3!)
+  L7: 0/6  = 0%
+  Total: 8/24 = 33%
+
+AFTER (with context clearing + bash tools + detailed specs):
+  L5: 7/9  = 78%  ⬆️
+  L6: 0/9  = 0%   ⬇️⬇️⬇️
+  L7: 2/9  = 22%  ⬆️
+  Total: 9/27 = 33%
+
+================================
+ROOT CAUSE ANALYSIS
+================================
+
+Detailed specs help when:
+  ✓ Task is data-centric (models, CRUD)
+  ✓ Algorithm needs explanation (circuit breaker)
+  ✓ Clear step-by-step structure
+
+Detailed specs hurt when:
+  ✗ Pattern is well-known (observer, factory)
+  ✗ Too many instructions (information overload)
+  ✗ LLM already knows the pattern well
+
+Observer pattern example:
+  - Before: "Create observer pattern: Subject, Observer classes..."
+    Result: 3/3 passed (model knew what to do)
+  
+  - After: 12 lines of detailed instructions
+    Result: 0/3 passed (model confused by detail)
+
+================================
+RECOMMENDATIONS
+================================
+
+1. Revert L6 specs to simpler form
+   - Assume model knows architecture patterns
+   - Just specify interfaces/methods needed
+
+2. Keep L7 detailed specs
+   - Circuit breaker proof it helps
+   - Complex algorithms need explanation
+
+3. Consider hybrid approach:
+   - Simple overview + key details
+   - Not step-by-step instructions
+
+4. Fix remaining write_file parameter invention
+   - Add explicit warning in system prompt
+   - Or simplify write_file to single content param

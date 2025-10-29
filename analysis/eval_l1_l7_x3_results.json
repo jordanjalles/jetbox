@@ -1,0 +1,221 @@
+{
+  "timestamp": "2025-10-29T18:00:35.124876",
+  "model": "gpt-oss:20b",
+  "results": [
+    {
+      "level": "L1",
+      "name": "simple_function",
+      "run": 1,
+      "success": true,
+      "duration": 8.887054204940796,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L1",
+      "name": "simple_function",
+      "run": 2,
+      "success": true,
+      "duration": 4.489519357681274,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L1",
+      "name": "simple_function",
+      "run": 3,
+      "success": true,
+      "duration": 4.500741720199585,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L2",
+      "name": "class_definition",
+      "run": 1,
+      "success": true,
+      "duration": 6.030792713165283,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L2",
+      "name": "class_definition",
+      "run": 2,
+      "success": true,
+      "duration": 5.231259107589722,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L2",
+      "name": "class_definition",
+      "run": 3,
+      "success": true,
+      "duration": 5.656422853469849,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L3",
+      "name": "file_io",
+      "run": 1,
+      "success": true,
+      "duration": 9.136808395385742,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L3",
+      "name": "file_io",
+      "run": 2,
+      "success": true,
+      "duration": 9.252253293991089,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L3",
+      "name": "file_io",
+      "run": 3,
+      "success": true,
+      "duration": 8.806019306182861,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L4",
+      "name": "csv_processor",
+      "run": 1,
+      "success": true,
+      "duration": 12.224787473678589,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L4",
+      "name": "csv_processor",
+      "run": 2,
+      "success": true,
+      "duration": 14.823902606964111,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L4",
+      "name": "csv_processor",
+      "run": 3,
+      "success": true,
+      "duration": 12.673781871795654,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L5",
+      "name": "rest_api_mock",
+      "run": 1,
+      "success": true,
+      "duration": 12.35459852218628,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 6
+    },
+    {
+      "level": "L5",
+      "name": "rest_api_mock",
+      "run": 2,
+      "success": true,
+      "duration": 10.593995332717896,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 3
+    },
+    {
+      "level": "L5",
+      "name": "rest_api_mock",
+      "run": 3,
+      "success": true,
+      "duration": 25.734431982040405,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 12
+    },
+    {
+      "level": "L6",
+      "name": "async_downloader",
+      "run": 1,
+      "success": true,
+      "duration": 9.67327094078064,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L6",
+      "name": "async_downloader",
+      "run": 2,
+      "success": true,
+      "duration": 8.327867269515991,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L6",
+      "name": "async_downloader",
+      "run": 3,
+      "success": true,
+      "duration": 8.480252981185913,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L7",
+      "name": "web_scraper",
+      "run": 1,
+      "success": true,
+      "duration": 13.421408891677856,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L7",
+      "name": "web_scraper",
+      "run": 2,
+      "success": true,
+      "duration": 13.904808521270752,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    },
+    {
+      "level": "L7",
+      "name": "web_scraper",
+      "run": 3,
+      "success": true,
+      "duration": 12.761927604675293,
+      "files_ok": true,
+      "validation_ok": true,
+      "rounds": 2
+    }
+  ],
+  "summary": {
+    "total_passed": 21,
+    "total_tasks": 21,
+    "pass_rate": 100.0
+  }
+}

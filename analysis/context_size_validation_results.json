@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "passed": 4,
+    "total": 4
+  },
+  "results": [
+    {
+      "test": "hierarchical_bounded",
+      "success": true,
+      "total_history": 200,
+      "context_size": 26,
+      "expected_max": 26,
+      "estimated_tokens": 799
+    },
+    {
+      "test": "hierarchical_isolation",
+      "success": true,
+      "large_history_context": 26,
+      "small_history_context": 12,
+      "max_expected": 26
+    },
+    {
+      "test": "orchestrator_compaction",
+      "success": true,
+      "original_messages": 400,
+      "compacted_messages": 22,
+      "estimated_tokens": 2550,
+      "token_limit": 8000,
+      "utilization": "31.9%"
+    },
+    {
+      "test": "orchestrator_no_compaction",
+      "success": true,
+      "messages": 20,
+      "context_size": 21,
+      "estimated_tokens": 83
+    }
+  ]
+}

@@ -16,7 +16,7 @@ from agent_config import config
 from context_strategies import build_hierarchical_context  # Use FULL version
 from workspace_manager import WorkspaceManager
 from status_display import StatusDisplay, PerformanceStats
-from llm_utils import chat_with_inactivity_timeout
+from llm_utils import chat_with_inactivity_timeout, clear_ollama_context
 from completion_detector import analyze_llm_response
 import jetbox_notes
 import tools
@@ -38,6 +38,7 @@ class TaskExecutorAgent(BaseAgent):
         max_rounds: int = 128,
         model: str = None,
         temperature: float = 0.2,
+        workspace_path: Path | str | None = None,
     ):
         """
         Initialize TaskExecutor with full agent.py features.
@@ -48,6 +49,7 @@ class TaskExecutorAgent(BaseAgent):
             max_rounds: Maximum rounds before giving up
             model: Ollama model to use (default from env or config)
             temperature: LLM temperature
+            workspace_path: Optional existing workspace directory to reuse (for iteration)
         """
         super().__init__(
             name="task_executor",
@@ -60,6 +62,9 @@ class TaskExecutorAgent(BaseAgent):
         self.model = model or os.getenv("OLLAMA_MODEL", "gpt-oss:20b")
         self.temperature = temperature
         self.max_rounds = max_rounds
+
+        # Workspace reuse support
+        self.workspace_path = workspace_path
 
         # Initialize context manager
         self.init_context_manager()
@@ -123,11 +128,10 @@ class TaskExecutorAgent(BaseAgent):
 
         # Map tool names to functions
         tool_map = {
-            "list_dir": tools.list_dir,
-            "read_file": tools.read_file,
-            "grep_file": tools.grep_file,
             "write_file": tools.write_file,
-            "run_cmd": tools.run_cmd,
+            "read_file": tools.read_file,
+            "list_dir": tools.list_dir,
+            "run_bash": tools.run_bash,
             "start_server": tools.start_server,
             "stop_server": tools.stop_server,
             "check_server": tools.check_server,
@@ -187,9 +191,9 @@ class TaskExecutorAgent(BaseAgent):
         # Initialize context manager with goal
         self.context_manager.load_or_init(goal)
 
-        # Initialize workspace
+        # Initialize workspace (pass workspace_path if reusing existing)
         goal_slug = goal.lower()[:50].replace(" ", "-").replace("/", "-")
-        self.init_workspace_manager(goal_slug)
+        self.init_workspace_manager(goal_slug, workspace_path=self.workspace_path)
 
         # Configure tools with workspace
         tools.set_workspace(self.workspace_manager)
@@ -248,115 +252,127 @@ class TaskExecutorAgent(BaseAgent):
         max_rounds = max_rounds or self.max_rounds
         messages = []  # Local message stack (cleared on subtask transitions)
 
-        for round_no in range(1, max_rounds + 1):
-            # Show status
-            if self.status_display:
-                # Get current subtask rounds (with defensive checks)
-                subtask_rounds = 0
-                try:
-                    if (self.context_manager
-                        and self.context_manager.state.goal
-                        and self.context_manager.state.goal.tasks
-                        and self.context_manager.state.current_task_idx is not None
-                        and self.context_manager.state.current_task_idx < len(self.context_manager.state.goal.tasks)):
-
-                        task = self.context_manager.state.goal.tasks[self.context_manager.state.current_task_idx]
-                        if task.active_subtask():
-                            subtask_rounds = task.active_subtask().rounds_spent
-                except (AttributeError, IndexError, TypeError):
-                    # If anything goes wrong, just use 0
+        try:
+            for round_no in range(1, max_rounds + 1):
+                # Show status
+                if self.status_display:
+                    # Get current subtask rounds (with defensive checks)
                     subtask_rounds = 0
+                    try:
+                        if (self.context_manager
+                            and self.context_manager.state.goal
+                            and self.context_manager.state.goal.tasks
+                            and self.context_manager.state.current_task_idx is not None
+                            and self.context_manager.state.current_task_idx < len(self.context_manager.state.goal.tasks)):
 
-                # Render and print status
-                try:
-                    status_output = self.status_display.render(
-                        round_no=round_no,
-                        subtask_rounds=subtask_rounds,
-                        max_rounds=self.config.rounds.max_per_subtask
-                    )
-                    print(status_output)
-                except Exception as e:
-                    # If status display fails, don't crash the agent
-                    print(f"[status_display] Error rendering status: {e}")
+                            task = self.context_manager.state.goal.tasks[self.context_manager.state.current_task_idx]
+                            if task.active_subtask():
+                                subtask_rounds = task.active_subtask().rounds_spent
+                    except (AttributeError, IndexError, TypeError):
+                        # If anything goes wrong, just use 0
+                        subtask_rounds = 0
 
-            # Build context
-            context = self.build_context()
+                    # Render and print status
+                    try:
+                        status_output = self.status_display.render(
+                            round_no=round_no,
+                            subtask_rounds=subtask_rounds,
+                            max_rounds=self.config.rounds.max_per_subtask
+                        )
+                        print(status_output)
+                    except Exception as e:
+                        # If status display fails, don't crash the agent
+                        print(f"[status_display] Error rendering status: {e}")
 
-            # Call LLM
-            start_time = time.time()
-            response = chat_with_inactivity_timeout(
-                model=self.model,
-                messages=context,
-                tools=self.get_tools(),
-                options={"temperature": self.temperature},
-            )
-            duration = time.time() - start_time
+                # Build context
+                context = self.build_context()
 
-            # Track performance
-            if self.status_display:
-                self.status_display.record_llm_call(duration, response.get("eval_count", 0))
+                # Call LLM
+                start_time = time.time()
+                response = chat_with_inactivity_timeout(
+                    model=self.model,
+                    messages=context,
+                    tools=self.get_tools(),
+                    options={"temperature": self.temperature},
+                )
+                duration = time.time() - start_time
 
-            # Add assistant message
-            if "message" in response:
-                msg = response["message"]
-                messages.append(msg)
-                self.add_message(msg)
+                # Track performance
+                if self.status_display:
+                    self.status_display.record_llm_call(duration, response.get("eval_count", 0))
 
-                # Execute tool calls
-                if "tool_calls" in msg:
-                    tool_calls = msg["tool_calls"]
+                # Add assistant message
+                if "message" in response:
+                    msg = response["message"]
+                    messages.append(msg)
+                    self.add_message(msg)
 
-                    # Analyze LLM response for completion signals
-                    current_task = self.context_manager._get_current_task()
-                    current_subtask = current_task.active_subtask() if current_task else None
-                    subtask_desc = current_subtask.description if current_subtask else None
-                    analysis = analyze_llm_response(msg.get("content", ""), tool_calls, subtask_desc)
+                    # Execute tool calls
+                    if "tool_calls" in msg:
+                        tool_calls = msg["tool_calls"]
 
-                    for idx, tool_call in enumerate(tool_calls):
-                        is_last_call = (idx == len(tool_calls) - 1)
+                        # Analyze LLM response for completion signals
+                        current_task = self.context_manager._get_current_task()
+                        current_subtask = current_task.active_subtask() if current_task else None
+                        subtask_desc = current_subtask.description if current_subtask else None
+                        analysis = analyze_llm_response(msg.get("content", ""), tool_calls, subtask_desc)
 
-                        result = self.dispatch_tool(tool_call)
+                        for idx, tool_call in enumerate(tool_calls):
+                            is_last_call = (idx == len(tool_calls) - 1)
 
-                        # Record action in stats
-                        if self.status_display:
-                            success = not (isinstance(result, dict) and result.get("error"))
-                            self.status_display.record_action(success)
+                            result = self.dispatch_tool(tool_call)
 
-                        # Add nudge to last tool result if needed
-                        if is_last_call and analysis["should_nudge"]:
-                            result_with_nudge = result.copy() if isinstance(result, dict) else {"result": result}
-                            result_with_nudge["_nudge"] = analysis["nudge_message"]
-                            result = result_with_nudge
-                            print(f"[completion_detector] NUDGE: {analysis['reason']}")
+                            # Record action in stats
+                            if self.status_display:
+                                success = not (isinstance(result, dict) and result.get("error"))
+                                self.status_display.record_action(success)
 
-                        # Add tool result to messages
-                        tool_result_str = json.dumps(result)
-                        messages.append({
-                            "role": "tool",
-                            "content": tool_result_str,
-                        })
+                            # Add nudge to last tool result if needed
+                            if is_last_call and analysis["should_nudge"]:
+                                result_with_nudge = result.copy() if isinstance(result, dict) else {"result": result}
+                                result_with_nudge["_nudge"] = analysis["nudge_message"]
+                                result = result_with_nudge
+                                print(f"[completion_detector] NUDGE: {analysis['reason']}")
 
-                        # Unwrap result
-                        actual_result = result.get("result") if isinstance(result, dict) and "result" in result else result
+                            # Add tool result to messages
+                            tool_result_str = json.dumps(result)
+                            tool_message = {
+                                "role": "tool",
+                                "content": tool_result_str,
+                            }
+                            messages.append(tool_message)  # For context isolation
+                            self.add_message(tool_message)  # For LLM visibility (adds to self.state.messages)
 
-                        # CRITICAL: Clear messages on subtask transitions
-                        if isinstance(actual_result, dict) and actual_result.get("status") in ["subtask_advanced", "task_advanced"]:
-                            old_count = len(messages)
-                            messages.clear()
-                            print(f"[context_isolation] Cleared {old_count} messages after subtask transition")
+                            # Unwrap result
+                            actual_result = result.get("result") if isinstance(result, dict) and "result" in result else result
 
-                        # Check for goal completion
-                        if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
-                            self._handle_goal_success()
-                            return {"status": "success", "goal": self.context_manager.state.goal.description}
+                            # CRITICAL: Clear messages on subtask transitions
+                            if isinstance(actual_result, dict) and actual_result.get("status") in ["subtask_advanced", "task_advanced"]:
+                                old_count = len(self.state.messages)
+                                self.clear_messages()  # Clear self.state.messages (used by build_context)
+                                messages.clear()  # Also clear local list for consistency
+                                print(f"[context_isolation] Cleared {old_count} messages after subtask transition")
 
-            # Increment rounds
-            self.increment_round()
+                            # Check for goal completion
+                            if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
+                                self._handle_goal_success()
+                                self._cleanup()
+                                return {"status": "success", "goal": self.context_manager.state.goal.description}
 
-        # Max rounds reached
-        goal_desc = self.context_manager.state.goal.description if self.context_manager.state.goal else "unknown"
-        self._handle_goal_failure(goal_desc, "Max rounds exceeded")
-        return {"status": "failure", "reason": "Max rounds exceeded"}
+                # Increment rounds
+                self.increment_round()
+
+            # Max rounds reached (end of for loop)
+            goal_desc = self.context_manager.state.goal.description if self.context_manager.state.goal else "unknown"
+            self._handle_goal_failure(goal_desc, "Max rounds exceeded")
+            self._cleanup()
+            return {"status": "failure", "reason": "Max rounds exceeded"}
+
+        except Exception as e:
+            # On any exception (including TimeoutError), cleanup and re-raise
+            print(f"[cleanup] Exception during run: {e}")
+            self._cleanup()
+            raise
 
     def _handle_goal_success(self) -> None:
         """Handle goal success with jetbox notes."""
@@ -386,6 +402,19 @@ class TaskExecutorAgent(BaseAgent):
         print("="*70)
         print(goal_summary)
         print("="*70)
+
+    def _cleanup(self) -> None:
+        """
+        Clean up after task completion.
+
+        Clears Ollama context to prevent state corruption from affecting
+        subsequent tasks. This is especially important after:
+        - Timeouts (model may be in bad reasoning loop)
+        - Complex tasks (circuit breakers, state machines)
+        - Any task that may have left model in confused state
+        """
+        print(f"[cleanup] Clearing Ollama context for {self.model}")
+        clear_ollama_context(self.model, self.get_system_prompt())
 
     def _probe_state(self) -> dict[str, Any]:
         """

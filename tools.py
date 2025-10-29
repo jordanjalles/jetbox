@@ -1,8 +1,13 @@
 """
 Shared tool implementations for Jetbox agents.
 
-All file-based tools (read_file, write_file, list_dir, grep_file) are workspace-aware:
+All file-based tools (write_file, read_file, list_dir) are workspace-aware:
 they use WorkspaceManager to resolve paths and enforce isolation.
+
+write_file and read_file now accept **kwargs to gracefully handle parameter invention:
+- Supported parameters: append, encoding, overwrite, max_size
+- Unsupported parameters: ignored with warning (no crashes)
+- This prevents agent failures when LLM invents reasonable-sounding parameters
 
 All tools return structured results (strings or dicts) suitable for LLM consumption.
 """
@@ -15,8 +20,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-# Whitelisted commands for run_cmd (Windows safety)
-SAFE_BIN = {"python", "pytest", "ruff", "pip"}
+# REMOVED: SAFE_BIN whitelist - replaced with run_bash for full flexibility
 
 # Global references set by agent at runtime
 _workspace = None  # WorkspaceManager instance
@@ -77,19 +81,27 @@ def list_dir(path: str | None = ".", **kwargs) -> list[str]:
         return [f"__error__: {e}"]
 
 
-def read_file(path: str, max_bytes: int = 200_000, offset: int = 0) -> str:
+def read_file(path: str, encoding: str = "utf-8", max_size: int = 1_000_000, **kwargs) -> str:
     """
-    Read a text file with optional offset for pagination (workspace-aware).
+    Read a text file (workspace-aware).
+
+    For large files, use run_bash with head/tail/sed instead.
 
     Args:
         path: File path (relative to workspace if set)
-        max_bytes: Maximum bytes to read (default 200KB)
-        offset: Byte offset to start reading from
+        encoding: Text encoding (default: utf-8)
+        max_size: Maximum bytes to read (default: 1MB)
+        **kwargs: Additional parameters (ignored with warning)
 
     Returns:
-        File contents with metadata if truncated
+        File contents (up to max_size, truncated if larger)
     """
     global _workspace
+
+    # Warn about unsupported parameters
+    if kwargs:
+        ignored = ", ".join(kwargs.keys())
+        print(f"[tools] read_file ignoring unsupported parameters: {ignored}")
 
     # Resolve path through workspace if available
     if _workspace:
@@ -97,110 +109,56 @@ def read_file(path: str, max_bytes: int = 200_000, offset: int = 0) -> str:
     else:
         resolved_path = Path(path)
 
-    with open(resolved_path, encoding="utf-8", errors="replace") as f:
-        if offset > 0:
-            f.seek(offset)
-        content = f.read(max_bytes)
+    with open(resolved_path, encoding=encoding, errors="replace") as f:
+        content = f.read(max_size)
 
-        # Add helpful metadata if file was truncated or offset was used
         file_size = resolved_path.stat().st_size
-        if offset > 0 or len(content) == max_bytes:
-            end_pos = offset + len(content)
-            metadata = f"\n[FILE READ: bytes {offset}-{end_pos} of {file_size} total]"
-            if end_pos < file_size:
-                metadata += f"\n[NOTE: {file_size - end_pos} bytes remaining. Use offset={end_pos} to continue reading]"
-            return content + metadata
+        if file_size > max_size:
+            return content + f"\n\n[TRUNCATED: File is {file_size} bytes, showing first {max_size}. Use run_bash('head -n 100 {path}') or similar for specific sections]"
         return content
 
 
-def grep_file(path: str, pattern: str, context_lines: int = 3, max_matches: int = 50) -> str:
-    """
-    Search for pattern in file and return matching lines with context.
-
-    Args:
-        path: File path (relative to workspace if set)
-        pattern: Python regex pattern to search for
-        context_lines: Lines of context before/after match (default 3)
-        max_matches: Maximum matches to return (default 50)
-
-    Returns:
-        Formatted string with matches and context, or error message
-    """
-    import re
-    global _workspace
-
-    # Resolve path through workspace if available
-    if _workspace:
-        resolved_path = _workspace.resolve_path(path)
-    else:
-        resolved_path = Path(path)
-
-    try:
-        regex = re.compile(pattern)
-    except re.error as e:
-        return f"[ERROR] Invalid regex pattern: {e}"
-
-    try:
-        with open(resolved_path, encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
-
-        # Find all matching lines
-        matching_line_nums = []
-        for i, line in enumerate(lines):
-            if regex.search(line):
-                matching_line_nums.append(i)
-                if len(matching_line_nums) >= max_matches:
-                    break
-
-        if not matching_line_nums:
-            return f"[NO MATCHES] Pattern '{pattern}' not found in {path}"
-
-        # Build output with context
-        result_lines = []
-        result_lines.append(f"[GREP] Found {len(matching_line_nums)} match(es) for '{pattern}' in {path}")
-        result_lines.append("")
-
-        # For each match, include context lines
-        included_lines = set()
-        for line_num in matching_line_nums:
-            start = max(0, line_num - context_lines)
-            end = min(len(lines), line_num + context_lines + 1)
-
-            # Add separator if there's a gap from previous match
-            if included_lines and start > max(included_lines) + 1:
-                result_lines.append("...")
-                result_lines.append("")
-
-            for i in range(start, end):
-                if i not in included_lines:
-                    prefix = ">>> " if i == line_num else "    "
-                    result_lines.append(f"{prefix}{i+1:4d} | {lines[i].rstrip()}")
-                    included_lines.add(i)
-
-            result_lines.append("")
-
-        if len(matching_line_nums) >= max_matches:
-            result_lines.append(f"[NOTE] Showing first {max_matches} matches. File may contain more.")
-
-        return "\n".join(result_lines)
-
-    except Exception as e:
-        return f"[ERROR] Failed to search file: {e}"
-
-
-def write_file(path: str, content: str, create_dirs: bool = True) -> str:
+def write_file(
+    path: str,
+    content: str,
+    append: bool = False,
+    encoding: str = "utf-8",
+    create_dirs: bool = True,
+    overwrite: bool = True,
+    line_end: str | None = None,
+    **kwargs
+) -> str:
     """
     Write/overwrite a text file (workspace-aware).
 
     Args:
         path: File path (relative to workspace if set)
         content: File contents to write
+        append: If True, append to file instead of overwriting (default False)
+        encoding: Text encoding (default: utf-8)
         create_dirs: Create parent directories if needed (default True)
+        overwrite: If False and file exists, return error (default True)
+        line_end: Line ending to use ('\\n', '\\r\\n', or None for system default)
+        **kwargs: Additional parameters (ignored with warning)
 
     Returns:
         Success message with path and size
     """
     global _workspace
+
+    # Warn about unsupported parameters (e.g., timeout)
+    if kwargs:
+        ignored = ", ".join(kwargs.keys())
+        print(f"[tools] write_file ignoring unsupported parameters: {ignored}")
+
+    # Normalize line endings if requested
+    if line_end is not None:
+        # First normalize to \n, then replace with desired ending
+        normalized = content.replace('\r\n', '\n').replace('\r', '\n')
+        if line_end != '\n':
+            content = normalized.replace('\n', line_end)
+        else:
+            content = normalized
 
     # Resolve path through workspace if available
     if _workspace:
@@ -224,35 +182,49 @@ def write_file(path: str, content: str, create_dirs: bool = True) -> str:
         resolved_path = Path(path)
         display_path = path
 
+    # Check overwrite flag
+    if not overwrite and resolved_path.exists():
+        error_msg = f"[ERROR] File exists and overwrite=False: {display_path}"
+        _ledger_append("ERROR", error_msg)
+        return error_msg
+
     if create_dirs:
         os.makedirs(os.path.dirname(resolved_path) or ".", exist_ok=True)
 
-    with open(resolved_path, "w", encoding="utf-8") as f:
+    # Choose write mode based on append flag
+    # Use newline='' to prevent Python from translating line endings
+    mode = "a" if append else "w"
+    newline = '' if line_end is not None else None
+    with open(resolved_path, mode, encoding=encoding, newline=newline) as f:
         f.write(content)
 
-    _ledger_append("WRITE", str(resolved_path))
-    return f"Wrote {len(content)} chars to {display_path}"
+    action = "Appended" if append else "Wrote"
+    _ledger_append("WRITE" if not append else "APPEND", str(resolved_path))
+    return f"{action} {len(content)} chars to {display_path}"
 
 
-def run_cmd(cmd: list[str], timeout_sec: int = 60) -> dict[str, Any]:
+def run_bash(command: str, timeout: int = 60) -> dict[str, Any]:
     """
-    Run a whitelisted command (workspace-aware).
+    Run any bash command in the workspace.
 
-    First token must be in SAFE_BIN whitelist for Windows safety.
+    Full shell access with pipes, redirection, and command chaining.
+    Use this for flexible file operations, testing, linting, etc.
 
     Args:
-        cmd: Command as list (e.g., ['python', 'script.py'])
-        timeout_sec: Timeout in seconds (default 60)
+        command: Full bash command string (e.g., "grep -r 'pattern' *.py | wc -l")
+        timeout: Timeout in seconds (default 60)
 
     Returns:
-        Dict with returncode, stdout, stderr, or error key
+        Dict with returncode, stdout, stderr
+
+    Examples:
+        run_bash("python script.py")
+        run_bash("pytest tests/ -v")
+        run_bash("grep -A 3 'class' file.py")
+        run_bash("find . -name '*.py' | xargs wc -l")
+        run_bash("cat file1.txt file2.txt > combined.txt")
     """
     global _workspace
-
-    if not cmd or cmd[0] not in SAFE_BIN:
-        err = f"Command not allowed: {cmd!r}. Use only {sorted(SAFE_BIN)}."
-        _ledger_append("ERROR", err)
-        return {"error": err}
 
     # Determine working directory
     cwd = str(_workspace.workspace_dir) if _workspace else None
@@ -260,16 +232,15 @@ def run_cmd(cmd: list[str], timeout_sec: int = 60) -> dict[str, Any]:
     # Set up environment with PYTHONPATH for workspace
     env = os.environ.copy()
     if _workspace and cwd:
-        # Add workspace directory to PYTHONPATH for pytest imports
-        if "pytest" in cmd or "python" in cmd:
-            env["PYTHONPATH"] = cwd
+        env["PYTHONPATH"] = cwd
 
     try:
         p = subprocess.run(
-            cmd,
+            command,
+            shell=True,  # Enable full shell features
             capture_output=True,
             text=True,
-            timeout=timeout_sec,
+            timeout=timeout,
             cwd=cwd,
             env=env
         )
@@ -278,17 +249,18 @@ def run_cmd(cmd: list[str], timeout_sec: int = 60) -> dict[str, Any]:
             "stdout": p.stdout[-50_000:],  # Truncate to last 50KB
             "stderr": p.stderr[-50_000:],
         }
-        _ledger_append("CMD", f"{cmd} -> rc={p.returncode}")
+        _ledger_append("BASH", f"{command[:100]} -> rc={p.returncode}")
         if p.returncode != 0:
-            _ledger_append("ERROR", f"run_cmd rc={p.returncode}: {p.stderr[:200]}")
+            _ledger_append("ERROR", f"run_bash rc={p.returncode}: {p.stderr[:200]}")
         return out
     except subprocess.TimeoutExpired:
-        err = f"timeout after {timeout_sec}s"
-        _ledger_append("ERROR", f"run_cmd timeout: {cmd}")
-        return {"error": err}
+        err = f"Command timed out after {timeout}s"
+        _ledger_append("ERROR", f"run_bash timeout: {command[:100]}")
+        return {"error": err, "returncode": -1, "stdout": "", "stderr": err}
     except Exception as e:
-        _ledger_append("ERROR", f"run_cmd exception: {e}")
-        return {"error": str(e)}
+        err_msg = str(e)
+        _ledger_append("ERROR", f"run_bash exception: {err_msg}")
+        return {"error": err_msg, "returncode": -1, "stdout": "", "stderr": err_msg}
 
 
 # ----------------------------
@@ -309,8 +281,8 @@ def start_server(cmd: list[str], name: str = None) -> dict[str, Any]:
     global _workspace
 
     # Validate command
-    if not cmd or cmd[0] not in SAFE_BIN:
-        return {"error": f"Command not allowed: {cmd!r}. Use only {sorted(SAFE_BIN)}."}
+    if not cmd:
+        return {"error": "Command cannot be empty"}
 
     # Generate server ID
     server_id = name or f"server_{int(time.time())}"
@@ -645,7 +617,7 @@ def get_tool_definitions() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "write_file",
-                "description": "Write/overwrite a text file. Creates parent directories automatically.",
+                "description": "Write/overwrite a text file. Supports append mode, custom encoding, line endings, and overwrite control.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -656,6 +628,22 @@ def get_tool_definitions() -> list[dict]:
                         "content": {
                             "type": "string",
                             "description": "Complete file contents to write"
+                        },
+                        "append": {
+                            "type": "boolean",
+                            "description": "If true, append to file instead of overwriting (default: false)"
+                        },
+                        "encoding": {
+                            "type": "string",
+                            "description": "Text encoding (default: utf-8)"
+                        },
+                        "line_end": {
+                            "type": "string",
+                            "description": "Line ending style: '\\n' (Unix), '\\r\\n' (Windows), or null for system default"
+                        },
+                        "overwrite": {
+                            "type": "boolean",
+                            "description": "If false and file exists, return error (default: true)"
                         }
                     },
                     "required": ["path", "content"]
@@ -666,7 +654,7 @@ def get_tool_definitions() -> list[dict]:
             "type": "function",
             "function": {
                 "name": "read_file",
-                "description": "Read a text file. Returns content with pagination support for large files.",
+                "description": "Read a text file (up to 1MB by default). For large files, adjust max_size or use run_bash with head/tail.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -674,9 +662,13 @@ def get_tool_definitions() -> list[dict]:
                             "type": "string",
                             "description": "File path (relative to workspace)"
                         },
-                        "offset": {
+                        "encoding": {
+                            "type": "string",
+                            "description": "Text encoding (default: utf-8)"
+                        },
+                        "max_size": {
                             "type": "integer",
-                            "description": "Byte offset to start reading (for large files)"
+                            "description": "Maximum bytes to read (default: 1000000)"
                         }
                     },
                     "required": ["path"]
@@ -702,43 +694,21 @@ def get_tool_definitions() -> list[dict]:
         {
             "type": "function",
             "function": {
-                "name": "grep_file",
-                "description": "Search for regex pattern in a file. Returns matching lines with context.",
+                "name": "run_bash",
+                "description": "Run any bash command with full shell features. Use for testing, linting, complex file operations, searching, etc.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "path": {
+                        "command": {
                             "type": "string",
-                            "description": "File path to search"
+                            "description": "Full bash command string (e.g., 'pytest tests/ -v', 'grep -r pattern *.py')"
                         },
-                        "pattern": {
-                            "type": "string",
-                            "description": "Python regex pattern to search for"
-                        },
-                        "context_lines": {
+                        "timeout": {
                             "type": "integer",
-                            "description": "Lines of context before/after match (default 3)"
+                            "description": "Timeout in seconds (default 60). Use higher values for slow operations."
                         }
                     },
-                    "required": ["path", "pattern"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "run_cmd",
-                "description": "Run whitelisted command (python, pytest, ruff, pip). Returns stdout/stderr.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "cmd": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Command as array (e.g., ['python', 'test.py'])"
-                        }
-                    },
-                    "required": ["cmd"]
+                    "required": ["command"]
                 }
             }
         },

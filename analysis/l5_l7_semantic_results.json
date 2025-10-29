@@ -1,0 +1,375 @@
+{
+  "timestamp": "2025-10-29T21:11:33.562376",
+  "model": "gpt-oss:20b",
+  "validation_type": "semantic",
+  "task_count": 27,
+  "results": [
+    {
+      "level": "L5",
+      "task_id": "L5_blog_system",
+      "name": "blog_system",
+      "run": 1,
+      "success": false,
+      "duration": 24.029419660568237,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 8
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_blog_system",
+      "name": "blog_system",
+      "run": 2,
+      "success": true,
+      "duration": 38.94052505493164,
+      "validation_ok": true,
+      "rounds": 30,
+      "files_created": [
+        "__init__.py",
+        "models.py",
+        "test_blog.py"
+      ],
+      "classes_found": [
+        "BlogManager",
+        "Post",
+        "Comment"
+      ],
+      "classes_missing": [],
+      "functions_found": [],
+      "functions_missing": []
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_blog_system",
+      "name": "blog_system",
+      "run": 3,
+      "success": false,
+      "duration": 72.02211117744446,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 21
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_todo_app",
+      "name": "todo_app",
+      "run": 1,
+      "success": false,
+      "duration": 38.70822620391846,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'overwrite'",
+      "rounds": 5
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_todo_app",
+      "name": "todo_app",
+      "run": 2,
+      "success": false,
+      "duration": 23.551984310150146,
+      "validation_ok": false,
+      "error": "error parsing tool call: raw='{\"command\":\"apply_patch <<'PATCH'\\n*** Begin Patch\\n*** Update File: todo_manager.py\\n@@\\n-from .todo import Category, Todo\\n+# Import the data models.  The original code used a relative import which\\n+# requires the module to be part of a package.  For the purposes of this\\n+# kata we run the tests from the repository root, so we use an absolute\\n+# import instead.\\n+from todo import Category, Todo\\n*** End Patch\\nPATCH\"]}', err=invalid character ']' after object key:value pair (status code: -1)",
+      "rounds": 2
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_todo_app",
+      "name": "todo_app",
+      "run": 3,
+      "success": false,
+      "duration": 48.02065372467041,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 11
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_inventory",
+      "name": "inventory_system",
+      "run": 1,
+      "success": true,
+      "duration": 59.77345538139343,
+      "validation_ok": true,
+      "rounds": 17,
+      "files_created": [
+        "inventory.py",
+        "product.py",
+        "test_inventory.py"
+      ],
+      "classes_found": [
+        "Inventory",
+        "Product"
+      ],
+      "classes_missing": [],
+      "functions_found": [],
+      "functions_missing": []
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_inventory",
+      "name": "inventory_system",
+      "run": 2,
+      "success": false,
+      "duration": 22.96631121635437,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'timeout'",
+      "rounds": 5
+    },
+    {
+      "level": "L5",
+      "task_id": "L5_inventory",
+      "name": "inventory_system",
+      "run": 3,
+      "success": false,
+      "duration": 44.999751329422,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 8
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_observer",
+      "name": "observer_pattern",
+      "run": 1,
+      "success": false,
+      "duration": 42.96523118019104,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'content'",
+      "rounds": 15
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_observer",
+      "name": "observer_pattern",
+      "run": 2,
+      "success": false,
+      "duration": 38.06536245346069,
+      "validation_ok": false,
+      "rounds": 20,
+      "files_created": [
+        "observer.py",
+        "subject.py",
+        "test_observer.py"
+      ],
+      "classes_found": [
+        "Subject",
+        "Observer"
+      ],
+      "classes_missing": [],
+      "functions_found": [
+        "notify"
+      ],
+      "functions_missing": [
+        "subscribe",
+        "unsubscribe"
+      ]
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_observer",
+      "name": "observer_pattern",
+      "run": 3,
+      "success": false,
+      "duration": 59.56210160255432,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'overwrite'",
+      "rounds": 25
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_factory",
+      "name": "factory_pattern",
+      "run": 1,
+      "success": false,
+      "duration": 15.254116296768188,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 8
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_factory",
+      "name": "factory_pattern",
+      "run": 2,
+      "success": false,
+      "duration": 17.142655849456787,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 13
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_factory",
+      "name": "factory_pattern",
+      "run": 3,
+      "success": false,
+      "duration": 11.952319860458374,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'overwrite'",
+      "rounds": 5
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_dependency_injection",
+      "name": "dependency_injection",
+      "run": 1,
+      "success": false,
+      "duration": 16.502171993255615,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 5
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_dependency_injection",
+      "name": "dependency_injection",
+      "run": 2,
+      "success": false,
+      "duration": 57.475807189941406,
+      "validation_ok": false,
+      "error": "No response from Ollama for 30s - likely hung or dead",
+      "rounds": 1
+    },
+    {
+      "level": "L6",
+      "task_id": "L6_dependency_injection",
+      "name": "dependency_injection",
+      "run": 3,
+      "success": false,
+      "duration": 12.107555627822876,
+      "validation_ok": false,
+      "error": "error parsing tool call: raw='{\"path\":\"tests/test_di_container.py\",\"content\":\"import pytest\\nfrom di_container import DIContainer\\n\\nclass Dummy:\\n    def __init__(self, value):\\n        self.value = value\\n\\n# Factory functions\\n\\ndef factory_a():\\n    return Dummy(1)\\n\\n\\ndef factory_b():\\n    return Dummy(2)\\n\\n\\ndef factory_counter(counter):\\n    def _factory():\\n        counter[0] += 1\\n        return Dummy(counter[0])\\n    return _factory\\n\\n\\ndef test_register_and_resolve_singleton():\\n    container = DIContainer()\\n    container.register(\\\"service\\\", factory_a, lifetime=\\\"singleton\\\")\\n    instance1 = container.resolve(\\\"service\\\")\\n    instance2 = container.resolve(\\\"service\\\")\\n    assert instance1 is instance2\\n    assert instance1.value == 1\\n\\n\\ndef test_register_and_resolve_transient():\\n    container = DIContainer()\\n    container.register(\\\"service\\\", factory_b, lifetime=\\\"transient\\\")\\n    instance1 = container.resolve(\\\"service\\\")\\n    instance2 = container.resolve(\\\"service\\\")\\n    assert instance1 is not instance2\\n    assert instance1.value == 2\\n    assert instance2.value == 2\\n\\n\\ndef test_singleton_factory_called_once():\\n    counter = [0]\\n    container = DIContainer()\\n    container.register(\\\"counter\\\", factory_counter(counter), lifetime=\\\"singleton\\\")\\n    container.resolve(\\\"counter\\\")\\n    container.resolve(\\\"counter\\\")\\n    assert counter[0] == 1\\n\\n\\ndef test_transient_factory_called_each_time():\\n    counter = [0]\\n    container = DIContainer()\\n    container.register(\\\"counter\\\", factory_counter(counter), lifetime=\\\"transient\\\")\\n    container.resolve(\\\"counter\\\")\\n    container.resolve(\\\"counter\\\")\\n    assert counter[0] == 2\\n\\n\\ndef test_unregistered_name_raises_key_error():\\n    container = DIContainer()\\n    with pytest.raises(KeyError):\\n        container.resolve(\\\"unknown\\\")\\n\\n\\ndef test_invalid_lifetime_raises_value_error():\\n    container = DIContainer()\\n    with pytest.raises(ValueError):\\n        container.register(\\\"bad\\\", factory_a, lifetime=\\\"invalid\\\")\\n\\n\",\"}', err=unexpected end of JSON input (status code: -1)",
+      "rounds": 1
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_rate_limiter",
+      "name": "rate_limiter",
+      "run": 1,
+      "success": false,
+      "duration": 35.30937433242798,
+      "validation_ok": false,
+      "rounds": 7,
+      "files_created": [
+        "rate_limiter.py",
+        "test_rate_limiter.py"
+      ],
+      "classes_found": [
+        "RateLimiter"
+      ],
+      "classes_missing": [],
+      "functions_found": [],
+      "functions_missing": [
+        "allow",
+        "check"
+      ]
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_rate_limiter",
+      "name": "rate_limiter",
+      "run": 2,
+      "success": false,
+      "duration": 31.685258388519287,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 6
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_rate_limiter",
+      "name": "rate_limiter",
+      "run": 3,
+      "success": false,
+      "duration": 28.733209133148193,
+      "validation_ok": false,
+      "error": "read_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 3
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_connection_pool",
+      "name": "connection_pool",
+      "run": 1,
+      "success": false,
+      "duration": 43.20805621147156,
+      "validation_ok": false,
+      "error": "error parsing tool call: raw='{\"command\":\"python - <<'PY'\\nimport time, threading\\nfrom connection_pool import ConnectionPool\\n\\npool = ConnectionPool(max_size=2)\\nc1 = pool.acquire()\\nc2 = pool.acquire()\\n\\nresults = []\\n\\ndef acquire_in_thread():\\n    try:\\n        conn = pool.acquire(timeout=2)\\n        results.append(conn)\\n    except Exception as e:\\n        results.append(e)\\n\\nthread = threading.Thread(target=acquire_in_thread)\\nthread.start()\\n\\n# release after 0.1s\\nthread2 = threading.Thread(target=lambda: (time.sleep(0.1), pool.release(c1)))\\nthread2.start()\\n\\nthread.join(3)\\nthread2.join()\\nprint('results', results)\\nPY\"],\"timeout\":120}', err=invalid character ']' after object key:value pair (status code: -1)",
+      "rounds": 5
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_connection_pool",
+      "name": "connection_pool",
+      "run": 2,
+      "success": false,
+      "duration": 37.875458002090454,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 7
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_connection_pool",
+      "name": "connection_pool",
+      "run": 3,
+      "success": false,
+      "duration": 45.32963824272156,
+      "validation_ok": false,
+      "rounds": 30,
+      "files_created": [
+        "connection_pool.py",
+        "test_connection_pool.py"
+      ],
+      "classes_found": [
+        "ConnectionPool"
+      ],
+      "classes_missing": [
+        "Pool"
+      ],
+      "functions_found": [
+        "acquire",
+        "release"
+      ],
+      "functions_missing": []
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_circuit_breaker",
+      "name": "circuit_breaker",
+      "run": 1,
+      "success": false,
+      "duration": 25.300777673721313,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 4
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_circuit_breaker",
+      "name": "circuit_breaker",
+      "run": 2,
+      "success": false,
+      "duration": 23.80148220062256,
+      "validation_ok": false,
+      "error": "write_file() got an unexpected keyword argument 'line_end'",
+      "rounds": 3
+    },
+    {
+      "level": "L7",
+      "task_id": "L7_circuit_breaker",
+      "name": "circuit_breaker",
+      "run": 3,
+      "success": false,
+      "duration": 46.18904662132263,
+      "validation_ok": false,
+      "error": "No response from Ollama for 30s - likely hung or dead",
+      "rounds": 1
+    }
+  ],
+  "summary": {
+    "total_passed": 2,
+    "total_tasks": 27,
+    "pass_rate": 7.4074074074074066
+  }
+}
