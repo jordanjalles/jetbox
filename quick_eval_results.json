@@ -1,0 +1,57 @@
+{
+  "results": [
+    {
+      "level": "L1",
+      "name": "simple_function",
+      "success": true,
+      "duration": 18.487459421157837,
+      "files_ok": true,
+      "validation_ok": true
+    },
+    {
+      "level": "L2",
+      "name": "class_definition",
+      "success": true,
+      "duration": 17.871570110321045,
+      "files_ok": true,
+      "validation_ok": true
+    },
+    {
+      "level": "L3",
+      "name": "file_io",
+      "success": true,
+      "duration": 39.30380392074585,
+      "files_ok": true,
+      "validation_ok": true
+    },
+    {
+      "level": "L4",
+      "name": "csv_processor",
+      "success": true,
+      "duration": 132.45629477500916,
+      "files_ok": true,
+      "validation_ok": true
+    },
+    {
+      "level": "L5",
+      "name": "rest_api_mock",
+      "success": true,
+      "duration": 67.30230617523193,
+      "files_ok": true,
+      "validation_ok": true
+    },
+    {
+      "level": "L6",
+      "name": "async_downloader",
+      "success": false,
+      "duration": 23.505388259887695,
+      "files_ok": true,
+      "validation_ok": false
+    }
+  ],
+  "summary": {
+    "total_passed": 5,
+    "total_tasks": 6,
+    "pass_rate": 83.33333333333334
+  }
+}
