@@ -489,13 +489,23 @@ def mark_subtask_complete(
         # Try to advance to next subtask
         has_next = context_manager.advance_to_next_subtask()
         if not has_next:
+            # Just completed last subtask of current task
+            # Get task info before advancing
+            completed_task = context_manager._get_current_task()
+            completed_task_desc = completed_task.description if completed_task else "unknown"
+
             # Check if there are more tasks
             context_manager.state.current_task_idx += 1
             if (context_manager.state.goal and
                 context_manager.state.current_task_idx >= len(context_manager.state.goal.tasks)):
-                # All tasks complete
+                # All tasks complete - goal complete (don't summarize task here, will do goal summary)
                 return {"status": "goal_complete", "message": "All tasks finished!"}
             else:
+                # More tasks ahead - generate task summary before moving to next
+                import jetbox_notes
+                task_summary = jetbox_notes.prompt_for_task_summary(completed_task_desc)
+                jetbox_notes.append_to_jetbox_notes(task_summary, section="task")
+
                 # Move to next task
                 task = context_manager._get_current_task()
                 if task and task.subtasks:

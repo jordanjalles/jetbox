@@ -7,11 +7,18 @@ Keeps last N message exchanges to stay focused on current work.
 from __future__ import annotations
 from typing import Any
 from pathlib import Path
+import time
+import os
 
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
-from context_strategies import build_simple_hierarchical_context
+from context_strategies import build_hierarchical_context  # Use FULL version
+from workspace_manager import WorkspaceManager
+from status_display import StatusDisplay, PerformanceStats
+from llm_utils import chat_with_inactivity_timeout
+import jetbox_notes
+import tools
 
 
 class TaskExecutorAgent(BaseAgent):
@@ -26,13 +33,19 @@ class TaskExecutorAgent(BaseAgent):
         self,
         workspace: Path,
         goal: str | None = None,
+        max_rounds: int = 128,
+        model: str = None,
+        temperature: float = 0.2,
     ):
         """
-        Initialize TaskExecutor agent.
+        Initialize TaskExecutor with full agent.py features.
 
         Args:
             workspace: Working directory for task execution
             goal: Optional initial goal to set
+            max_rounds: Maximum rounds before giving up
+            model: Ollama model to use (default from env or config)
+            temperature: LLM temperature
         """
         super().__init__(
             name="task_executor",
@@ -41,13 +54,27 @@ class TaskExecutorAgent(BaseAgent):
             config=config,
         )
 
-        # Initialize context manager for hierarchical task tracking
-        # Note: ContextManager uses hardcoded .agent_context directory
-        self.context_manager = ContextManager()
+        # Model configuration
+        self.model = model or os.getenv("OLLAMA_MODEL", "gpt-oss:20b")
+        self.temperature = temperature
+        self.max_rounds = max_rounds
+
+        # Initialize context manager
+        self.init_context_manager()
+        self.context_manager = self.context_manager or ContextManager()
+
+        # Workspace manager (initialized when goal is set)
+        self.workspace_manager = None
+
+        # Status display (initialized when goal is set)
+        self.status_display = None
+
+        # Performance tracking
+        self.init_perf_stats()
 
         # Set initial goal if provided
         if goal:
-            self.context_manager.load_or_init(goal)
+            self.set_goal(goal)
 
     def get_tools(self) -> list[dict[str, Any]]:
         """
@@ -164,17 +191,19 @@ class TaskExecutorAgent(BaseAgent):
 
     def build_context(self) -> list[dict[str, Any]]:
         """
-        Build context using hierarchical strategy.
+        Build context using FULL hierarchical strategy.
 
         Returns:
-            [system_prompt, task_info, last_N_messages]
+            [system_prompt, task_info, probe_state, jetbox_notes, last_N_messages]
         """
-        # Use shared hierarchical context strategy
-        return build_simple_hierarchical_context(
+        # Use FULL hierarchical context strategy (includes probe, notes, loops)
+        return build_hierarchical_context(
             context_manager=self.context_manager,
             messages=self.state.messages,
             system_prompt=self.get_system_prompt(),
             config=self.config,
+            probe_state_func=self._probe_state if hasattr(self, '_probe_state') else None,
+            workspace=self.workspace_manager.workspace_dir if self.workspace_manager else None,
         )
 
     def execute_round(self, model: str, temperature: float) -> dict[str, Any]:
@@ -193,9 +222,45 @@ class TaskExecutorAgent(BaseAgent):
 
         return response
 
-    def set_goal(self, goal: str) -> None:
-        """Set a new goal for the task executor."""
+    def set_goal(self, goal: str, additional_context: str = "") -> None:
+        """
+        Set a new goal and initialize all subsystems.
+
+        Args:
+            goal: Goal description
+            additional_context: Optional additional context for decomposition
+        """
+        # Initialize context manager with goal
         self.context_manager.load_or_init(goal)
+
+        # Initialize workspace
+        goal_slug = goal.lower()[:50].replace(" ", "-").replace("/", "-")
+        self.init_workspace_manager(goal_slug)
+
+        # Configure tools with workspace
+        tools.set_workspace(self.workspace_manager)
+        tools.set_ledger(self.workspace_manager.workspace_dir / "agent_ledger.log")
+
+        # Initialize jetbox notes (pass WorkspaceManager object)
+        jetbox_notes.set_workspace(self.workspace_manager)
+        jetbox_notes.set_llm_caller(self._llm_caller_for_jetbox)
+
+        # Load existing notes
+        existing_notes = jetbox_notes.load_jetbox_notes()
+        if existing_notes:
+            print(f"[jetbox] Loaded notes: {len(existing_notes)} chars")
+
+        # Initialize status display
+        self.status_display = StatusDisplay(ctx=self.context_manager)
+
+    def _llm_caller_for_jetbox(self, messages, temperature=0.2, timeout=30):
+        """LLM caller for jetbox notes."""
+        return chat_with_inactivity_timeout(
+            model=self.model,
+            messages=messages,
+            options={"temperature": temperature},
+            inactivity_timeout=timeout,
+        )
 
     def get_current_status(self) -> dict[str, Any]:
         """
@@ -217,4 +282,116 @@ class TaskExecutorAgent(BaseAgent):
             "task": task.description if task else None,
             "subtask": subtask.description if subtask else None,
             "rounds": self.state.total_rounds,
+        }
+
+    def run(self, max_rounds: int = None) -> dict[str, Any]:
+        """
+        Main execution loop - replaces agent.py main().
+
+        Returns:
+            Result dict with status, message, etc.
+        """
+        max_rounds = max_rounds or self.max_rounds
+        messages = []  # Local message stack (cleared on subtask transitions)
+
+        for round_no in range(1, max_rounds + 1):
+            # Show status
+            if self.status_display:
+                self.status_display.show_status(round_no, self.status_display.stats)
+
+            # Build context
+            context = self.build_context()
+
+            # Call LLM
+            start_time = time.time()
+            response = chat_with_inactivity_timeout(
+                model=self.model,
+                messages=context,
+                tools=self.get_tools(),
+                options={"temperature": self.temperature},
+            )
+            duration = time.time() - start_time
+
+            # Track performance
+            if self.status_display:
+                self.status_display.stats.record_llm_call(duration, response.get("eval_count", 0))
+
+            # Add assistant message
+            if "message" in response:
+                msg = response["message"]
+                messages.append(msg)
+                self.add_message(msg)
+
+                # Execute tool calls
+                if "tool_calls" in msg:
+                    for tool_call in msg["tool_calls"]:
+                        result = self.dispatch_tool(tool_call)
+
+                        # Unwrap result
+                        actual_result = result.get("result") if isinstance(result, dict) and "result" in result else result
+
+                        # CRITICAL: Clear messages on subtask transitions
+                        if isinstance(actual_result, dict) and actual_result.get("status") in ["subtask_advanced", "task_advanced"]:
+                            old_count = len(messages)
+                            messages.clear()
+                            print(f"[context_isolation] Cleared {old_count} messages after subtask transition")
+
+                        # Check for goal completion
+                        if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
+                            self._handle_goal_success()
+                            return {"status": "success", "goal": self.context_manager.state.goal.description}
+
+            # Increment rounds
+            self.increment_round()
+
+        # Max rounds reached
+        goal_desc = self.context_manager.state.goal.description if self.context_manager.state.goal else "unknown"
+        self._handle_goal_failure(goal_desc, "Max rounds exceeded")
+        return {"status": "failure", "reason": "Max rounds exceeded"}
+
+    def _handle_goal_success(self) -> None:
+        """Handle goal success with jetbox notes."""
+        goal_summary = jetbox_notes.prompt_for_goal_summary(
+            goal_description=self.context_manager.state.goal.description,
+            success=True,
+        )
+        jetbox_notes.append_to_jetbox_notes(goal_summary, section="goal_success")
+
+        print("\n" + "="*70)
+        print("GOAL COMPLETE - SUMMARY")
+        print("="*70)
+        print(goal_summary)
+        print("="*70)
+
+    def _handle_goal_failure(self, goal: str, reason: str) -> None:
+        """Handle goal failure with jetbox notes."""
+        goal_summary = jetbox_notes.prompt_for_goal_summary(
+            goal_description=goal,
+            success=False,
+            reason=reason,
+        )
+        jetbox_notes.append_to_jetbox_notes(goal_summary, section="goal_failure")
+
+        print("\n" + "="*70)
+        print("GOAL FAILED - SUMMARY")
+        print("="*70)
+        print(goal_summary)
+        print("="*70)
+
+    def _probe_state(self) -> dict[str, Any]:
+        """
+        Probe current filesystem and tool state.
+
+        Returns:
+            Dict with files_exist, recent_errors, warning, etc.
+        """
+        # Simplified probe state - just check workspace files
+        if not self.workspace_manager:
+            return {}
+
+        workspace_dir = self.workspace_manager.workspace_dir
+        files = list(workspace_dir.glob("**/*.py"))
+
+        return {
+            "files_exist": [str(f.relative_to(workspace_dir)) for f in files[:10]],
         }

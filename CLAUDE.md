@@ -111,6 +111,14 @@ export OLLAMA_MODEL="gpt-oss:20b"
 - Approach reconsideration: 3x retries at root before final failure
 - **See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for complete documentation**
 
+**jetbox_notes.py** (persistent context system):
+- Auto-summarizes completed tasks and goals
+- Stores summaries in `jetboxnotes.md` within workspace
+- Loads notes on subsequent runs for context continuity
+- Passes summaries to parent agent or console
+- Prompt-engineered for factual, concise summaries (temp 0.2)
+- **See [docs/jetbox_notes/](docs/jetbox_notes/) for complete documentation**
+
 **Tool whitelist** (agent.py:32): Only `python`, `pytest`, `ruff`, and `pip` commands are allowed for Windows safety. All other commands are rejected.
 
 **Status artifacts**:
@@ -192,6 +200,48 @@ PERFORMANCE:
 
 For complete documentation, see [STATUS_DISPLAY.md](STATUS_DISPLAY.md)
 
+## Jetbox Notes System
+
+The agent automatically captures and persists context across runs using the jetbox notes system:
+
+**Auto-Summarization**:
+- Task completion → 2-4 bullet summary appended to `jetboxnotes.md`
+- Goal success → 3-6 bullet comprehensive summary appended and displayed
+- Goal failure → Failure analysis with blocking factors and retry suggestions
+
+**Persistence**:
+- Notes saved to `.agent_workspace/{goal-slug}/jetboxnotes.md`
+- Markdown format, human-readable
+- Survives crashes and reruns
+
+**Context Loading**:
+- Existing notes loaded on agent startup
+- Included in agent context (max 2000 chars)
+- No selective loading - entire file included
+
+**Quality**:
+- Temperature 0.2 for factual summaries
+- Prompt-engineered for concise, specific output
+- Focuses on facts future tasks need to know
+
+**Usage**:
+```bash
+# Run agent (summaries happen automatically)
+python agent.py "Your goal here"
+
+# Resume work in same workspace
+python agent.py --workspace .agent_workspace/previous-goal "Continue work"
+
+# View notes
+cat .agent_workspace/{goal-slug}/jetboxnotes.md
+```
+
+For complete documentation, see:
+- [Quick Start Guide](docs/jetbox_notes/JETBOX_NOTES_QUICKSTART.md)
+- [Technical Spec](docs/jetbox_notes/JETBOX_NOTES_SPEC.md)
+- [Test Report](docs/jetbox_notes/JETBOX_NOTES_TEST_REPORT.md)
+- [Implementation Summary](docs/jetbox_notes/IMPLEMENTATION_COMPLETE.md)
+
 ## Ruff Configuration (pyproject.toml:1-5)
 
 Ruff is configured with line length 88 and enforces:
@@ -248,3 +298,6 @@ When working in this codebase:
 
 **tests/** - Pytest test suite
 - `test_mathx.py` - Three assertions testing add() with positive, negative, and zero values
+- store report and summary markdowns in a subfolder that won't get added to github
+- remember not to kill shell because it kills the claude process too
+- swapping models in ollama takes some time

@@ -128,6 +128,7 @@ class AgentRegistry:
         to_agent: str,
         task_description: str,
         context: str = "",
+        workspace: str = "",
     ) -> dict[str, Any]:
         """
         Delegate a task from one agent to another.
@@ -137,6 +138,7 @@ class AgentRegistry:
             to_agent: Target agent name
             task_description: Task to delegate
             context: Additional context
+            workspace: Optional workspace path for existing projects
 
         Returns:
             Result dict with success status and message
@@ -153,11 +155,27 @@ class AgentRegistry:
 
         # For TaskExecutor, set the goal
         if isinstance(target, TaskExecutorAgent):
+            # If workspace specified, update TaskExecutor's workspace
+            if workspace:
+                workspace_path = Path(workspace)
+                if workspace_path.exists():
+                    target.workspace = workspace_path
+                    # Also update workspace manager if it exists
+                    if hasattr(target, 'workspace_manager') and target.workspace_manager:
+                        target.workspace_manager.workspace_dir = workspace_path
+                else:
+                    return {
+                        "success": False,
+                        "message": f"Specified workspace does not exist: {workspace}",
+                        "agent": to_agent,
+                    }
+
             target.set_goal(task_description)
             return {
                 "success": True,
                 "message": f"Task delegated to {to_agent}",
                 "agent": to_agent,
+                "workspace": str(target.workspace),
             }
 
         return {

@@ -95,6 +95,11 @@ class BaseAgent(ABC):
         # Try to load existing state
         self.load_state()
 
+        # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
+        self.context_manager = None  # For hierarchical task tracking (TaskExecutor)
+        self.workspace_manager = None  # For workspace isolation
+        self.perf_stats = None  # For performance tracking
+
     # ===========================
     # Abstract methods (must implement)
     # ===========================
@@ -238,3 +243,25 @@ class BaseAgent(ABC):
     def increment_round(self) -> None:
         """Increment round counter."""
         self.state.total_rounds += 1
+
+    # ===========================
+    # Phase 1 additions: Helper methods for subsystems
+    # ===========================
+
+    def init_context_manager(self) -> None:
+        """Initialize context manager for hierarchical task tracking."""
+        from context_manager import ContextManager
+        if self.context_manager is None:
+            self.context_manager = ContextManager()
+
+    def init_workspace_manager(self, goal_slug: str) -> None:
+        """Initialize workspace manager for this goal."""
+        from workspace_manager import WorkspaceManager
+        if self.workspace_manager is None:
+            self.workspace_manager = WorkspaceManager(goal=goal_slug, base_dir=self.workspace)
+
+    def init_perf_stats(self) -> None:
+        """Initialize performance stats tracking."""
+        from status_display import PerformanceStats
+        if self.perf_stats is None:
+            self.perf_stats = PerformanceStats()

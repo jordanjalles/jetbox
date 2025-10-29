@@ -7,10 +7,11 @@ then performs compaction pass to summarize old messages.
 from __future__ import annotations
 from typing import Any
 from pathlib import Path
-import json
+import os
 
 from base_agent import BaseAgent
 from agent_config import config
+from llm_utils import chat_with_inactivity_timeout
 
 
 class OrchestratorAgent(BaseAgent):
@@ -38,9 +39,17 @@ class OrchestratorAgent(BaseAgent):
         # Track delegated tasks
         self.delegated_tasks: list[dict[str, Any]] = []
 
+        # Get model name for LLM calls
+        self.model = os.getenv("OLLAMA_MODEL", "gpt-oss:20b")
+
+        # Get actual context window from model
+        self.context_window = self._get_model_context_window()
+
         # Context compaction threshold (tokens)
-        # Using max_tokens from config, compact at 80% full
-        self.token_threshold = int(config.context.max_tokens * 0.8)
+        # Compact at 75% to account for system prompt overhead
+        self.token_threshold = int(self.context_window * 0.75)
+
+        print(f"[orchestrator] Model: {self.model}, Context window: {self.context_window} tokens, Threshold: {self.token_threshold} tokens")
 
     def get_tools(self) -> list[dict[str, Any]]:
         """
@@ -57,7 +66,7 @@ class OrchestratorAgent(BaseAgent):
                 "type": "function",
                 "function": {
                     "name": "delegate_to_executor",
-                    "description": "Delegate a coding task to the TaskExecutor agent",
+                    "description": "Delegate a coding task to the TaskExecutor agent. IMPORTANT: You MUST specify workspace_mode to indicate whether this is new work or continuation of existing work.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -69,12 +78,17 @@ class OrchestratorAgent(BaseAgent):
                                 "type": "string",
                                 "description": "Additional context or requirements",
                             },
-                            "workspace": {
+                            "workspace_mode": {
                                 "type": "string",
-                                "description": "Optional: Path to existing workspace to continue work in. Use this when updating/modifying existing projects. Omit to create new isolated workspace.",
+                                "enum": ["new", "existing"],
+                                "description": "REQUIRED: 'new' to create fresh isolated workspace, 'existing' to continue work in existing workspace. Use 'existing' when user says 'update X', 'add to X', 'modify X', 'fix X'. Use 'new' when user says 'create X', 'build X', 'make X'.",
+                            },
+                            "workspace_path": {
+                                "type": "string",
+                                "description": "REQUIRED when workspace_mode='existing': Path to existing workspace (use find_workspace tool to get this). MUST be omitted when workspace_mode='new'.",
                             },
                         },
-                        "required": ["task_description"],
+                        "required": ["task_description", "workspace_mode"],
                     },
                 },
             },
@@ -143,6 +157,23 @@ class OrchestratorAgent(BaseAgent):
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "find_workspace",
+                    "description": "Find the best matching workspace for a given project reference (e.g., 'calculator', 'blog', 'todo app'). Use this when user says 'add to X' or 'update X' to find which workspace contains X.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "project_name": {
+                                "type": "string",
+                                "description": "Name or description of the project to find (e.g., 'calculator', 'blog post manager', 'todo')",
+                            },
+                        },
+                        "required": ["project_name"],
+                    },
+                },
+            },
         ]
 
     def get_system_prompt(self) -> str:
@@ -151,44 +182,80 @@ class OrchestratorAgent(BaseAgent):
 
 Your workflow:
 1. When user makes a request, check if you need clarification
-2. If clear, IMMEDIATELY delegate to TaskExecutor using delegate_to_executor
-3. For complex requests, you can optionally create_task_plan first, then delegate_to_executor
+2. Determine if this is NEW work or EXISTING work (MANDATORY STEP)
+3. Delegate to TaskExecutor with explicit workspace_mode
 4. After delegation completes, report results back to user WITH FILE LOCATIONS
 
-WORKSPACE BEHAVIOR (CRITICAL):
-- By DEFAULT, TaskExecutor creates a NEW isolated workspace for each delegation
-- New workspace path is derived from task description (e.g., "create calculator" → .agent_workspace/create-calculator/)
-- When user says "update X" or "modify X" or "add to X", they mean work in EXISTING workspace
-- To work in existing workspace, use the "workspace" parameter in delegate_to_executor
-- Use list_workspaces tool to see all existing workspaces
-- When user references existing project, ALWAYS check workspaces and specify correct one
+WORKSPACE MODE (CRITICAL - YOU MUST ALWAYS SPECIFY):
+The delegate_to_executor tool REQUIRES a workspace_mode parameter with value "new" or "existing".
 
-WORKSPACE DECISION TREE:
-1. User says "create/make/build NEW thing" → Omit workspace (creates new)
-2. User says "update/modify/add to EXISTING thing" → Call list_workspaces, then specify workspace parameter
-3. User says "fix bug in X" or "improve X" → Find X's workspace and specify it
-4. Not sure? → Ask user or call list_workspaces to check
+DECISION PROCESS - YOU MUST FOLLOW THIS:
 
-IMPORTANT RULES:
-- Delegate ONCE per user request (unless user explicitly asks for more work)
-- After delegation completes successfully, REPORT to user - do NOT delegate again
-- When reporting completion, tell user WHERE files are located
-- Do NOT delegate tasks to "retrieve" or "return" file contents - just tell user the workspace path
-- If user wants to see file content, tell them the path so they can read it themselves
+Step 1: Analyze the user request for keywords:
+- NEW work indicators: "create", "make", "build", "new", "start"
+- EXISTING work indicators: "update", "modify", "add to", "change", "fix", "improve", "enhance"
+
+Step 2: Choose workspace_mode:
+- If NEW work → workspace_mode="new" (no workspace_path needed)
+- If EXISTING work → MUST call find_workspace first, then workspace_mode="existing" with workspace_path
+
+Step 3: Delegate with correct parameters
+
+EXAMPLE WORKFLOWS:
+
+Example 1 - NEW PROJECT:
+User: "create a calculator package"
+→ Analyze: "create" = NEW work
+→ delegate_to_executor(
+    task_description="create a calculator package",
+    workspace_mode="new"
+  )
+
+Example 2 - UPDATE EXISTING:
+User: "add a square root function to the calculator"
+→ Analyze: "add to" = EXISTING work
+→ find_workspace(project_name="calculator")
+→ [tool returns workspace_path: ".agent_workspace/create-calculator"]
+→ delegate_to_executor(
+    task_description="add a square root function to the calculator",
+    workspace_mode="existing",
+    workspace_path=".agent_workspace/create-calculator"
+  )
+
+Example 3 - AMBIGUOUS (user just says "calculator"):
+User: "add square root to calculator"
+→ Analyze: "add to" = EXISTING work, but which calculator?
+→ find_workspace(project_name="calculator")
+→ If found: use existing workspace
+→ If not found: ask user or use workspace_mode="new"
+
+MANDATORY RULES:
+1. ALWAYS specify workspace_mode in delegate_to_executor - no exceptions
+2. If workspace_mode="existing", MUST provide workspace_path
+3. To get workspace_path, MUST call find_workspace first
+4. If workspace_mode="new", do NOT provide workspace_path
+5. When user references existing project by name, ALWAYS use find_workspace
+6. Delegate ONCE per user request (unless user explicitly asks for more work)
+7. After delegation completes, REPORT file locations to user
+
+REPORTING RESULTS:
+- Tell user WHERE files are located (workspace path)
+- Do NOT delegate again just to "retrieve" or "show" files
+- If user wants file content, tell them the path
 
 Guidelines:
 - Be conversational and brief
 - Ask clarifying questions ONLY if truly needed
-- For simple requests (e.g., "create a file"), delegate immediately without planning
-- For complex requests (e.g., "build a website"), you may create_task_plan then delegate_to_executor
-- ALWAYS delegate to TaskExecutor for any coding work - don't just plan
-- Don't write code yourself - delegate to TaskExecutor
+- For simple requests, delegate immediately without planning
+- For complex requests, you may create_task_plan first
+- ALWAYS delegate to TaskExecutor for coding work
 
 Tools available:
-- delegate_to_executor: Send coding tasks to TaskExecutor (workspace param optional - use for existing projects)
-- list_workspaces: List all existing project workspaces
-- clarify_with_user: Ask user questions (use sparingly)
-- create_task_plan: Structure complex requests (optional, use before delegation)
+- delegate_to_executor: Send coding tasks (REQUIRES workspace_mode: "new" or "existing")
+- find_workspace: Find workspace by project name (REQUIRED before workspace_mode="existing")
+- list_workspaces: List all existing workspaces
+- clarify_with_user: Ask user questions
+- create_task_plan: Structure complex requests (optional)
 - get_executor_status: Check TaskExecutor progress
 """
 
@@ -204,32 +271,86 @@ Tools available:
         1. Always include system prompt
         2. Append all messages until approaching token limit
         3. When near limit, compact old messages into summary
+        4. CRITICAL: Update self.state.messages to compacted version
 
         Returns:
             [system_prompt, ...all_messages_or_compacted...]
         """
         context = [{"role": "system", "content": self.get_system_prompt()}]
 
-        messages = self.state.messages
-
         # Estimate token count (rough: 1 token ≈ 4 chars)
-        current_tokens = self._estimate_tokens(context + messages)
+        current_tokens = self._estimate_tokens(context + self.state.messages)
 
-        # If under threshold, return all messages
-        if current_tokens < self.token_threshold:
-            context.extend(messages)
-            return context
+        # If we need to compact, do it NOW and update state
+        if current_tokens >= self.token_threshold:
+            # Compact and UPDATE state.messages to prevent infinite growth
+            compacted = self._compact_messages(self.state.messages)
+            old_count = len(self.state.messages)
+            self.state.messages = compacted
+            new_count = len(self.state.messages)
 
-        # Otherwise, compact old messages
-        compacted = self._compact_messages(messages)
-        context.extend(compacted)
+            # Persist the compacted state
+            self.persist_state()
+
+            print(f"[context_compaction] Compacted messages: {old_count} → {new_count} (saved {old_count - new_count} messages)")
+
+        # Now just use state.messages (which is compacted if needed)
+        context.extend(self.state.messages)
         return context
 
-    def _estimate_tokens(self, messages: list[dict[str, Any]]) -> int:
+    def _get_model_context_window(self) -> int:
+        """
+        Get actual context window size from Ollama model.
+
+        Queries Ollama API for model metadata to get num_ctx parameter.
+        Falls back to config value if query fails.
+
+        Returns:
+            Context window size in tokens
+        """
+        try:
+            import ollama
+
+            # Query model info
+            model_info = ollama.show(self.model)
+
+            # Extract num_ctx from model_info (in modelfile or parameters)
+            if "modelfile" in model_info:
+                # Parse modelfile for num_ctx
+                modelfile = model_info["modelfile"]
+                for line in modelfile.split("\n"):
+                    if "num_ctx" in line.lower():
+                        # Extract number (format: "PARAMETER num_ctx 8192")
+                        parts = line.split()
+                        for i, part in enumerate(parts):
+                            if part.lower() == "num_ctx" and i + 1 < len(parts):
+                                return int(parts[i + 1])
+
+            # Try parameters dict
+            if "parameters" in model_info:
+                params = model_info["parameters"]
+                if "num_ctx" in params:
+                    return int(params["num_ctx"])
+
+            # Default from config
+            print(
+                "⚠️  [orchestrator] Could not find num_ctx in model info, using config default"
+            )
+            return config.context.max_tokens
+
+        except Exception as e:
+            print(
+                f"⚠️  [orchestrator] Failed to query model context window: {e}, using config default"
+            )
+            return config.context.max_tokens
+
+    def _estimate_tokens(self, messages: list[dict[str, Any]]) -> int:  # noqa: C901
         """
         Estimate token count for messages.
 
-        Uses rough heuristic: 1 token ≈ 4 characters
+        Uses tiktoken if available, otherwise improved heuristic:
+        - Code/structured data: chars/3 (denser)
+        - Prose/natural text: chars/4 (sparser)
 
         Args:
             messages: List of message dicts
@@ -237,19 +358,59 @@ Tools available:
         Returns:
             Estimated token count
         """
-        total_chars = 0
-        for msg in messages:
-            # Count content
-            if "content" in msg:
-                total_chars += len(str(msg["content"]))
+        # Try tiktoken first (accurate)
+        try:
+            import tiktoken
 
-            # Count tool calls
-            if "tool_calls" in msg:
-                for tc in msg["tool_calls"]:
-                    total_chars += len(tc["function"]["name"])
-                    total_chars += len(str(tc["function"]["arguments"]))
+            enc = tiktoken.encoding_for_model("gpt-4")  # Use gpt-4 as proxy
 
-        return total_chars // 4
+            total_tokens = 0
+            for msg in messages:
+                # Count content
+                if "content" in msg:
+                    total_tokens += len(enc.encode(str(msg["content"])))
+
+                # Count tool calls
+                if "tool_calls" in msg:
+                    for tc in msg["tool_calls"]:
+                        total_tokens += len(enc.encode(tc["function"]["name"]))
+                        total_tokens += len(
+                            enc.encode(str(tc["function"]["arguments"]))
+                        )
+
+            return total_tokens
+
+        except ImportError:
+            # Fallback: Improved heuristic
+            total_chars = 0
+            code_chars = 0
+
+            for msg in messages:
+                # Count content
+                if "content" in msg:
+                    content = str(msg["content"])
+                    total_chars += len(content)
+
+                    # Detect code (contains braces, semicolons, indentation patterns)
+                    if any(
+                        marker in content for marker in ["{", "}", ";", "    ", "\t"]
+                    ):
+                        code_chars += len(content)
+
+                # Tool calls are structured (like code)
+                if "tool_calls" in msg:
+                    for tc in msg["tool_calls"]:
+                        tool_str = tc["function"]["name"] + str(
+                            tc["function"]["arguments"]
+                        )
+                        total_chars += len(tool_str)
+                        code_chars += len(tool_str)
+
+            # Estimate: code is denser (chars/3), prose is sparser (chars/4)
+            prose_chars = total_chars - code_chars
+            estimated_tokens = (code_chars // 3) + (prose_chars // 4)
+
+            return estimated_tokens
 
     def _compact_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
@@ -287,17 +448,159 @@ Tools available:
 
     def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
         """
-        Create a text summary of messages.
+        Summarize messages using LLM (preferred) or crude fallback.
+
+        Tries LLM-driven summarization first for intelligent context preservation.
+        Falls back to crude text truncation if LLM fails.
+
+        Args:
+            messages: Messages to summarize (usually 80-100 messages)
+
+        Returns:
+            Concise summary text (target: 150-200 words)
+        """
+        # Try LLM summarization first
+        try:
+            print("🔄 [compaction] Attempting LLM-driven summarization...")
+            summary = self._summarize_with_llm(messages)
+
+            if summary and len(summary) > 100:  # Sanity check
+                print(f"✅ [compaction] LLM summary generated: {len(summary)} chars")
+                return summary
+
+        except Exception as e:
+            print(f"❌ [compaction] LLM SUMMARIZATION FAILED: {e}")
+            print("⚠️  [compaction] Falling back to crude text truncation")
+            print(
+                "⚠️  [compaction] This will preserve less context - consider checking LLM health"
+            )
+
+        # Fallback to crude method
+        print("🔄 [compaction] Using crude summarization fallback")
+        return self._summarize_crude(messages)
+
+    def _summarize_with_llm(self, messages: list[dict[str, Any]]) -> str:
+        """
+        Use LLM to create intelligent summary of conversation.
+
+        Uses agent-agnostic prompt that works for any conversation type.
 
         Args:
             messages: Messages to summarize
 
         Returns:
-            Summary string
+            Summary text (150-200 words)
+        """
+        # Format conversation for summarization
+        conversation_text = self._format_messages_for_summary(messages)
+
+        # Build agent-agnostic summarization prompt
+        prompt = """You are summarizing an earlier conversation to preserve context while reducing size.
+
+Create a concise summary in 150-200 WORDS (not tokens).
+
+Focus on:
+- Key requests and goals
+- Important decisions made
+- Actions taken and their outcomes
+- Problems encountered and solutions
+- Current state or status
+- Critical information needed for continuing this conversation
+
+Format: Bullet points, factual, no flowery language.
+
+EARLIER CONVERSATION:
+{conversation}
+
+CONCISE SUMMARY (150-200 words, bullet points):""".format(
+            conversation=conversation_text
+        )
+
+        # Call LLM with low temperature for factual summary
+        response = chat_with_inactivity_timeout(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.2},
+            inactivity_timeout=30,
+        )
+
+        # Extract summary
+        if "message" in response and "content" in response["message"]:
+            summary = response["message"]["content"].strip()
+            return summary
+
+        raise Exception("No content in LLM response")
+
+    def _format_messages_for_summary(self, messages: list[dict[str, Any]]) -> str:
+        """
+        Format messages into readable text for LLM summarization.
+
+        Limits output to ~15000 chars to keep LLM summarization fast.
+
+        Args:
+            messages: Messages to format
+
+        Returns:
+            Formatted conversation text (max ~15000 chars)
+        """
+        lines = []
+        total_chars = 0
+        max_chars = 15000  # Keep input manageable for fast summarization
+
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+
+            # Format based on role
+            if role == "user":
+                # Truncate long user messages
+                truncated = content[:200] + "..." if len(content) > 200 else content
+                line = f"USER: {truncated}"
+            elif role == "assistant":
+                # Check for tool calls
+                if "tool_calls" in msg:
+                    # Summarize tool calls
+                    tool_names = [
+                        tc["function"]["name"] for tc in msg["tool_calls"]
+                    ]
+                    line = f"ASSISTANT: [called tools: {', '.join(tool_names)}]"
+                elif content:
+                    # Truncate long assistant messages
+                    truncated = content[:200] + "..." if len(content) > 200 else content
+                    line = f"ASSISTANT: {truncated}"
+                else:
+                    continue
+            elif role == "tool":
+                # Summarize tool results briefly
+                line = f"TOOL_RESULT: {content[:100]}..."
+            else:
+                continue
+
+            # Check if adding this line would exceed limit
+            if total_chars + len(line) > max_chars:
+                lines.append("[...earlier messages truncated for brevity...]")
+                break
+
+            lines.append(line)
+            total_chars += len(line) + 1  # +1 for newline
+
+        return "\n".join(lines)
+
+    def _summarize_crude(self, messages: list[dict[str, Any]]) -> str:
+        """
+        Fallback crude summarization (text truncation).
+
+        Used when LLM summarization fails.
+
+        Args:
+            messages: Messages to summarize
+
+        Returns:
+            Crude summary text
         """
         summary_parts = []
 
-        for msg in messages:
+        for msg in messages[:50]:  # Limit to first 50
             role = msg.get("role", "unknown")
             content = msg.get("content", "")
 

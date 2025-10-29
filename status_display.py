@@ -275,12 +275,12 @@ class StatusDisplay:
             lines.append(self._render_context_usage(context_stats))
             lines.append("")
 
-        # Enhanced hierarchy with elbow connectors
-        lines.append(self._render_hierarchy_with_elbows())
+        # TURN COUNTER before task tree
+        lines.append(self._render_turn_counter(subtask_rounds, max_rounds))
         lines.append("")
 
-        # TURN COUNTER replaces Progress
-        lines.append(self._render_turn_counter(subtask_rounds, max_rounds))
+        # Enhanced hierarchy with elbow connectors
+        lines.append(self._render_hierarchy_with_elbows())
         lines.append("")
 
         # AGENT STATUS at bottom
@@ -438,18 +438,16 @@ class StatusDisplay:
         connector = "└─" if is_last else "├─"
         task_desc = task.description[:65] + "..." if len(task.description) > 65 else task.description
 
-        # Make current task VERY visible with highlighting
+        # Don't highlight the task itself - only subtasks get highlighting
+        # Just show a simple arrow for current task
         if is_current and task.status != "completed":
-            # Use bold and color for current task
-            prefix = "► \033[1m\033[96m"  # Bold cyan
-            suffix = "\033[0m"  # Reset
+            prefix = "► "
         else:
             prefix = "  "
-            suffix = ""
 
         # Show approach attempt count if > 0
         attempt_info = f" (attempt {task.approach_attempts}/{3})" if hasattr(task, 'approach_attempts') and task.approach_attempts > 0 else ""
-        lines.append(f"{connector}{prefix}{status_icon} {task_desc}{attempt_info}{suffix}")
+        lines.append(f"{connector}{prefix}{status_icon} {task_desc}{attempt_info}")
 
         # Render subtasks with proper indentation
         if task.subtasks:
@@ -596,13 +594,13 @@ class StatusDisplay:
         # Add warning color if close to limit
         if current >= max_turns * 0.8:  # 80% or more used
             status_color = "\033[91m"  # Red
-            status_text = "⚠ Near limit"
+            status_text = " ⚠ Near limit"
         elif current >= max_turns * 0.5:  # 50% or more used
             status_color = "\033[93m"  # Yellow
-            status_text = "⚡ Half used"
+            status_text = " ⚡ Half used"
         else:
-            status_color = "\033[92m"  # Green
-            status_text = "✓ Early"
+            status_color = ""  # No color for early turns
+            status_text = ""  # No status text
 
         lines.append(f"  {circles}  {status_color}{current}/{max_turns} turns{status_text}\033[0m")
 

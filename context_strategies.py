@@ -20,6 +20,7 @@ def build_hierarchical_context(
     system_prompt: str,
     config: Any,
     probe_state_func: callable | None = None,
+    workspace=None,  # Add workspace parameter for jetbox notes
 ) -> list[dict[str, Any]]:
     """
     Build context using hierarchical strategy.
@@ -106,6 +107,19 @@ def build_hierarchical_context(
                 context_info.append(f"FILES CREATED: {', '.join(probe['files_exist'])}")
             if probe.get("recent_errors"):
                 context_info.append(f"RECENT ERRORS: {probe['recent_errors'][-1][:100]}")
+
+        # Add jetbox notes if workspace provided and notes exist
+        if workspace:
+            import jetbox_notes
+            notes_content = jetbox_notes.load_jetbox_notes(max_chars=2000)
+            if notes_content:
+                context_info.append("")
+                context_info.append("="*70)
+                context_info.append("JETBOX NOTES (Previous Work Summary)")
+                context_info.append("="*70)
+                context_info.append(notes_content)
+                context_info.append("="*70)
+                context_info.append("")
 
         context.append({"role": "user", "content": "\n".join(context_info)})
 
