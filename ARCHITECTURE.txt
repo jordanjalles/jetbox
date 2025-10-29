@@ -1,0 +1,224 @@
+================================================================================
+                        JETBOX AGENT ARCHITECTURE
+================================================================================
+
+USER INTERFACES (Entry Points)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  agent.py (CLI)                    orchestrator_main.py (CLI)              │
+│     │                                      │                                │
+│     └─────────┐                           └──────────┐                     │
+│               │                                      │                      │
+└───────────────┼──────────────────────────────────────┼──────────────────────┘
+                │                                      │
+                ▼                                      ▼
+         ┌──────────────────┐               ┌─────────────────────┐
+         │TaskExecutorAgent │               │ OrchestratorAgent   │
+         │                  │               │                     │
+         │ - Executes tasks │               │ - Manages multiple  │
+         │ - Runs subtasks  │               │   task executors    │
+         │ - Uses tools     │               │ - Delegates work    │
+         └──────────────────┘               └─────────────────────┘
+                │                                      │
+                │  extends                             │  extends
+                └──────────────┬───────────────────────┘
+                               │
+                               ▼
+                      ┌─────────────────┐
+                      │   BaseAgent     │
+                      │                 │
+                      │ - Message mgmt  │
+                      │ - State persist │
+                      │ - Tool dispatch │
+                      └─────────────────┘
+                               │
+                ┌──────────────┼──────────────┐
+                │              │              │
+                ▼              ▼              ▼
+       ┌─────────────┐  ┌───────────┐  ┌──────────────┐
+       │agent_config │  │llm_utils  │  │agent_registry│
+       │             │  │           │  │              │
+       │- Load YAML  │  │- chat()   │  │- Register    │
+       │  config     │  │- stream() │  │  agents      │
+       └─────────────┘  └───────────┘  └──────────────┘
+
+
+CORE SYSTEMS (Used by Agents)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  ┌──────────────────┐          ┌─────────────────────┐                    │
+│  │ ContextManager   │          │ WorkspaceManager    │                    │
+│  │                  │          │                     │                    │
+│  │ - Goal/Task/     │          │ - Isolate workspace │                    │
+│  │   Subtask tree   │          │ - Path resolution   │                    │
+│  │ - Loop detection │          │ - File tracking     │                    │
+│  │ - State persist  │          └─────────────────────┘                    │
+│  └──────────────────┘                    │                                │
+│           │                               │                                │
+│           │ uses                          │ uses                           │
+│           │                               │                                │
+│           ▼                               ▼                                │
+│  ┌──────────────────┐          ┌─────────────────────┐                    │
+│  │context_strategies│          │     tools.py        │                    │
+│  │                  │          │                     │                    │
+│  │- hierarchical    │◄─────────│ - write_file()      │                    │
+│  │- append_context  │  uses    │ - read_file()       │                    │
+│  │- build context   │          │ - run_cmd()         │                    │
+│  └──────────────────┘          │ - decompose_task()  │                    │
+│                                 │ - mark_complete()   │                    │
+│                                 │ - server tools      │                    │
+│                                 └─────────────────────┘                    │
+│                                           │                                │
+│                                           │ uses                           │
+│                                           ▼                                │
+│                                 ┌─────────────────────┐                    │
+│                                 │  ServerManager      │                    │
+│                                 │                     │                    │
+│                                 │ - Start servers     │                    │
+│                                 │ - Monitor output    │                    │
+│                                 │ - Stop servers      │                    │
+│                                 └─────────────────────┘                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+DISPLAY & MONITORING
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  ┌──────────────────┐          ┌─────────────────────┐                    │
+│  │ StatusDisplay    │          │OrchestratorStatus   │                    │
+│  │                  │          │                     │                    │
+│  │ - Task tree      │          │ - Agent list        │                    │
+│  │ - Progress bars  │          │ - Status per agent  │                    │
+│  │ - Performance    │          │ - Message routing   │                    │
+│  │ - Loop warnings  │          └─────────────────────┘                    │
+│  └──────────────────┘                                                      │
+│           │                                                                │
+│           │ reads                                                          │
+│           ▼                                                                │
+│  ┌──────────────────┐                                                      │
+│  │ ContextManager   │                                                      │
+│  │   (state tree)   │                                                      │
+│  └──────────────────┘                                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+HELPER UTILITIES
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  ┌───────────────────┐   ┌────────────────────┐   ┌──────────────────┐   │
+│  │completion_detector│   │  jetbox_notes.py   │   │ prompt_loader.py │   │
+│  │                   │   │                    │   │                  │   │
+│  │- Pattern matching │   │- Auto-summarize    │   │- Load YAML       │   │
+│  │- Nudge completion │   │- Persist context   │   │  prompts         │   │
+│  └───────────────────┘   │- Load on startup   │   └──────────────────┘   │
+│                          └────────────────────┘                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+DATA FLOW
+════════════════════════════════════════════════════════════════════════════
+
+1. USER INPUT
+   agent.py "Create hello.py"
+        │
+        ▼
+   TaskExecutorAgent.run()
+        │
+        ├──> ContextManager.load_or_init()  (load goal)
+        ├──> WorkspaceManager.init()         (create workspace)
+        └──> StatusDisplay.init()            (setup display)
+
+2. AGENT LOOP
+   while not done:
+        │
+        ├──> build_context()                 (via context_strategies)
+        │     └──> ContextManager.state      (get current task/subtask)
+        │
+        ├──> llm_utils.chat()                (call LLM)
+        │
+        ├──> dispatch_tool()                 (execute tools)
+        │     └──> tools.py functions
+        │           └──> WorkspaceManager    (resolve paths)
+        │           └──> ServerManager       (if server tools)
+        │
+        └──> StatusDisplay.render()          (show progress)
+
+3. COMPLETION
+   mark_subtask_complete()
+        │
+        ├──> ContextManager.advance()        (move to next subtask)
+        ├──> jetbox_notes.append_summary()   (persist learning)
+        └──> StatusDisplay.update()          (show completion)
+
+
+KEY RELATIONSHIPS
+════════════════════════════════════════════════════════════════════════════
+
+TaskExecutorAgent
+  ├── uses ──> ContextManager      (for task hierarchy)
+  ├── uses ──> WorkspaceManager    (for file isolation)
+  ├── uses ──> StatusDisplay       (for progress)
+  ├── uses ──> context_strategies  (for context building)
+  ├── uses ──> tools               (for actions)
+  ├── uses ──> llm_utils           (for LLM calls)
+  └── uses ──> jetbox_notes        (for persistence)
+
+OrchestratorAgent
+  ├── manages ──> TaskExecutorAgent instances
+  ├── uses ──> OrchestratorStatus  (for display)
+  └── uses ──> agent_registry      (for agent lookup)
+
+tools.py
+  ├── uses ──> WorkspaceManager    (path resolution)
+  ├── uses ──> ContextManager      (for task tools)
+  └── uses ──> ServerManager       (for server tools)
+
+ContextManager
+  ├── uses ──> context_strategies  (to build context)
+  └── persists to ──> .agent_context/state.json
+
+StatusDisplay
+  └── reads from ──> ContextManager (for task state)
+
+
+FILE LISTING BY LAYER
+════════════════════════════════════════════════════════════════════════════
+
+ENTRY POINTS:
+  agent.py                    - CLI for TaskExecutorAgent
+  orchestrator_main.py        - CLI for multi-agent orchestration
+
+AGENT IMPLEMENTATIONS:
+  task_executor_agent.py      - Main task execution agent
+  orchestrator_agent.py       - Multi-agent orchestrator
+  base_agent.py               - Base class for all agents
+
+CORE SYSTEMS:
+  context_manager.py          - Goal/Task/Subtask hierarchy
+  workspace_manager.py        - Workspace isolation
+  tools.py                    - Tool implementations
+  context_strategies.py       - Context building strategies
+  server_manager.py           - Background server management
+
+DISPLAY & MONITORING:
+  status_display.py           - Task progress display
+  orchestrator_status.py      - Orchestrator status display
+
+UTILITIES:
+  llm_utils.py                - LLM interaction wrapper
+  agent_config.py             - Configuration loading
+  agent_registry.py           - Agent registration
+  completion_detector.py      - Completion detection
+  jetbox_notes.py             - Persistent context
+  prompt_loader.py            - YAML prompt loading
+
+LEGACY/DEMO:
+  agent_legacy.py             - Original monolithic implementation
+  demo_server_feature.py      - Server feature demo
+  diag_speed.py               - Speed diagnostics
+  dsl.py                      - DSL experiments
+  sitecustomize.py            - Python customization
+
+================================================================================
