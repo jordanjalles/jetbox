@@ -13,7 +13,7 @@ import os
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
-from context_strategies import HierarchicalStrategy, ContextStrategy  # Use strategy classes
+from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy, ContextStrategy  # Use strategy classes
 from status_display import StatusDisplay
 from llm_utils import chat_with_inactivity_timeout, clear_ollama_context
 from completion_detector import analyze_llm_response
@@ -69,8 +69,9 @@ class TaskExecutorAgent(BaseAgent):
         # Workspace reuse support
         self.workspace_path = workspace_path
 
-        # Context strategy (default to hierarchical)
-        self.context_strategy = context_strategy or HierarchicalStrategy()
+        # Context strategy (default to append-until-full with LLM compaction)
+        # Evaluation showed: 74% fewer rounds, 30% faster than hierarchical
+        self.context_strategy = context_strategy or AppendUntilFullStrategy()
 
         # Initialize context manager
         self.init_context_manager()
