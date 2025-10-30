@@ -241,8 +241,17 @@ class BaseAgent(ABC):
         self.state.messages = []
 
     def increment_round(self) -> None:
-        """Increment round counter."""
+        """Increment round counter and active subtask rounds."""
         self.state.total_rounds += 1
+
+        # Also increment the active subtask's rounds_used
+        if self.context_manager and self.context_manager.state.goal:
+            current_task = self.context_manager._get_current_task()
+            if current_task:
+                active_subtask = current_task.active_subtask()
+                if active_subtask:
+                    active_subtask.rounds_used += 1
+                    self.context_manager._save_state()
 
     # ===========================
     # Phase 1 additions: Helper methods for subsystems
@@ -254,11 +263,21 @@ class BaseAgent(ABC):
         if self.context_manager is None:
             self.context_manager = ContextManager()
 
-    def init_workspace_manager(self, goal_slug: str) -> None:
-        """Initialize workspace manager for this goal."""
+    def init_workspace_manager(self, goal_slug: str, workspace_path: Path | str | None = None) -> None:
+        """
+        Initialize workspace manager for this goal.
+
+        Args:
+            goal_slug: Goal description slug for workspace directory name
+            workspace_path: Optional existing workspace path to reuse (for iteration)
+        """
         from workspace_manager import WorkspaceManager
         if self.workspace_manager is None:
-            self.workspace_manager = WorkspaceManager(goal=goal_slug, base_dir=self.workspace)
+            self.workspace_manager = WorkspaceManager(
+                goal=goal_slug,
+                base_dir=self.workspace,
+                workspace_path=workspace_path
+            )
 
     def init_perf_stats(self) -> None:
         """Initialize performance stats tracking."""

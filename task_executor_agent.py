@@ -13,9 +13,8 @@ import os
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
-from context_strategies import build_hierarchical_context  # Use FULL version
-from workspace_manager import WorkspaceManager
-from status_display import StatusDisplay, PerformanceStats
+from context_strategies import HierarchicalStrategy, ContextStrategy  # Use strategy classes
+from status_display import StatusDisplay
 from llm_utils import chat_with_inactivity_timeout, clear_ollama_context
 from completion_detector import analyze_llm_response
 import jetbox_notes
@@ -39,6 +38,8 @@ class TaskExecutorAgent(BaseAgent):
         model: str = None,
         temperature: float = 0.2,
         workspace_path: Path | str | None = None,
+        context_strategy: ContextStrategy | None = None,
+        timeout: int | None = None,
     ):
         """
         Initialize TaskExecutor with full agent.py features.
@@ -50,6 +51,8 @@ class TaskExecutorAgent(BaseAgent):
             model: Ollama model to use (default from env or config)
             temperature: LLM temperature
             workspace_path: Optional existing workspace directory to reuse (for iteration)
+            context_strategy: Context management strategy (defaults to HierarchicalStrategy)
+            timeout: Optional timeout override in seconds (defaults to config value)
         """
         super().__init__(
             name="task_executor",
@@ -66,6 +69,9 @@ class TaskExecutorAgent(BaseAgent):
         # Workspace reuse support
         self.workspace_path = workspace_path
 
+        # Context strategy (default to hierarchical)
+        self.context_strategy = context_strategy or HierarchicalStrategy()
+
         # Initialize context manager
         self.init_context_manager()
         self.context_manager = self.context_manager or ContextManager()
@@ -78,6 +84,10 @@ class TaskExecutorAgent(BaseAgent):
 
         # Performance tracking
         self.init_perf_stats()
+
+        # Wall-clock timeout tracking
+        self.goal_start_time = None
+        self.timeout_override = timeout  # Optional override
 
         # Set initial goal if provided
         if goal:
@@ -149,13 +159,13 @@ class TaskExecutorAgent(BaseAgent):
 
     def build_context(self) -> list[dict[str, Any]]:
         """
-        Build context using FULL hierarchical strategy.
+        Build context using configured strategy.
 
         Returns:
-            [system_prompt, task_info, probe_state, jetbox_notes, last_N_messages]
+            Context list ready for LLM
         """
-        # Use FULL hierarchical context strategy (includes probe, notes, loops)
-        return build_hierarchical_context(
+        # Use configured context strategy (default: hierarchical)
+        return self.context_strategy.build_context(
             context_manager=self.context_manager,
             messages=self.state.messages,
             system_prompt=self.get_system_prompt(),
@@ -211,6 +221,9 @@ class TaskExecutorAgent(BaseAgent):
         # Initialize status display (reset stats for new goal)
         self.status_display = StatusDisplay(ctx=self.context_manager, reset_stats=True)
 
+        # Start wall-clock timer for goal
+        self.goal_start_time = time.time()
+
     def _llm_caller_for_jetbox(self, messages, temperature=0.2, timeout=30):
         """LLM caller for jetbox notes."""
         return chat_with_inactivity_timeout(
@@ -219,6 +232,142 @@ class TaskExecutorAgent(BaseAgent):
             options={"temperature": temperature},
             inactivity_timeout=timeout,
         )
+
+    def _handle_timeout(self, elapsed_seconds: float, messages: list) -> dict[str, Any]:
+        """
+        Handle goal wall-clock timeout.
+
+        Creates jetbox notes summary and context dump for troubleshooting.
+
+        Args:
+            elapsed_seconds: Total time elapsed
+            messages: Current message history
+
+        Returns:
+            Result dict with timeout status
+        """
+        print(f"[timeout] Handling goal timeout after {elapsed_seconds:.1f}s")
+
+        # Create jetbox notes summary if enabled
+        if self.config.timeouts.create_summary_on_timeout:
+            try:
+                print("[timeout] Creating jetbox notes summary...")
+                jetbox_notes.create_timeout_summary(
+                    goal=self.context_manager.state.goal,
+                    elapsed_seconds=elapsed_seconds,
+                )
+            except Exception as e:
+                print(f"[timeout] Failed to create summary: {e}")
+
+        # Save context dump if enabled
+        if self.config.timeouts.save_context_dump:
+            try:
+                print("[timeout] Saving context dump...")
+                self._save_timeout_context_dump(elapsed_seconds, messages)
+            except Exception as e:
+                print(f"[timeout] Failed to save context dump: {e}")
+
+        # Calculate total rounds from task tree
+        total_rounds = 0
+        if self.context_manager.state.goal:
+            for task in self.context_manager.state.goal.tasks:
+                for subtask in task.subtasks:
+                    total_rounds += subtask.rounds_used
+
+        # Get actual timeout value used
+        max_time = self.timeout_override if self.timeout_override is not None else self.config.timeouts.max_goal_time
+
+        return {
+            "status": "timeout",
+            "reason": f"Goal wall-clock limit exceeded: {elapsed_seconds:.1f}s > {max_time}s",
+            "elapsed_seconds": elapsed_seconds,
+            "total_rounds": total_rounds,
+        }
+
+    def _save_timeout_context_dump(self, elapsed_seconds: float, messages: list) -> None:
+        """
+        Save context dump for timeout troubleshooting.
+
+        Args:
+            elapsed_seconds: Total elapsed time
+            messages: Current message history
+        """
+        from pathlib import Path
+        from datetime import datetime
+        import json
+
+        # Create dump directory
+        dump_dir = Path(".agent_context/timeout_dumps")
+        dump_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dump_file = dump_dir / f"goal_timeout_{timestamp}.json"
+
+        # Calculate context stats
+        total_chars = sum(len(str(msg.get("content", ""))) for msg in messages)
+        estimated_tokens = total_chars // 4
+
+        # Build dump data
+        # Calculate total rounds
+        total_rounds = 0
+        if self.context_manager.state.goal:
+            for task in self.context_manager.state.goal.tasks:
+                for subtask in task.subtasks:
+                    total_rounds += subtask.rounds_used
+
+        # Get actual timeout value used
+        max_time = self.timeout_override if self.timeout_override is not None else self.config.timeouts.max_goal_time
+
+        dump_data = {
+            "timestamp": timestamp,
+            "timeout_type": "goal_wall_clock",
+            "elapsed_seconds": round(elapsed_seconds, 2),
+            "max_goal_time": max_time,
+            "model": self.model,
+            "goal": self.context_manager.state.goal.description if self.context_manager.state.goal else None,
+            "total_rounds": total_rounds,
+            "context_stats": {
+                "message_count": len(messages),
+                "total_chars": total_chars,
+                "estimated_tokens": estimated_tokens,
+            },
+            "task_tree": self._serialize_task_tree(),
+            "messages": messages,
+        }
+
+        # Write dump file
+        with open(dump_file, "w") as f:
+            json.dump(dump_data, f, indent=2, default=str)
+
+        print(f"[timeout] Context saved to {dump_file}")
+        print(f"[timeout] Stats: {len(messages)} messages, ~{estimated_tokens:,} tokens, {elapsed_seconds:.1f}s elapsed")
+
+    def _serialize_task_tree(self) -> dict:
+        """Serialize current task tree for context dump."""
+        if not self.context_manager.state.goal:
+            return {}
+
+        goal = self.context_manager.state.goal
+        return {
+            "goal": goal.description,
+            "status": goal.status,
+            "tasks": [
+                {
+                    "description": task.description,
+                    "status": task.status,
+                    "subtasks": [
+                        {
+                            "description": subtask.description,
+                            "status": subtask.status,
+                            "rounds_used": subtask.rounds_used,
+                        }
+                        for subtask in task.subtasks
+                    ]
+                }
+                for task in goal.tasks
+            ]
+        }
 
     def get_current_status(self) -> dict[str, Any]:
         """
@@ -254,6 +403,14 @@ class TaskExecutorAgent(BaseAgent):
 
         try:
             for round_no in range(1, max_rounds + 1):
+                # Check wall-clock timeout (use override if provided)
+                max_time = self.timeout_override if self.timeout_override is not None else self.config.timeouts.max_goal_time
+                if self.goal_start_time and max_time > 0:
+                    elapsed = time.time() - self.goal_start_time
+                    if elapsed > max_time:
+                        print(f"\n[timeout] Goal wall-clock limit exceeded: {elapsed:.1f}s > {max_time}s")
+                        return self._handle_timeout(elapsed, messages)
+
                 # Show status
                 if self.status_display:
                     # Get current subtask rounds (with defensive checks)
@@ -267,7 +424,7 @@ class TaskExecutorAgent(BaseAgent):
 
                             task = self.context_manager.state.goal.tasks[self.context_manager.state.current_task_idx]
                             if task.active_subtask():
-                                subtask_rounds = task.active_subtask().rounds_spent
+                                subtask_rounds = task.active_subtask().rounds_used
                     except (AttributeError, IndexError, TypeError):
                         # If anything goes wrong, just use 0
                         subtask_rounds = 0
@@ -287,19 +444,89 @@ class TaskExecutorAgent(BaseAgent):
                 # Build context
                 context = self.build_context()
 
-                # Call LLM
+                # Call LLM with 3-minute total timeout
                 start_time = time.time()
-                response = chat_with_inactivity_timeout(
-                    model=self.model,
-                    messages=context,
-                    tools=self.get_tools(),
-                    options={"temperature": self.temperature},
-                )
+                try:
+                    response = chat_with_inactivity_timeout(
+                        model=self.model,
+                        messages=context,
+                        tools=self.get_tools(),
+                        options={"temperature": self.temperature},
+                        inactivity_timeout=30,     # 30s inactivity = hung Ollama
+                        max_total_time=180,        # 3 minutes total = context too large or slow model
+                    )
+                except Exception as llm_error:
+                    # Try to recover from tool call parsing errors
+                    from ollama import ResponseError
+                    from llm_utils import extract_tool_call_from_parse_error
+
+                    if isinstance(llm_error, ResponseError) and "error parsing tool call" in str(llm_error):
+                        # Attempt to extract JSON from error message
+                        extracted = extract_tool_call_from_parse_error(str(llm_error))
+                        if extracted:
+                            print(f"[llm_recovery] Recovered tool call from parse error (LLM generated text before JSON)")
+
+                            # Construct a valid response with the extracted tool call
+                            # We need to figure out which tool was being called
+                            # Strategy: Look for tool name in the context of recent messages
+                            tool_name = None
+
+                            # Check if extracted has name/arguments already
+                            if 'name' in extracted and 'arguments' in extracted:
+                                tool_name = extracted['name']
+                                tool_args = extracted['arguments']
+                            else:
+                                # Try to infer tool name from extracted keys
+                                # Common patterns: write_file has 'path'+'content', run_bash has 'command'
+                                if 'path' in extracted and 'content' in extracted:
+                                    tool_name = 'write_file'
+                                    tool_args = extracted
+                                elif 'command' in extracted:
+                                    tool_name = 'run_bash'
+                                    tool_args = extracted
+                                elif 'reason' in extracted:
+                                    tool_name = 'mark_subtask_complete'
+                                    tool_args = extracted
+                                else:
+                                    # Can't determine tool name, log and re-raise
+                                    print(f"[llm_recovery] Could not determine tool name from extracted args: {list(extracted.keys())}")
+                                    raise llm_error
+
+                            # Build synthetic response
+                            response = {
+                                "message": {
+                                    "role": "assistant",
+                                    "content": "",  # No content when using tools
+                                    "tool_calls": [
+                                        {
+                                            "function": {
+                                                "name": tool_name,
+                                                "arguments": tool_args
+                                            }
+                                        }
+                                    ]
+                                },
+                                "eval_count": 0,  # Unknown, will be treated as 0
+                                "prompt_eval_count": 0,
+                            }
+                            print(f"[llm_recovery] Synthetic response created: tool={tool_name}, args_keys={list(tool_args.keys())}")
+                        else:
+                            # Could not extract, re-raise original error
+                            print(f"[llm_recovery] Could not extract JSON from parse error")
+                            raise llm_error
+                    else:
+                        # Different error type, re-raise
+                        raise llm_error
+
                 duration = time.time() - start_time
 
                 # Track performance
                 if self.status_display:
-                    self.status_display.record_llm_call(duration, response.get("eval_count", 0))
+                    self.status_display.record_llm_call(
+                        duration,
+                        response.get("eval_count", 0),
+                        response.get("prompt_eval_count", 0)
+                    )
 
                 # Add assistant message
                 if "message" in response:
@@ -346,12 +573,13 @@ class TaskExecutorAgent(BaseAgent):
                             # Unwrap result
                             actual_result = result.get("result") if isinstance(result, dict) and "result" in result else result
 
-                            # CRITICAL: Clear messages on subtask transitions
+                            # Clear messages on subtask transitions (if strategy requires it)
                             if isinstance(actual_result, dict) and actual_result.get("status") in ["subtask_advanced", "task_advanced"]:
-                                old_count = len(self.state.messages)
-                                self.clear_messages()  # Clear self.state.messages (used by build_context)
-                                messages.clear()  # Also clear local list for consistency
-                                print(f"[context_isolation] Cleared {old_count} messages after subtask transition")
+                                if self.context_strategy.should_clear_on_transition():
+                                    old_count = len(self.state.messages)
+                                    self.clear_messages()  # Clear self.state.messages (used by build_context)
+                                    messages.clear()  # Also clear local list for consistency
+                                    print(f"[context_isolation] Cleared {old_count} messages after subtask transition (strategy: {self.context_strategy.get_name()})")
 
                             # Check for goal completion
                             if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
