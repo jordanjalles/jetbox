@@ -95,7 +95,9 @@ export OLLAMA_MODEL="gpt-oss:20b"
 - Automatic path resolution (all file operations workspace-relative)
 - File tracking and workspace-scoped test/lint commands
 - Prevents context distraction from root directory files
+- **Workspace parameter semantics**: `workspace=None` creates new isolated workspace, `workspace=Path` reuses existing
 - **See [WORKSPACE_AND_COMPLETION_FEATURES.md](WORKSPACE_AND_COMPLETION_FEATURES.md) for details**
+- **See [evaluation_results/WORKSPACE_NESTING_FIX_IMPLEMENTED.md](evaluation_results/WORKSPACE_NESTING_FIX_IMPLEMENTED.md) for workspace nesting fix details**
 
 **completion_detector.py** (completion nudging):
 - Heuristic pattern matching to detect completion signals in LLM responses

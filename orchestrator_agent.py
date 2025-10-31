@@ -258,12 +258,14 @@ Before delegating, determine if project needs architecture design:
 
 CONSULT ARCHITECT when:
 - Multi-component/multi-service systems (microservices, distributed systems)
+- Libraries with 3+ distinct components (e.g., API client + auth handler + rate limiter)
 - Complex data flows or processing pipelines
 - Technology stack decisions needed (which database? which framework?)
 - Performance/scaling concerns (handle X req/sec, support Y users)
 - Multiple modules with interfaces/dependencies
 - User explicitly asks for architecture/design
 - Refactoring large existing codebases
+- Projects requiring coordination between multiple classes/modules
 
 SKIP ARCHITECT (delegate directly) when:
 - Simple single-file scripts or utilities

@@ -38,6 +38,9 @@ def dispatch(call):
         "check_server": tools.check_server,
         "list_servers": tools.list_servers,
         "mark_subtask_complete": tools.mark_subtask_complete,
+        "mark_goal_complete": tools.mark_goal_complete,
+        "mark_complete": tools.mark_complete,
+        "mark_failed": tools.mark_failed,
         "decompose_task": tools.decompose_task,
     }
 
@@ -68,7 +71,9 @@ def main() -> None:
         sys.exit(1)
 
     # Determine workspace
-    workspace = Path(args.workspace) if args.workspace else Path(".")
+    # If --workspace provided, pass it to TaskExecutor to REUSE existing workspace
+    # If not provided, pass None to create NEW isolated workspace
+    workspace = Path(args.workspace) if args.workspace else None
 
     # Create TaskExecutorAgent
     print(f"[agent] Initializing TaskExecutorAgent...")

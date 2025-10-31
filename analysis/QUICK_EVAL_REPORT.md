@@ -48,7 +48,7 @@
 ## Comparison to Previous Runs
 
 ### Before Integration Fixes:
-- L1 tasks: ~50% failure rate (from INTEGRATION_ISSUES.md)
+- L1 tasks: ~50% failure rate (from docs/INTEGRATION_ISSUES.md)
 - Missing tools: grep_file, server tools not available
 - Tool definitions duplicated and out of sync
 

@@ -13,7 +13,7 @@ import os
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
-from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy, ContextStrategy, JetboxNotesEnhancement  # Use strategy classes
+from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy, SubAgentStrategy, ContextStrategy, JetboxNotesEnhancement  # Use strategy classes
 from status_display import StatusDisplay
 from llm_utils import chat_with_inactivity_timeout, clear_ollama_context
 from completion_detector import analyze_llm_response
@@ -32,12 +32,11 @@ class TaskExecutorAgent(BaseAgent):
 
     def __init__(
         self,
-        workspace: Path,
+        workspace: Path | str | None = None,
         goal: str | None = None,
         max_rounds: int = 128,
         model: str = None,
         temperature: float = 0.2,
-        workspace_path: Path | str | None = None,
         context_strategy: ContextStrategy | None = None,
         timeout: int | None = None,
     ):
@@ -45,19 +44,23 @@ class TaskExecutorAgent(BaseAgent):
         Initialize TaskExecutor with full agent.py features.
 
         Args:
-            workspace: Working directory for task execution
+            workspace: Workspace directory for task execution
+                      - If None: create NEW isolated workspace under .agent_workspace/
+                      - If Path: REUSE existing workspace (no nesting)
             goal: Optional initial goal to set
             max_rounds: Maximum rounds before giving up
             model: Ollama model to use (default from env or config)
             temperature: LLM temperature
-            workspace_path: Optional existing workspace directory to reuse (for iteration)
             context_strategy: Context management strategy (defaults to HierarchicalStrategy)
             timeout: Optional timeout override in seconds (defaults to config value)
         """
+        # Determine base workspace for BaseAgent (for .agent_context storage)
+        base_workspace = Path(workspace) if workspace else Path(".")
+
         super().__init__(
             name="task_executor",
             role="Code task executor",
-            workspace=workspace,
+            workspace=base_workspace,
             config=config,
         )
 
@@ -66,12 +69,13 @@ class TaskExecutorAgent(BaseAgent):
         self.temperature = temperature
         self.max_rounds = max_rounds
 
-        # Workspace reuse support
-        self.workspace_path = workspace_path
+        # Store workspace parameter for later use
+        # None = create new, Path = reuse existing
+        self.workspace = Path(workspace) if workspace else None
 
-        # Context strategy (default to append-until-full with LLM compaction)
-        # Evaluation showed: 74% fewer rounds, 30% faster than hierarchical
-        self.context_strategy = context_strategy or AppendUntilFullStrategy()
+        # Context strategy (default to SubAgentStrategy for delegated work)
+        # SubAgentStrategy provides mark_complete/mark_failed tools for reporting to orchestrator
+        self.context_strategy = context_strategy or SubAgentStrategy()
 
         # Context enhancements (composable plugins)
         self.enhancements = []
@@ -196,7 +200,13 @@ class TaskExecutorAgent(BaseAgent):
         args = tool_call["function"]["arguments"].copy()
 
         # Tools that need context_manager injection
-        tools_needing_context = {"mark_subtask_complete", "decompose_task"}
+        tools_needing_context = {
+            "mark_subtask_complete",
+            "mark_goal_complete",
+            "mark_complete",
+            "mark_failed",
+            "decompose_task"
+        }
 
         # Inject context_manager if needed
         if tool_name in tools_needing_context:
@@ -213,12 +223,39 @@ class TaskExecutorAgent(BaseAgent):
             "check_server": tools.check_server,
             "list_servers": tools.list_servers,
             "mark_subtask_complete": tools.mark_subtask_complete,
+            "mark_goal_complete": tools.mark_goal_complete,
+            "mark_complete": tools.mark_complete,
+            "mark_failed": tools.mark_failed,
             "decompose_task": tools.decompose_task,
         }
 
         # Execute the tool
         if tool_name in tool_map:
             result = tool_map[tool_name](**args)
+
+            # Record action for loop detection (core context management responsibility)
+            success = not (isinstance(result, dict) and result.get("error"))
+            if self.context_strategy:
+                loop_warning = self.context_strategy.record_action(
+                    tool_name=tool_name,
+                    args=args,
+                    result=result,
+                    success=success
+                )
+
+                # Add loop warning to result if detected
+                if loop_warning:
+                    print(f"\n⚠️  LOOP DETECTED: {loop_warning['warning']}")
+                    print(f"Suggestion: {loop_warning['suggestion']}\n")
+                    # Inject warning into result so LLM sees it
+                    if isinstance(result, dict):
+                        result["_loop_warning"] = f"{loop_warning['warning']}\n{loop_warning['suggestion']}"
+                    else:
+                        result = {
+                            "result": result,
+                            "_loop_warning": f"{loop_warning['warning']}\n{loop_warning['suggestion']}"
+                        }
+
             return {"result": result}
         else:
             return {"result": {"status": "error", "message": f"Unknown tool: {tool_name}"}}
@@ -283,9 +320,19 @@ class TaskExecutorAgent(BaseAgent):
         # Initialize context manager with goal
         self.context_manager.load_or_init(goal)
 
-        # Initialize workspace (pass workspace_path if reusing existing)
+        # Initialize workspace manager
+        # If self.workspace is None: create NEW isolated workspace
+        # If self.workspace is Path: REUSE existing workspace
         goal_slug = goal.lower()[:50].replace(" ", "-").replace("/", "-")
-        self.init_workspace_manager(goal_slug, workspace_path=self.workspace_path)
+
+        if self.workspace:
+            # Reuse mode: use existing workspace directory
+            print(f"[task_executor] Reusing workspace: {self.workspace}")
+            self.init_workspace_manager(goal_slug, workspace_path=self.workspace)
+        else:
+            # Create new mode: create isolated workspace
+            print(f"[task_executor] Creating new workspace for goal")
+            self.init_workspace_manager(goal_slug, workspace_path=None)
 
         # Configure tools with workspace
         tools.set_workspace(self.workspace_manager)
@@ -519,11 +566,16 @@ class TaskExecutorAgent(BaseAgent):
                         subtask_rounds = 0
 
                     # Render and print status
+                    # TaskExecutor uses append-until-full by default, so don't show hierarchical displays
                     try:
+                        from context_strategies import HierarchicalStrategy
+                        show_hierarchical = isinstance(self.context_strategy, HierarchicalStrategy)
+
                         status_output = self.status_display.render(
                             round_no=round_no,
                             subtask_rounds=subtask_rounds,
-                            max_rounds=self.config.rounds.max_per_subtask
+                            max_rounds=self.config.rounds.max_per_subtask,
+                            show_hierarchical=show_hierarchical
                         )
                         print(status_output)
                     except Exception as e:
@@ -541,67 +593,149 @@ class TaskExecutorAgent(BaseAgent):
                         messages=context,
                         tools=self.get_tools(),
                         options={"temperature": self.temperature},
-                        inactivity_timeout=30,     # 30s inactivity = hung Ollama
+                        inactivity_timeout=15,     # 15s inactivity = hung Ollama (reduced from 30s)
                         max_total_time=180,        # 3 minutes total = context too large or slow model
                     )
                 except Exception as llm_error:
-                    # Try to recover from tool call parsing errors
-                    from ollama import ResponseError
-                    from llm_utils import extract_tool_call_from_parse_error
+                    # Handle timeout errors for SubAgentStrategy
+                    if isinstance(llm_error, TimeoutError):
+                        from context_strategies import SubAgentStrategy
 
-                    if isinstance(llm_error, ResponseError) and "error parsing tool call" in str(llm_error):
-                        # Attempt to extract JSON from error message
-                        extracted = extract_tool_call_from_parse_error(str(llm_error))
-                        if extracted:
-                            print(f"[llm_recovery] Recovered tool call from parse error (LLM generated text before JSON)")
+                        # If using SubAgentStrategy, nudge agent to report completion/failure
+                        if isinstance(self.context_strategy, SubAgentStrategy):
+                            print(f"[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status")
 
-                            # Construct a valid response with the extracted tool call
-                            # We need to figure out which tool was being called
-                            # Strategy: Look for tool name in the context of recent messages
-                            tool_name = None
+                            # Add a system message nudging completion
+                            nudge_message = {
+                                "role": "user",
+                                "content": """⚠️ TIMEOUT WARNING - You must report task status immediately.
 
-                            # Check if extracted has name/arguments already
-                            if 'name' in extracted and 'arguments' in extracted:
-                                tool_name = extracted['name']
-                                tool_args = extracted['arguments']
-                            else:
-                                # Try to infer tool name from extracted keys
-                                # Common patterns: write_file has 'path'+'content', run_bash has 'command'
-                                if 'path' in extracted and 'content' in extracted:
-                                    tool_name = 'write_file'
-                                    tool_args = extracted
-                                elif 'command' in extracted:
-                                    tool_name = 'run_bash'
-                                    tool_args = extracted
-                                elif 'reason' in extracted:
-                                    tool_name = 'mark_subtask_complete'
-                                    tool_args = extracted
-                                else:
-                                    # Can't determine tool name, log and re-raise
-                                    print(f"[llm_recovery] Could not determine tool name from extracted args: {list(extracted.keys())}")
-                                    raise llm_error
+The LLM call timed out. You need to wrap up and report results to the controlling agent NOW.
 
-                            # Build synthetic response
-                            response = {
-                                "message": {
-                                    "role": "assistant",
-                                    "content": "",  # No content when using tools
-                                    "tool_calls": [
-                                        {
-                                            "function": {
-                                                "name": tool_name,
-                                                "arguments": tool_args
-                                            }
-                                        }
-                                    ]
-                                },
-                                "eval_count": 0,  # Unknown, will be treated as 0
-                                "prompt_eval_count": 0,
+Based on your current progress:
+- If you've completed the core work: call mark_complete(summary="what you accomplished")
+- If you cannot complete the task: call mark_failed(reason="why it cannot be completed")
+
+You MUST call one of these tools in your next response. The controlling agent is waiting."""
                             }
-                            print(f"[llm_recovery] Synthetic response created: tool={tool_name}, args_keys={list(tool_args.keys())}")
+
+                            # Add nudge to messages
+                            messages.append(nudge_message)
+                            self.add_message(nudge_message)
+
+                            # Try ONE more LLM call with the nudge
+                            print("[timeout_nudge] Giving agent one final chance to report status...")
+                            try:
+                                response = chat_with_inactivity_timeout(
+                                    model=self.model,
+                                    messages=self.build_context(),
+                                    tools=self.get_tools(),
+                                    options={"temperature": self.temperature},
+                                    inactivity_timeout=30,
+                                    max_total_time=60,  # Shorter timeout for final attempt
+                                )
+                                print("[timeout_nudge] Agent responded to nudge")
+                            except Exception as final_error:
+                                # Even the nudge failed - force mark_failed
+                                print(f"[timeout_nudge] Final nudge attempt failed: {final_error}")
+                                print("[timeout_nudge] Forcing mark_failed")
+
+                                # Create synthetic mark_failed response
+                                response = {
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": "",
+                                        "tool_calls": [
+                                            {
+                                                "function": {
+                                                    "name": "mark_failed",
+                                                    "arguments": {
+                                                        "reason": f"Task timed out after LLM inactivity. Last error: {str(final_error)[:200]}"
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "eval_count": 0,
+                                    "prompt_eval_count": 0,
+                                }
                         else:
-                            # Could not extract, re-raise original error
-                            print(f"[llm_recovery] Could not extract JSON from parse error")
+                            # Not using SubAgentStrategy, re-raise
+                            raise llm_error
+
+                    # Try to recover from tool call parsing errors
+                    elif isinstance(llm_error, Exception):
+                        from ollama import ResponseError
+                        from llm_utils import extract_tool_call_from_parse_error
+
+                        if isinstance(llm_error, ResponseError) and "error parsing tool call" in str(llm_error):
+                            # Attempt to extract JSON from error message
+                            extracted = extract_tool_call_from_parse_error(str(llm_error))
+                            if extracted:
+                                print(f"[llm_recovery] Recovered tool call from parse error (LLM generated text before JSON)")
+
+                                # Construct a valid response with the extracted tool call
+                                # We need to figure out which tool was being called
+                                # Strategy: Look for tool name in the context of recent messages
+                                tool_name = None
+
+                                # Check if extracted has name/arguments already
+                                if 'name' in extracted and 'arguments' in extracted:
+                                    tool_name = extracted['name']
+                                    tool_args = extracted['arguments']
+                                else:
+                                    # Try to infer tool name from extracted keys
+                                    # Common patterns: write_file has 'path'+'content', run_bash has 'command'
+                                    if 'path' in extracted and 'content' in extracted:
+                                        tool_name = 'write_file'
+                                        tool_args = extracted
+                                    elif 'command' in extracted:
+                                        tool_name = 'run_bash'
+                                        tool_args = extracted
+                                    elif 'reason' in extracted:
+                                        tool_name = 'mark_subtask_complete'
+                                        tool_args = extracted
+                                    else:
+                                        # Can't determine tool name, log and re-raise
+                                        print(f"[llm_recovery] Could not determine tool name from extracted args: {list(extracted.keys())}")
+                                        raise llm_error
+
+                                # Build synthetic response
+                                response = {
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": "",  # No content when using tools
+                                        "tool_calls": [
+                                            {
+                                                "function": {
+                                                    "name": tool_name,
+                                                    "arguments": tool_args
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "eval_count": 0,  # Unknown, will be treated as 0
+                                    "prompt_eval_count": 0,
+                                }
+                                print(f"[llm_recovery] Synthetic response created: tool={tool_name}, args_keys={list(tool_args.keys())}")
+                            else:
+                                # Could not extract - return error to LLM so it can retry
+                                print(f"[llm_recovery] Could not extract JSON from parse error")
+                                print(f"[llm_recovery] Sending parse error back to LLM for retry")
+
+                                # Return the raw error text to LLM
+                                response = {
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": str(llm_error),  # Just the raw error
+                                        "tool_calls": []
+                                    },
+                                    "eval_count": 0,
+                                    "prompt_eval_count": 0,
+                                }
+                                print("[llm_recovery] Agent will continue with error feedback to LLM")
+                        else:
+                            # Different error type, re-raise
                             raise llm_error
                     else:
                         # Different error type, re-raise

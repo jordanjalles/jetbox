@@ -171,8 +171,15 @@ L5_TASKS.append({
 ### Adjust timeouts
 
 Change the `timeout` field (in seconds):
-- L5-L7: 300 seconds (5 minutes) typical
-- L8: 600 seconds (10 minutes) typical
+- **L5**: 120-180 seconds (2-3 minutes) - simple single-file utilities
+- **L6**: 300 seconds (5 minutes) - multi-component libraries (use architect!)
+- **L7**: 300-600 seconds (5-10 minutes) - complete packages
+- **L8**: 600 seconds (10 minutes) - full systems with architect
+
+**L6 Best Practice**: Multi-component libraries (REST client, data pipeline, config manager) should use orchestrator + architect for proper task decomposition. Run with:
+```bash
+timeout 300 python orchestrator_main.py --once "Create REST API client... [Use architect for planning]"
+```
 
 ### Custom validation
 

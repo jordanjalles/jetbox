@@ -9,17 +9,18 @@
 
 ## Features
 
-- 🎯 **Hierarchical Context Management** - Organizes work into Goal → Task → Subtask → Action
-- 🤝 **Multi-Agent Orchestration** - Conversational orchestrator delegates to task executor
+- 🎯 **Multi-Agent Orchestration** - Orchestrator → Architect → TaskExecutor workflow
+- 🏗️ **Composable Enhancements** - Pluggable context management with TaskManagement + JetboxNotes
+- 📐 **Architecture Consulting** - Architect agent for complex project design
+- 📋 **Task Management** - Structured task tracking with dependency resolution
+- 📝 **Persistent Context** - Jetbox notes preserve context across sessions
 - ⚙️ **Fully Configurable** - YAML-based configuration for all agent behavior
 - 🔄 **No Give-Up Option** - Always decomposes or zooms out (3x retry before final failure)
-- 🧠 **Smart Zoom-Out** - Analyzes task tree to find root of problem (parent/task/root)
 - 🔍 **Loop Detection** - Prevents infinite action loops with automatic blocking
 - 💾 **Crash Recovery** - Resume from exact point of interruption
 - 📊 **Real-Time Status** - Tree-based visualization with progress bars
 - 🏗️ **Workspace Isolation** - Each goal gets isolated directory
 - ⏱️ **Timeout Protection** - Automatic detection and recovery from LLM hangs
-- 📝 **Prompt Engineering** - External YAML prompts for easy tuning
 
 ## Quick Start
 
@@ -50,117 +51,285 @@ ollama serve  # if not already running
 
 ### Run the Agent
 
-#### TaskExecutor Mode (Direct Execution)
-
-```bash
-python agent.py "Create a calculator module with add, subtract, multiply functions and tests"
-```
-
-The agent will:
-1. Decompose the goal into tasks and subtasks
-2. Execute actions in isolated workspace
-3. Automatically advance through the hierarchy
-4. Display real-time progress
-5. Retry up to 3 times if approaches fail
-6. Save all state for crash recovery
-
-#### Orchestrator Mode (Multi-Agent Conversation)
+#### Orchestrator Mode (Recommended - Full Workflow)
 
 ```bash
 python orchestrator_main.py
 ```
 
-Interactive mode with conversational orchestrator:
+Interactive mode with multi-agent workflow:
 - Chat naturally with the orchestrator
-- Orchestrator clarifies requirements when needed
-- Automatically delegates coding tasks to TaskExecutor
-- Receive results and continue conversation
-- Each delegation runs in isolated workspace
+- **Simple tasks**: Orchestrator delegates directly to TaskExecutor
+- **Complex projects**: Orchestrator consults Architect first for design
+- Architect creates architecture docs, module specs, and task breakdown
+- Orchestrator manages task execution with dependency tracking
+- Each task runs in isolated workspace
 
 **Example conversation:**
 ```
-You: make a simple HTML calculator
-Orchestrator: → Delegating to TaskExecutor...
-[TaskExecutor creates calculator.html]
-Orchestrator: Task completed! Files created in workspace.
-
-You: add support for keyboard input
-Orchestrator: → Delegating to TaskExecutor...
-[TaskExecutor adds keyboard support]
+You: Build a microservices system with user and product services
+Orchestrator: → Consulting Architect...
+Architect: Created architecture with 3 services, 8 modules, 12 tasks
+Orchestrator: → Delegating Task 1: Set up user service...
+[TaskExecutor implements user service]
+Orchestrator: → Delegating Task 2: Set up product service...
+[TaskExecutor implements product service]
+Orchestrator: All 12 tasks completed! Files in workspace/.
 ```
+
+#### One-Shot Mode (Quick Tasks)
+
+```bash
+python orchestrator_main.py --once "Create a JSON to CSV converter"
+```
+
+Processes request and exits (no interactive loop).
+
+#### TaskExecutor Mode (Direct Execution)
+
+```bash
+python agent.py "Create a calculator module with tests"
+```
+
+Direct execution without orchestrator:
+- Hierarchical task decomposition
+- Autonomous execution with progress tracking
+- Best for: Scripts, tools, testing, batch operations
 
 ### Example Session
 
 ```bash
-$ python agent.py "Create a simple todo list CLI app"
+$ python orchestrator_main.py --once "Library management system with book catalog and member services"
 
-[info] Checking Ollama health...
-[info] Ollama is responsive
-[log] Starting agent with goal: Create a simple todo list CLI app
-[log] Mode: ISOLATE (isolated workspace)
-[log] Workspace: .agent_workspace/create-a-simple-todo-list-cli-app
-[log] Decomposing goal into tasks...
-[log] Decomposed into 3 tasks
+[orchestrator] Context strategy: append_until_full
 
-======================================================================
-INITIAL TASK TREE
-======================================================================
+User: Library management system with book catalog and member services
 
-Task 1/3 | Subtask 1/2 | ✓0% | 0.0s
+→ Consulting Architect: Library management system with book catalog...
 
-GOAL: Create a simple todo list CLI app
+============================================================
+ARCHITECT CONSULTATION
+============================================================
+Project: Library management system with book catalog and member services
+============================================================
 
-TASK TREE (0/3 completed):
-  ► ⟳ Create todo.py with CLI interface
-    ► ⟳ Write todo.py with add/list/complete functions
-      ○ Add command-line argument parsing
-    ○ Create tests for todo functionality
-      ○ Write test_todo.py
-      ○ Run pytest
-    ○ Verify code quality
-      ○ Run ruff check
+[Round 1] Architect: Creating architecture overview...
+[Round 2] Architect: Writing module specs...
+[Round 3] Architect: Breaking down into tasks...
+
+✅ Architecture consultation complete!
+
+Workspace: .agent_workspace/library-management-system
+Architecture documents (1):
+  - architecture/system-overview.md
+Module specifications (2):
+  - architecture/modules/book-catalog-service.md
+  - architecture/modules/member-management-service.md
+Task breakdown: architecture/task-breakdown.json
+  (7 tasks ready for delegation)
+
+Tasks to delegate:
+  [T1] Set up Flask application for Book Catalog Service
+  [T2] Implement CRUD endpoints for books (depends on: T1)
+  [T3] Set up Flask application for Member Management Service
+  [T4] Implement CRUD endpoints for members (depends on: T3)
+  ...
+
+[orchestrator] Added task management enhancement (7 tasks)
+
+→ Delegating to TaskExecutor: Set up Flask application for Book Catalog...
+
+[TaskExecutor creates Book Catalog service]
+
+→ Delegating to TaskExecutor: Implement CRUD endpoints for books...
+
+[TaskExecutor implements endpoints]
 
 ...
 ```
+
+## Multi-Agent Architecture
+
+Jetbox uses a **composable multi-agent architecture** with three specialized agents:
+
+### Architecture Overview
+
+```
+User ↔ Orchestrator (conversation + task management)
+         ↓ consults (complex projects)
+       Architect (architecture design)
+         ↓ produces task breakdown
+       Orchestrator (task delegation)
+         ↓ delegates tasks
+       TaskExecutor (autonomous execution)
+```
+
+### Agent Roles
+
+**1. Orchestrator** - Conversational coordinator
+- Manages user conversation
+- Assesses project complexity
+- Consults Architect for complex projects
+- Delegates coding tasks to TaskExecutor
+- Tracks task progress with dependency management
+- **Enhancement**: TaskManagement (when task breakdown exists)
+- **Base Strategy**: AppendUntilFull (message history management)
+
+**2. Architect** - Design consultant
+- Creates system architecture overviews
+- Writes module specifications
+- Breaks down projects into structured tasks
+- Produces artifacts in `workspace/architecture/`
+- No code execution - design only
+- **Enhancement**: TaskManagement (auto-detected for existing projects)
+- **Base Strategy**: AppendUntilFull (architecture discussions)
+
+**3. TaskExecutor** - Code execution specialist
+- Hierarchical task decomposition
+- Autonomous code execution
+- File operations, testing, linting
+- Progress tracking and crash recovery
+- **Enhancement**: JetboxNotes (persistent context summaries)
+- **Base Strategy**: AppendUntilFull (execution history)
+
+### Workflow Examples
+
+**Simple Task (No Architect)**:
+```
+User: "Create a JSON to CSV converter"
+  ↓
+Orchestrator: Direct delegation
+  ↓
+TaskExecutor: Creates converter.py
+  ↓
+User: "Task complete!"
+```
+
+**Complex Project (With Architect)**:
+```
+User: "Build a microservices platform"
+  ↓
+Orchestrator: Assess → COMPLEX
+  ↓
+Architect: Design architecture
+  ↓ produces
+  - Architecture docs
+  - Module specs
+  - Task breakdown (12 tasks with dependencies)
+  ↓
+Orchestrator: Add TaskManagement enhancement
+  ↓
+Orchestrator: Delegate Task 1
+  ↓
+TaskExecutor: Implement Task 1
+  ↓
+Orchestrator: Mark T1 complete, delegate Task 2
+  ↓
+... (continues for all tasks)
+```
+
+## Composable Enhancement System
+
+Jetbox uses a **composable enhancement architecture** where agents combine a base strategy with pluggable enhancements:
+
+### Base + Enhancements Pattern
+
+**All agents use**:
+- **Base**: `AppendUntilFullStrategy` - Manages message history and compaction
+
+**Plus agent-specific enhancements**:
+- **Orchestrator**: `+ TaskManagementEnhancement` (when tasks exist)
+- **Architect**: `+ TaskManagementEnhancement` (auto-detected)
+- **TaskExecutor**: `+ JetboxNotesEnhancement` (always enabled)
+
+### Enhancement Features
+
+**TaskManagementEnhancement**:
+- Injects task status into context (pending/in_progress/completed/failed)
+- Shows next pending task with dependency checking
+- Provides CRUD tools: read_task_breakdown, get_next_task, mark_task_status
+- Displays first 5 tasks with visual status icons (○ ⟳ ✓ ✗)
+- State persisted in `architecture/task-breakdown.json`
+
+**JetboxNotesEnhancement**:
+- Loads previous work summaries from `jetboxnotes.md`
+- Auto-summarizes on task/goal completion
+- Provides context continuity across agent restarts
+- No additional tools needed (automatic)
+
+### Benefits of Composition
+
+✅ **No code duplication**: Enhancements are ~100-300 lines each
+✅ **True composition**: Multiple enhancements can coexist
+✅ **Clean separation**: Base handles messages, enhancements add context
+✅ **Easy extension**: New enhancements follow simple interface
+✅ **Backward compatible**: Old strategies wrap new enhancements
 
 ## Project Structure
 
 ```
 jetbox/
-├── agent.py                    # TaskExecutor - hierarchical execution
-├── orchestrator_main.py        # Orchestrator entry point
-├── orchestrator_agent.py       # Conversational orchestrator
-├── agent_registry.py           # Multi-agent registry
-├── base_agent.py               # Base agent class
+├── Core Agents
+│   ├── orchestrator_main.py        # Orchestrator entry point
+│   ├── orchestrator_agent.py       # Conversational coordinator
+│   ├── architect_agent.py          # Architecture design consultant
+│   ├── base_agent.py               # Base agent class
+│   ├── agent.py                    # TaskExecutor - hierarchical execution
+│   └── agent_registry.py           # Multi-agent registry
 │
-├── context_manager.py          # Hierarchical state management
-├── workspace_manager.py        # Workspace isolation system
-├── status_display.py           # Real-time progress visualization
-├── completion_detector.py      # Completion signal detection
+├── Enhancements & Strategies
+│   ├── context_strategies.py       # Context strategies + enhancements
+│   ├── task_management_tools.py    # Task CRUD operations
+│   ├── jetbox_notes.py             # Persistent context summaries
+│   └── architect_tools.py          # Architecture artifact creation
 │
-├── agent_config.yaml           # ⚙️ User configuration
-├── agent_config.py             # Configuration loader
-├── agents.yaml                 # Multi-agent configuration
-├── prompts.yaml                # 📝 All agent prompts
-├── prompt_loader.py            # Prompt loading utility
+├── Context Management
+│   ├── context_manager.py          # Hierarchical state management
+│   ├── workspace_manager.py        # Workspace isolation system
+│   ├── status_display.py           # Real-time progress visualization
+│   └── completion_detector.py      # Completion signal detection
 │
-├── tests/                      # Test infrastructure
-│   ├── run_stress_tests.py    # Stress test suite
-│   ├── run_l3_l7_x5.py         # L3-L7 evaluation (5 iterations)
-│   ├── test_orchestrator_*.py  # Orchestrator tests
-│   └── test_*.py               # Unit tests
+├── Configuration
+│   ├── agent_config.yaml           # ⚙️ User configuration
+│   ├── agent_config.py             # Configuration loader
+│   ├── agents.yaml                 # Multi-agent configuration
+│   ├── prompts.yaml                # 📝 All agent prompts
+│   └── prompt_loader.py            # Prompt loading utility
 │
-├── .agent_context/             # Runtime state (auto-created)
-│   ├── state.json              # Complete hierarchical state
-│   ├── history.jsonl           # Action history log
-│   ├── loops.json              # Detected loop patterns
-│   └── stats.json              # Performance statistics
+├── Testing & Evaluation
+│   ├── tests/                      # Test infrastructure
+│   │   ├── test_project_evaluation.py    # L5-L8 eval suite (15 tests)
+│   │   ├── test_orchestrator_*.py        # Orchestrator tests
+│   │   └── test_*.py                     # Unit tests
+│   ├── run_project_evaluation.py         # Evaluation runner
+│   └── evaluation_results/
+│       ├── EVALUATION_SUITE_README.md    # Eval documentation
+│       ├── *.md                          # Analysis reports
+│       └── project_eval_results.jsonl    # Test results
 │
-├── .agent_workspace/           # Isolated workspaces (auto-created)
-│   └── {goal-slug}/            # One workspace per goal
+├── Runtime State (auto-created)
+│   ├── .agent_context/             # Agent state
+│   │   ├── state.json              # Complete hierarchical state
+│   │   ├── history.jsonl           # Action history log
+│   │   └── stats.json              # Performance statistics
+│   │
+│   └── .agent_workspace/           # Isolated workspaces
+│       └── {goal-slug}/            # One workspace per goal
+│           ├── architecture/       # Architect artifacts (if used)
+│           │   ├── *.md            # Architecture docs
+│           │   ├── modules/*.md    # Module specs
+│           │   └── task-breakdown.json   # Task breakdown
+│           ├── jetboxnotes.md      # Context summaries
+│           └── ... (implementation files)
 │
-└── docs/                       # Documentation
-    └── *.md                    # Architecture and analysis docs
+└── Documentation
+    ├── CLAUDE.md                          # AI assistant instructions
+    ├── docs/                              # Technical documentation
+    │   ├── INTEGRATION_ISSUES.md          # Integration fixes
+    │   └── architecture/                  # Architecture docs
+    ├── evaluation_results/                # Evaluation and test results
+    │   └── EVALUATION_SUITE_README.md     # Evaluation guide
+    └── analysis/                          # Test analysis reports
 ```
 
 ## Configuration
@@ -186,141 +355,149 @@ hierarchy:
   max_depth: 5                   # Max nesting levels
   max_siblings: 8                # Max subtasks per level
 
-# Decomposition Behavior
-decomposition:
-  min_children: 2                # Min subtasks when decomposing
-  max_children: 6                # Max subtasks when decomposing
-  temperature: 0.2               # LLM temperature for planning
-  prefer_granular: true          # Prefer more, smaller subtasks
-
 # Loop Detection
 loop_detection:
   max_action_repeats: 3          # Block after N repeats
   max_subtask_repeats: 2         # Escalate after N subtask repeats
-  max_context_age: 300           # Context staleness threshold (seconds)
 
 # Context Management
 context:
   max_messages_in_memory: 12     # Message pairs in context
-  max_tokens: 8000                # Token limit (0 = disabled)
   recent_actions_limit: 10        # Recent actions to show
   enable_compression: true        # Summarize old messages
-  compression_threshold: 20       # Compress when > N messages
 ```
 
-## Multi-Agent Architecture
+## Task Management
 
-Jetbox now supports two modes of operation:
+When Architect creates a project, tasks are tracked in `architecture/task-breakdown.json`:
 
-### 1. TaskExecutor Mode (Single Agent)
-Direct execution mode for straightforward tasks:
-- Run with `python agent.py "task description"`
-- Hierarchical task decomposition
-- Autonomous execution with progress tracking
-- Best for: Scripts, tools, testing, batch operations
-
-### 2. Orchestrator Mode (Multi-Agent)
-Conversational mode with task delegation:
-- Run with `python orchestrator_main.py`
-- Natural language conversation interface
-- Orchestrator clarifies requirements and delegates to TaskExecutor
-- TaskExecutor runs in isolated workspace per task
-- Best for: Interactive development, complex projects, iterative work
-
-**Architecture:**
-```
-User ↔ Orchestrator (conversation + planning)
-          ↓ delegates
-        TaskExecutor (autonomous execution)
-```
-
-**Key Benefits:**
-- **Separation of concerns** - Orchestrator handles conversation, TaskExecutor handles work
-- **Workspace isolation** - Each delegation gets clean workspace
-- **Context preservation** - Orchestrator maintains conversation history
-- **Failure handling** - TaskExecutor failures reported back to Orchestrator
-
-**See:** `ORCHESTRATOR_TEST_RESULTS.md` for test results and benchmarks
-
-## Key Features Explained
-
-### 1. Hierarchical Context Management
-
-The agent organizes work into a tree structure:
-
-```
-Goal: Create calculator with tests
-├── Task 1: Create calculator module
-│   ├── Subtask: Write calculator.py with add function
-│   │   └── Action: write_file("calculator.py", ...)
-│   └── Subtask: Write calculator.py with subtract function
-│       └── Action: write_file("calculator.py", ...)
-├── Task 2: Add tests
-│   └── Subtask: Write test_calculator.py
-│       └── Action: write_file("test_calculator.py", ...)
-└── Task 3: Verify quality
-    ├── Subtask: Run ruff linter
-    └── Subtask: Run pytest
+```json
+{
+  "generated_at": "2025-10-31T...",
+  "total_tasks": 7,
+  "tasks": [
+    {
+      "id": "T1",
+      "description": "Set up Flask application for Book Catalog",
+      "module": "book-catalog-service",
+      "dependencies": [],
+      "estimated_complexity": "low",
+      "priority": 1,
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "description": "Implement CRUD endpoints for books",
+      "module": "book-catalog-service",
+      "dependencies": ["T1"],
+      "estimated_complexity": "medium",
+      "priority": 2,
+      "status": "in_progress"
+    }
+  ]
+}
 ```
 
-**Benefits:**
-- **Automatic progression** - Completes subtasks and advances automatically
-- **Compact context** - Only shows current branch (60-80% token reduction)
-- **Crash recovery** - Resume from exact subtask after interruption
-- **Need-to-know** - Each level only sees relevant parent context
-
-### 2. Smart Zoom-Out
-
-When stuck at max depth, the agent analyzes the task tree to determine if the problem is:
-- **Localized** (zoom to parent) - Only 1-2 siblings failed
-- **Systemic** (zoom to task) - Parent is struggling, need different approach
-- **Fundamental** (zoom to root) - Multiple branches failing, reconsider entire strategy
-
-### 3. Loop Detection
-
-Detects and blocks:
-- Same action repeated 3+ times
-- Alternating patterns (A→B→A→B)
-- Similar actions in recent history
-
-When loop detected:
-- Action is permanently blocked
-- Warning shown to agent
-- Forces different approach
-
-### 4. Timeout Protection
-
-Built-in timeout protection prevents infinite hangs:
-- Monitors LLM response activity (not total time)
-- Detects when Ollama stops responding (30s of inactivity)
-- Generates failure report and exits gracefully
-- Allows long complex tasks to complete normally
-
-### 5. Workspace Isolation
-
-Each goal gets isolated workspace:
+**Orchestrator context shows**:
 ```
-.agent_workspace/
-└── create-calculator-with-tests/
-    ├── calculator.py
-    ├── test_calculator.py
-    └── __pycache__/
+======================================================================
+TASK BREAKDOWN STATUS
+======================================================================
+Total Tasks: 7
+  Pending:     3
+  In Progress: 1
+  Completed:   3
+  Failed:      0
+
+NEXT PENDING TASK:
+  [T5] Set up Flask for Member Management Service
+  Module: member-management-service
+  Complexity: low
+  Dependencies: (none)
+
+TASK LIST (first 5):
+  ✓ [T1] Set up Flask application for Book Catalog
+  ✓ [T2] Implement CRUD endpoints for books
+  ✓ [T3] Write tests for Book Catalog endpoints
+  ⟳ [T4] Set up Flask for Member Management
+  ○ [T5] Implement CRUD endpoints for members (deps: T4)
+======================================================================
 ```
 
-**Benefits:**
-- No root directory pollution
-- Parallel goal execution possible
-- Easy cleanup
-- Clear scope boundaries
+## Jetbox Notes System
 
-### 6. Approach Reconsideration
+Persistent context across runs via automatic summarization:
 
-When stuck, agent can reconsider approach at root:
-- Learns from previous failures
-- Extracts accomplishments (what worked)
-- Identifies failed approaches (what didn't work)
-- Generates completely new strategy
-- 3 attempts before final failure
+**Auto-Summarization**:
+- Task completion → 2-4 bullet summary appended to `jetboxnotes.md`
+- Goal success → 3-6 bullet comprehensive summary
+- Goal failure → Failure analysis with retry suggestions
+
+**Persistence**:
+- Notes saved in workspace (`jetboxnotes.md`)
+- Markdown format, human-readable
+- Survives crashes and reruns
+
+**Context Loading**:
+- Loaded automatically on agent startup
+- Included in agent context (max 2000 chars)
+- Injected after system prompt
+
+**Example**:
+```markdown
+# Jetbox Notes
+
+## Task Complete - 2025-10-31 20:15:32
+
+- Created Book Catalog Flask application with SQLAlchemy
+- Implemented GET/POST/PUT/DELETE endpoints for books
+- All tests passing with 100% coverage
+
+---
+
+## ✓ GOAL COMPLETE - 2025-10-31 20:45:12
+
+- Implemented full library management system with 2 services
+- Book Catalog service: CRUD operations with SQLite backend
+- Member Management service: CRUD operations with validation
+- All 7 tasks completed successfully
+- Tests pass, code quality excellent (0 ruff errors)
+
+---
+```
+
+## Evaluation Suite
+
+Comprehensive test suite for orchestrator workflow:
+
+```bash
+# Run L5 simple utilities (3 tests)
+python run_project_evaluation.py --level L5
+
+# Run L6 multi-file modules (3 tests)
+python run_project_evaluation.py --level L6
+
+# Run L7 complete packages (3 tests)
+python run_project_evaluation.py --level L7
+
+# Run L8 full projects - with and without architect (6 tests)
+python run_project_evaluation.py --level L8
+
+# Run all 15 tests
+python run_project_evaluation.py
+```
+
+**Test Categories**:
+- **L5**: Simple single-file utilities (JSON converter, validator, calculator)
+- **L6**: Multi-file modules (API client, pipeline, config manager)
+- **L7**: Complete packages with tests (package with setup.py, library, CLI tool)
+- **L8**: Full multi-component systems (microservices, web app, distributed system)
+
+**Each test validates**:
+- Code completeness (all required files created)
+- Tests pass (if tests requested)
+- Code quality (ruff checks pass)
+- Architecture adherence (L8 only - matches architect specs)
 
 ## Model Configuration
 
@@ -349,18 +526,17 @@ Supported models: Any Ollama-compatible model with function calling support.
 pytest tests/ -q
 ```
 
-### Run Stress Tests
+### Run Evaluation Suite
 
-Run specific levels (1-7):
 ```bash
-python tests/run_stress_tests.py 3,4,5  # Run levels 3, 4, 5
-```
+# Quick validation (no LLM calls)
+python test_eval_suite_quick.py
 
-### Run L3-L7 Evaluation Suite
+# Run one test
+pytest tests/test_project_evaluation.py::test_l5_task[L5_json_csv_converter] -v
 
-5 iterations of levels 3-7 (75 tests total):
-```bash
-python tests/run_l3_l7_x5.py
+# Run full project evaluation
+python run_project_evaluation.py
 ```
 
 ### Lint Code
@@ -376,72 +552,25 @@ ruff check --fix .  # Auto-fix issues
 python diag_speed.py
 ```
 
-## Status Display
-
-Real-time visualization shows:
-
-```
-GOAL: Create calculator package
-
-TASKS (1/3 completed):
-  ► ⟳ Create calculator package structure
-    SUBTASKS:
-        ✓ Write calculator/__init__.py
-      ► ⟳ Write calculator/advanced.py
-        ○ Write pyproject.toml
-    ○ Write comprehensive tests
-
-PROGRESS:
-  Tasks:    [█████░░░░░░░░░░░░░░░] 33%
-  Subtasks: [████████░░░░░░░░░░░░] 43%
-  Success:  92%
-
-PERFORMANCE:
-  Avg LLM call:      2.15s
-  Avg subtask time:  1m 30s
-  Actions executed:  25
-  Tokens (est):      3,500
-  ⚠ Loops detected:  1
-```
-
 ## Documentation
 
 - **`CLAUDE.md`** - Project instructions for AI assistants
-- **`QUICK_START.md`** - Quick reference guide
-- **`ORCHESTRATOR_TEST_RESULTS.md`** - Multi-agent test results
-- **`ORCHESTRATOR_TEST_FINDINGS.md`** - Multi-agent issue analysis
+- **`docs/`** - Technical documentation
+  - **`INTEGRATION_ISSUES.md`** - Integration fixes and improvements
+  - **`architecture/`** - Architecture documentation
+- **`evaluation_results/`** - Evaluation and test results
+  - **`EVALUATION_SUITE_README.md`** - Evaluation suite guide
+- **`analysis/`** - Test analysis reports
 
-### Architecture Documentation (`docs/architecture/`)
-System design and component documentation
+## Architecture Principles
 
-### Implementation Details (`docs/implementation/`)
-Feature implementations, fixes, and design proposals
-
-### Analysis & Reports (`docs/analysis/`)
-Test results, failure analysis, and evaluation reports
-
-## Crash Recovery
-
-Agent automatically recovers from crashes:
-
-```bash
-# Session 1: Crashes mid-task
-$ python agent.py "Create mathx package..."
-[log] Created mathx/__init__.py
-[log] Advanced to task: Add tests
-^C  # Interrupted
-
-# Session 2: Resumes exactly where it left off
-$ python agent.py "Create mathx package..."
-[log] Resuming existing task hierarchy
-[log] Current task: Add tests (in_progress)
-# ... continues from same point ...
-```
-
-State persists in:
-- `.agent_context/state.json` - Full hierarchical state
-- `.agent_context/history.jsonl` - Complete action history
-- `.agent_context/stats.json` - Performance metrics
+1. **Local-first and crash-resilient** - Designed to crash/stop anytime
+2. **Idempotent operations** - Safe to retry any action
+3. **Plaintext state** - Human-inspectable JSON/JSONL files
+4. **No databases** - Everything is files
+5. **Composable enhancements** - Pluggable context management
+6. **Probe-first** - Verify real state before planning
+7. **Compact context** - Minimize LLM context size
 
 ## Safety
 
@@ -456,20 +585,7 @@ Agent cannot modify files outside its workspace directory.
 Automatic detection and blocking of infinite loops.
 
 **Timeout Protection:**
-Automatic detection and recovery from LLM hangs.
-
-**Failure Reports:**
-Comprehensive markdown reports generated on all failures.
-
-## Architecture Principles
-
-1. **Local-first and crash-resilient** - Designed to crash/stop anytime
-2. **Idempotent operations** - Safe to retry any action
-3. **Plaintext state** - Human-inspectable JSON/JSONL files
-4. **No databases** - Everything is files
-5. **Short timeboxes** - Bounded execution with frequent persistence
-6. **Probe-first** - Verify real state before planning
-7. **Compact context** - Minimize LLM context size
+Automatic detection and recovery from LLM hangs (no max_rounds limit, uses wall-clock timeout).
 
 ## Troubleshooting
 
@@ -530,4 +646,4 @@ Built with:
 
 **Status:** Production-ready, actively maintained
 
-**Version:** 2.2 (Multi-Agent Orchestration)
+**Version:** 3.0 (Composable Enhancement Architecture)

@@ -75,6 +75,151 @@ class ContextEnhancement(ABC):
 class ContextStrategy(ABC):
     """Abstract base class for context management strategies."""
 
+    def __init__(self):
+        """Initialize strategy with loop detection."""
+        # Loop detection is a core context management feature
+        self.action_history: list[dict[str, Any]] = []
+        self.loop_warnings: list[str] = []
+        self.max_action_repeats = 5  # Default, can be overridden
+
+    def _make_serializable(self, obj: Any) -> Any:
+        """
+        Convert an object to a JSON-serializable format.
+
+        Handles common non-serializable types:
+        - Objects: convert to string representation
+        - Dicts: recursively process values
+        - Lists: recursively process items
+        - Primitives: pass through
+
+        Args:
+            obj: Object to make serializable
+
+        Returns:
+            JSON-serializable version of the object
+        """
+        import json
+
+        # Try direct serialization first (fast path for primitives)
+        try:
+            json.dumps(obj)
+            return obj
+        except (TypeError, ValueError):
+            pass
+
+        # Handle different types
+        if obj is None or isinstance(obj, (bool, int, float, str)):
+            return obj
+        elif isinstance(obj, dict):
+            # Recursively process dict values
+            return {k: self._make_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            # Recursively process list/tuple items
+            return [self._make_serializable(item) for item in obj]
+        else:
+            # Non-serializable object - use string representation
+            # Include type name for debugging
+            return f"<{type(obj).__name__}>"
+
+    def record_action(self, tool_name: str, args: dict[str, Any], result: Any, success: bool) -> dict[str, Any] | None:
+        """
+        Record an action and check for loops.
+
+        This is a core context management responsibility - all strategies should detect
+        when agents are repeating the same actions and warn them.
+
+        Args:
+            tool_name: Name of tool executed
+            args: Tool arguments (may contain non-serializable objects)
+            result: Tool result (for detecting same-result loops)
+            success: Whether tool succeeded
+
+        Returns:
+            Loop warning dict if loop detected, None otherwise
+            Format: {"warning": "...", "suggestion": "..."}
+        """
+        import hashlib
+        import json
+
+        # Create action signature (tool + args)
+        # Filter out non-serializable objects from args before JSON encoding
+        serializable_args = self._make_serializable(args)
+        args_str = json.dumps(serializable_args, sort_keys=True)
+        action_sig = f"{tool_name}::{args_str}"
+
+        # Create result signature (action + result hash for detecting repeated failures)
+        result_str = str(result)[:500]  # First 500 chars of result
+        result_hash = hashlib.sha256(result_str.encode('utf-8', errors='ignore')).hexdigest()[:16]
+        result_sig = f"{action_sig}::{result_hash}"
+
+        # Record action
+        self.action_history.append({
+            "action_sig": action_sig,
+            "result_sig": result_sig,
+            "success": success,
+            "tool_name": tool_name,
+        })
+
+        # Check for loops in recent history (last 20 actions)
+        recent = self.action_history[-20:]
+
+        # Count identical action+result pairs
+        same_result_count = sum(1 for a in recent if a["result_sig"] == result_sig)
+
+        # Count identical actions (regardless of result)
+        same_action_count = sum(1 for a in recent if a["action_sig"] == action_sig)
+
+        # Detect loop
+        if same_result_count >= self.max_action_repeats:
+            warning = {
+                "warning": f"Action repeated {same_result_count} times with identical results",
+                "action": tool_name,
+                "suggestion": (
+                    "This approach isn't working. Consider:\n"
+                    "  1. Try a COMPLETELY DIFFERENT approach\n"
+                    "  2. Read error messages more carefully\n"
+                    "  3. If core task is complete, call mark_complete() even if tests fail\n"
+                    "  4. If truly blocked, call mark_failed() with detailed reason"
+                )
+            }
+            self.loop_warnings.append(f"{tool_name} repeated {same_result_count}x")
+            return warning
+
+        # Warn about repeated attempts even if results differ slightly
+        if same_action_count >= self.max_action_repeats + 2:
+            warning = {
+                "warning": f"Action attempted {same_action_count} times (results vary)",
+                "action": tool_name,
+                "suggestion": (
+                    "You've tried this many times. Consider:\n"
+                    "  1. Is there a pattern to the different results?\n"
+                    "  2. Try a fundamentally different approach\n"
+                    "  3. Accept 'good enough' and call mark_complete()"
+                )
+            }
+            self.loop_warnings.append(f"{tool_name} attempted {same_action_count}x")
+            return warning
+
+        return None
+
+    def get_loop_warnings_context(self) -> str | None:
+        """
+        Get loop warnings to inject into context.
+
+        Returns:
+            Warning text to add to context, or None if no warnings
+        """
+        if not self.loop_warnings:
+            return None
+
+        warnings_text = "⚠️  LOOP DETECTION WARNING:\n"
+        warnings_text += "You appear to be repeating actions:\n"
+        for warning in self.loop_warnings[-3:]:  # Last 3 warnings
+            warnings_text += f"  • {warning}\n"
+        warnings_text += "\nConsider trying a different approach or marking task complete if done."
+
+        return warnings_text
+
     @abstractmethod
     def build_context(
         self,
@@ -204,6 +349,7 @@ class HierarchicalStrategy(ContextStrategy):
             history_keep: Number of message exchanges to keep in history
             use_jetbox_notes: Whether to use jetbox notes for context persistence (default: True)
         """
+        super().__init__()  # Initialize loop detection
         self.history_keep = history_keep
         self.use_jetbox_notes = use_jetbox_notes
 
@@ -529,6 +675,7 @@ class AppendUntilFullStrategy(ContextStrategy):
             recent_keep: Number of recent messages to keep intact during compaction
             use_jetbox_notes: Whether to use jetbox notes (default: False for conversational agents)
         """
+        super().__init__()  # Initialize loop detection
         self.max_tokens = max_tokens
         self.recent_keep = recent_keep
         self.use_jetbox_notes = use_jetbox_notes
@@ -580,9 +727,9 @@ class AppendUntilFullStrategy(ContextStrategy):
         # Add all messages first, then check if compaction needed
         context.extend(messages)
 
-        # Check if context exceeds 75% of model capacity (same as hierarchical)
+        # Check if context exceeds 75% of configured capacity
         estimated_tokens = self.estimate_context_size(context)
-        max_context = 131072  # 128K for gpt-oss:20b
+        max_context = self.max_tokens  # Use configured max_tokens from __init__
 
         if estimated_tokens > max_context * 0.75:  # >75% of context window
             print(f"[context_compaction] Append strategy: Context at {estimated_tokens:,} tokens ({estimated_tokens/max_context*100:.1f}% of {max_context:,}) - triggering LLM summarization")
@@ -684,9 +831,335 @@ Concise summary (max 200 words):"""
         """Append strategy disables jetbox notes by default (conversational agents maintain full history)."""
         return self.use_jetbox_notes
 
+    def get_strategy_instructions(self) -> str:
+        """
+        Append-until-full strategy workflow instructions.
+
+        Returns:
+            Simple workflow for direct execution without hierarchical decomposition
+        """
+        return """
+WORKFLOW:
+Your goal is shown at the start of the conversation. Simply complete the work using the available tools.
+
+- Use write_file to create/modify files
+- Use run_bash to run commands (tests, linters, etc.)
+- Use read_file to check existing files
+- Use list_dir to explore directories
+
+Work directly on the goal - no need to decompose into subtasks.
+When all work is complete and tests pass, call mark_goal_complete().
+"""
+
+    def get_strategy_tools(self) -> list[dict[str, Any]]:
+        """
+        Provide simple completion tool for append-until-full strategy.
+
+        Returns:
+            Tool definition for mark_goal_complete
+        """
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_goal_complete",
+                    "description": "Mark the goal as complete. Call this when you have finished all work and tests pass.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "summary": {
+                                "type": "string",
+                                "description": "Brief summary of what was accomplished"
+                            }
+                        },
+                        "required": ["summary"]
+                    }
+                }
+            }
+        ]
+
     def get_name(self) -> str:
         """Get strategy name."""
         return "append_until_full"
+
+    def estimate_context_size(self, context: list[dict[str, Any]]) -> int:
+        """Estimate context size using 4 chars per token heuristic."""
+        total_chars = 0
+        for msg in context:
+            total_chars += len(str(msg.get("content", "")))
+        return total_chars // 4
+
+
+class SubAgentStrategy(ContextStrategy):
+    """
+    Sub-agent context strategy for delegated work.
+
+    Designed for agents that are invoked by a controlling agent (orchestrator)
+    to complete a specific delegated task. This strategy:
+
+    - Inserts the delegated goal at the top of context
+    - Provides mark_complete/mark_failed tools for reporting results
+    - Nudges completion on timeouts
+    - Works with enhancements (jetbox notes, task management)
+    - Appends all messages until token limit
+
+    Features:
+    - System prompt + delegated goal
+    - Jetbox notes from workspace (previous work context)
+    - All messages (append-until-full style)
+    - Compaction when near token limit
+    - Completion tools to communicate with controlling agent
+    """
+
+    def __init__(self, max_tokens: int = 128000, recent_keep: int = 20, use_jetbox_notes: bool = True):
+        """
+        Initialize sub-agent strategy.
+
+        Args:
+            max_tokens: Maximum context tokens before compaction (default: 128K for gpt-oss:20b)
+            recent_keep: Number of recent messages to keep intact during compaction
+            use_jetbox_notes: Whether to use jetbox notes (default: True for context continuity)
+        """
+        super().__init__()  # Initialize loop detection
+        self.max_tokens = max_tokens
+        self.recent_keep = recent_keep
+        self.use_jetbox_notes = use_jetbox_notes
+
+    def build_context(
+        self,
+        context_manager: ContextManager,
+        messages: list[dict[str, Any]],
+        system_prompt: str,
+        config: Any,
+        **kwargs
+    ) -> list[dict[str, Any]]:
+        """
+        Build context for sub-agent.
+
+        Includes:
+        - System prompt with tools
+        - Delegated goal
+        - Jetbox notes (if available)
+        - All messages (or compacted if near limit)
+
+        Args:
+            context_manager: ContextManager instance
+            messages: Full message history
+            system_prompt: System prompt
+            config: Agent configuration
+            **kwargs: Additional parameters (workspace)
+
+        Returns:
+            Context list ready for LLM
+        """
+        workspace = kwargs.get('workspace')
+
+        context = [{"role": "system", "content": system_prompt}]
+
+        # Build goal context
+        context_parts = []
+
+        if context_manager.state.goal:
+            context_parts.append(f"DELEGATED GOAL: {context_manager.state.goal.description}")
+            context_parts.append("")
+            context_parts.append("You are working on a task delegated by the orchestrator.")
+            context_parts.append("When complete, call mark_complete(summary) with what you accomplished.")
+            context_parts.append("If you cannot complete it, call mark_failed(reason) explaining why.")
+
+        # Add jetbox notes if enabled
+        if self.should_use_jetbox_notes() and workspace:
+            import jetbox_notes
+            notes_content = jetbox_notes.load_jetbox_notes(max_chars=2000)
+            if notes_content:
+                context_parts.append("")
+                context_parts.append("="*70)
+                context_parts.append("PREVIOUS WORK (from jetboxnotes.md)")
+                context_parts.append("="*70)
+                context_parts.append(notes_content)
+                context_parts.append("="*70)
+
+        if context_parts:
+            context.append({"role": "user", "content": "\n".join(context_parts)})
+
+        # Add all messages
+        context.extend(messages)
+
+        # Check if context exceeds threshold
+        estimated_tokens = self.estimate_context_size(context)
+
+        if estimated_tokens > self.max_tokens * 0.75:  # >75% of context window
+            print(f"[context_compaction] SubAgent strategy: Context at {estimated_tokens:,} tokens ({estimated_tokens/self.max_tokens*100:.1f}% of {self.max_tokens:,}) - triggering LLM summarization")
+
+            # Keep recent N messages, summarize the rest
+            keep_recent = self.recent_keep
+            to_summarize = messages[:-keep_recent] if len(messages) > keep_recent else []
+
+            if to_summarize:
+                # Use LLM to summarize old messages
+                summary = self._summarize_messages(to_summarize)
+
+                # Rebuild context: system + goal + summary + recent messages
+                context_base = []
+                for msg in context:
+                    if msg in messages:
+                        break
+                    context_base.append(msg)
+
+                # Start fresh with base + summary + recent
+                context = context_base
+                context.append({
+                    "role": "user",
+                    "content": f"Previous work summary (compacted from {len(to_summarize)} messages):\n{summary}"
+                })
+                context.extend(messages[-keep_recent:])
+
+                new_tokens = self.estimate_context_size(context)
+                print(f"[context_compaction] Reduced from {estimated_tokens:,} to {new_tokens:,} tokens ({new_tokens/self.max_tokens*100:.1f}%)")
+
+        return context
+
+    def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
+        """
+        Use LLM to summarize old messages.
+
+        Args:
+            messages: Messages to summarize
+
+        Returns:
+            Concise summary string
+        """
+        from llm_utils import chat_with_inactivity_timeout
+
+        # Build prompt with truncated messages
+        messages_text = []
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = str(msg.get("content", ""))
+            tool_calls = msg.get("tool_calls")
+
+            if tool_calls:
+                # Show tool names only
+                tool_names = str(tool_calls)[:200]
+                messages_text.append(f"[{role}] {tool_names}")
+            elif content:
+                # Truncate tool results heavily
+                if role == "tool":
+                    content = content[:100] + ("..." if len(content) > 100 else "")
+                else:
+                    content = content[:300] + ("..." if len(content) > 300 else "")
+                messages_text.append(f"[{role}] {content}")
+
+        prompt = f"""Provide an extremely concise summary (max 200 words) of this conversation, focusing ONLY on:
+1. Files created/modified (just names, not content)
+2. Commands run (results only if they failed)
+3. Current state/progress
+
+Omit: successful tool outputs, file contents, verbose explanations.
+Format: Dense bullet points.
+
+Conversation:
+{chr(10).join(messages_text)}
+
+Concise summary (max 200 words):"""
+
+        try:
+            response = chat_with_inactivity_timeout(
+                model="gpt-oss:20b",
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.2},
+                inactivity_timeout=30,
+                max_total_time=60,
+            )
+            return response.get("message", {}).get("content", "Unable to generate summary.")
+        except Exception as e:
+            return f"[Summarization failed: {e}] Previous work included {len(messages)} message exchanges."
+
+    def should_clear_on_transition(self) -> bool:
+        """SubAgent strategy does NOT clear messages on transitions."""
+        return False
+
+    def should_use_jetbox_notes(self) -> bool:
+        """SubAgent strategy enables jetbox notes for context continuity."""
+        return self.use_jetbox_notes
+
+    def get_strategy_instructions(self) -> str:
+        """
+        Sub-agent strategy workflow instructions.
+
+        Returns:
+            Instructions for completing delegated work and reporting results
+        """
+        return """
+SUB-AGENT WORKFLOW:
+You are working on a task delegated by a controlling agent (orchestrator).
+
+Your job is to:
+1. Complete the delegated goal using available tools
+2. Report results back to the controlling agent when done
+
+Available tools:
+- write_file: Create/modify files
+- run_bash: Run commands (tests, linters, build tools, etc.)
+- read_file: Check existing files
+- list_dir: Explore directories
+- mark_complete(summary): Signal successful completion with summary
+- mark_failed(reason): Signal failure with explanation
+
+IMPORTANT - YOU MUST SIGNAL COMPLETION:
+- When work is done and tests pass: call mark_complete(summary="what you accomplished")
+- If you cannot complete the task: call mark_failed(reason="why it failed")
+- DO NOT just stop - always call one of these tools to report results
+
+The controlling agent is waiting for your completion signal.
+"""
+
+    def get_strategy_tools(self) -> list[dict[str, Any]]:
+        """
+        Provide completion tools for sub-agent.
+
+        Returns:
+            Tool definitions for mark_complete and mark_failed
+        """
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_complete",
+                    "description": "Mark the delegated task as complete and report success to controlling agent. REQUIRED when work is finished.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "summary": {
+                                "type": "string",
+                                "description": "Brief summary of what was accomplished (2-4 sentences)"
+                            }
+                        },
+                        "required": ["summary"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_failed",
+                    "description": "Mark the delegated task as failed and report reason to controlling agent. Use when you cannot complete the task.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "reason": {
+                                "type": "string",
+                                "description": "Explanation of why the task could not be completed"
+                            }
+                        },
+                        "required": ["reason"]
+                    }
+                }
+            }
+        ]
+
+    def get_name(self) -> str:
+        """Get strategy name."""
+        return "sub_agent"
 
     def estimate_context_size(self, context: list[dict[str, Any]]) -> int:
         """Estimate context size using 4 chars per token heuristic."""
@@ -720,6 +1193,7 @@ class ArchitectStrategy(ContextStrategy):
             recent_keep: Number of recent messages to keep intact during compaction
             use_jetbox_notes: Whether to use jetbox notes (default: False, artifacts are output)
         """
+        super().__init__()  # Initialize loop detection
         self.max_tokens = max_tokens
         self.recent_keep = recent_keep
         self.use_jetbox_notes = use_jetbox_notes
