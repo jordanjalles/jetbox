@@ -1,0 +1,158 @@
+{
+  "results": [
+    {
+      "task": "simple_file",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": true,
+      "rounds": 2,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 5.32,
+      "total_messages": 6,
+      "total_tokens_est": 45,
+      "final_context_tokens": 842,
+      "final_context_messages": 8
+    },
+    {
+      "task": "two_functions",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": true,
+      "rounds": 2,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 6.36,
+      "total_messages": 6,
+      "total_tokens_est": 46,
+      "final_context_tokens": 884,
+      "final_context_messages": 8
+    },
+    {
+      "task": "with_tests",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": true,
+      "rounds": 6,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 13.65,
+      "total_messages": 8,
+      "total_tokens_est": 124,
+      "final_context_tokens": 986,
+      "final_context_messages": 10
+    },
+    {
+      "task": "multi_file_web",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": true,
+      "rounds": 8,
+      "files_created": 3,
+      "files_expected": 3,
+      "wall_time": 15.62,
+      "total_messages": 8,
+      "total_tokens_est": 47,
+      "final_context_tokens": 935,
+      "final_context_messages": 10
+    },
+    {
+      "task": "package_structure",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": true,
+      "rounds": 11,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 22.6,
+      "total_messages": 12,
+      "total_tokens_est": 912,
+      "final_context_tokens": 1754,
+      "final_context_messages": 14
+    },
+    {
+      "task": "simple_file",
+      "strategy": "append_until_full",
+      "status": "success",
+      "success": true,
+      "rounds": 2,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 5.17,
+      "total_messages": 6,
+      "total_tokens_est": 45,
+      "final_context_tokens": 815,
+      "final_context_messages": 8
+    },
+    {
+      "task": "two_functions",
+      "strategy": "append_until_full",
+      "status": "success",
+      "success": true,
+      "rounds": 1,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 5.09,
+      "total_messages": 4,
+      "total_tokens_est": 29,
+      "final_context_tokens": 821,
+      "final_context_messages": 6
+    },
+    {
+      "task": "with_tests",
+      "strategy": "append_until_full",
+      "status": "success",
+      "success": true,
+      "rounds": 4,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 9.64,
+      "total_messages": 10,
+      "total_tokens_est": 82,
+      "final_context_tokens": 926,
+      "final_context_messages": 12
+    },
+    {
+      "task": "multi_file_web",
+      "strategy": "append_until_full",
+      "status": "success",
+      "success": true,
+      "rounds": 4,
+      "files_created": 3,
+      "files_expected": 3,
+      "wall_time": 12.11,
+      "total_messages": 10,
+      "total_tokens_est": 64,
+      "final_context_tokens": 948,
+      "final_context_messages": 12
+    },
+    {
+      "task": "package_structure",
+      "strategy": "append_until_full",
+      "status": "success",
+      "success": true,
+      "rounds": 4,
+      "files_created": 1,
+      "files_expected": 1,
+      "wall_time": 12.49,
+      "total_messages": 10,
+      "total_tokens_est": 72,
+      "final_context_tokens": 890,
+      "final_context_messages": 12
+    }
+  ],
+  "summary": {
+    "hierarchical": {
+      "total": 5,
+      "successes": 5,
+      "avg_rounds": 5.8,
+      "avg_context_tokens": 1080.2
+    },
+    "append_until_full": {
+      "total": 5,
+      "successes": 5,
+      "avg_rounds": 3.0,
+      "avg_context_tokens": 880.0
+    }
+  }
+}

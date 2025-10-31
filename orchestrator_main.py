@@ -104,8 +104,10 @@ def main():
             orchestrator.add_user_message(initial_message)
 
             # Keep executing rounds until no more tool calls
-            max_rounds = 10
-            for round_num in range(max_rounds):
+            # No max_rounds limit - let wall-clock timeout control execution
+            round_num = 0
+            while True:
+                round_num += 1
                 # Execute orchestrator round
                 response = orchestrator.execute_round(
                     model=config.llm.model,
@@ -123,7 +125,6 @@ def main():
 
                     # Execute tool calls (show important ones)
                     if "tool_calls" in msg:
-                        tool_results = []
                         for tc in msg["tool_calls"]:
                             tool_name = tc["function"]["name"]
                             args = tc["function"]["arguments"]
@@ -134,18 +135,21 @@ def main():
                                 print(f"Orchestrator: {question}\n")
 
                             # Show delegation events
+                            elif tool_name == "consult_architect":
+                                project_desc = args.get("project_description", "")
+                                print(f"→ Consulting Architect: {project_desc[:60]}...\n")
                             elif tool_name == "delegate_to_executor":
                                 task_desc = args.get("task_description", "")
                                 print(f"→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
 
-                            result = execute_orchestrator_tool(tc, registry, server_manager)
-                            tool_results.append(result)
+                            result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
 
-                        # Add tool results to conversation
-                        orchestrator.add_message({
-                            "role": "tool",
-                            "content": str(tool_results),
-                        })
+                            # Add tool result to conversation (one message per tool call)
+                            tool_result_str = json.dumps(result)
+                            orchestrator.add_message({
+                                "role": "tool",
+                                "content": tool_result_str,
+                            })
                     else:
                         # No more tool calls, task is complete
                         break
@@ -178,8 +182,10 @@ def main():
                 # 1. Think/analyze user request
                 # 2. Call find_workspace if needed
                 # 3. Then delegate_to_executor
-                max_rounds = 10
-                for round_num in range(max_rounds):
+                # No max_rounds limit - let wall-clock timeout control execution
+                round_num = 0
+                while True:
+                    round_num += 1
                     # Execute round
                     response = orchestrator.execute_round(
                         model=config.llm.model,
@@ -196,7 +202,6 @@ def main():
 
                         # Execute tool calls (show important ones)
                         if "tool_calls" in msg:
-                            tool_results = []
                             for tc in msg["tool_calls"]:
                                 tool_name = tc["function"]["name"]
                                 args = tc["function"]["arguments"]
@@ -207,18 +212,21 @@ def main():
                                     print(f"\nOrchestrator: {question}\n")
 
                                 # Show delegation events
+                                elif tool_name == "consult_architect":
+                                    project_desc = args.get("project_description", "")
+                                    print(f"\n→ Consulting Architect: {project_desc[:60]}...\n")
                                 elif tool_name == "delegate_to_executor":
                                     task_desc = args.get("task_description", "")
                                     print(f"\n→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
 
-                                result = execute_orchestrator_tool(tc, registry, server_manager)
-                                tool_results.append(result)
+                                result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
 
-                            # Add tool results to conversation
-                            orchestrator.add_message({
-                                "role": "tool",
-                                "content": str(tool_results),
-                            })
+                                # Add tool result to conversation (one message per tool call)
+                                tool_result_str = json.dumps(result)
+                                orchestrator.add_message({
+                                    "role": "tool",
+                                    "content": tool_result_str,
+                                })
                         else:
                             # No more tool calls, orchestrator is done
                             break
@@ -243,6 +251,7 @@ def execute_orchestrator_tool(
     tool_call: dict,
     registry: AgentRegistry,
     server_manager: ServerManager = None,
+    orchestrator_agent = None,
 ) -> dict:
     """
     Execute an orchestrator tool call.
@@ -257,7 +266,123 @@ def execute_orchestrator_tool(
     tool_name = tool_call["function"]["name"]
     args = tool_call["function"]["arguments"]
 
-    if tool_name == "delegate_to_executor":
+    if tool_name == "consult_architect":
+        # Consult architect for complex project design
+        project_description = args.get("project_description", "")
+        requirements = args.get("requirements", "")
+        constraints = args.get("constraints", "")
+        workspace_path = args.get("workspace_path", "")
+
+        if not project_description:
+            return {
+                "success": False,
+                "message": "ERROR: project_description is REQUIRED for architect consultation"
+            }
+
+        print("\n" + "=" * 60)
+        print("ARCHITECT CONSULTATION")
+        print("=" * 60)
+        print(f"Project: {project_description}")
+        if requirements:
+            print(f"Requirements: {requirements[:100]}...")
+        if constraints:
+            print(f"Constraints: {constraints[:100]}...")
+        print("=" * 60 + "\n")
+
+        try:
+            # Get architect agent from registry
+            architect = registry.get_agent("architect")
+
+            # Determine workspace (use provided or create new from project description)
+            if workspace_path:
+                workspace = Path(workspace_path)
+            else:
+                # Create new workspace for this project
+                import re
+                slug = re.sub(r'[^\w\s-]', '', project_description.lower())
+                slug = re.sub(r'[-\s]+', '-', slug)[:50]
+                workspace = Path(f".agent_workspace/{slug}")
+                workspace.mkdir(parents=True, exist_ok=True)
+
+            # Configure architect with workspace (updates tools)
+            architect.configure_workspace(workspace)
+
+            # Run architect consultation
+            result = architect.consult(
+                project_description=project_description,
+                requirements=requirements,
+                constraints=constraints,
+                max_rounds=10
+            )
+
+            if result["status"] == "success":
+                artifacts = result["artifacts"]
+
+                # Build detailed message about artifacts
+                message_parts = [
+                    "\n✅ Architecture consultation complete!\n",
+                    f"Workspace: {workspace}\n",
+                ]
+
+                if artifacts["docs"]:
+                    message_parts.append(f"\nArchitecture documents ({len(artifacts['docs'])}):")
+                    for doc in artifacts["docs"]:
+                        message_parts.append(f"  - {doc}")
+
+                if artifacts["modules"]:
+                    message_parts.append(f"\nModule specifications ({len(artifacts['modules'])}):")
+                    for module in artifacts["modules"]:
+                        message_parts.append(f"  - {module}")
+
+                # Read and include actual task list
+                task_list = None
+                if artifacts["task_breakdown"]:
+                    message_parts.append(f"\nTask breakdown: {artifacts['task_breakdown']}")
+                    task_file = workspace / artifacts["task_breakdown"]
+                    if task_file.exists():
+                        import json
+                        with open(task_file) as f:
+                            task_data = json.load(f)
+                        task_list = task_data.get("tasks", [])
+                        message_parts.append(f"  ({task_data['total_tasks']} tasks ready for delegation)")
+
+                        # Include task summary in message
+                        message_parts.append("\nTasks to delegate:")
+                        for task in task_list[:5]:  # Show first 5 tasks
+                            deps = f" (depends on: {', '.join(task['dependencies'])})" if task.get('dependencies') else ""
+                            message_parts.append(f"  [{task['id']}] {task['description']}{deps}")
+                        if len(task_list) > 5:
+                            message_parts.append(f"  ... and {len(task_list) - 5} more tasks")
+
+                message_parts.append("\n" + "=" * 60)
+
+                # Add task management enhancement to orchestrator if task breakdown exists
+                if orchestrator_agent and task_list:
+                    orchestrator_agent.add_task_management(workspace)
+                    print(f"[orchestrator] Added task management enhancement ({len(task_list)} tasks)")
+
+                return {
+                    "success": True,
+                    "message": "\n".join(message_parts),
+                    "artifacts": artifacts,
+                    "workspace": str(workspace),
+                    "tasks": task_list,  # Include actual task list
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Architect consultation incomplete: {result.get('message', 'unknown error')}"
+                }
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "message": f"Architect consultation failed: {e}"
+            }
+
+    elif tool_name == "delegate_to_executor":
         # Delegate to TaskExecutor and run it
         task_description = args.get("task_description", "")
         context = args.get("context", "")

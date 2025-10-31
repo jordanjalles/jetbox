@@ -1,6 +1,7 @@
 """
 Test orchestrator with simulated user responses.
 """
+import json
 from pathlib import Path
 from agent_registry import AgentRegistry
 from agent_config import config
@@ -89,13 +90,13 @@ def handle_response(response, registry, orchestrator):
             print(f"Executing tool: {tool_name}...")
             result = execute_orchestrator_tool(tc, registry)
             print(f"Result: {result.get('message', 'done')}\n")
-            tool_results.append(result)
 
-        # Add tool results to conversation
-        orchestrator.add_message({
-            "role": "tool",
-            "content": str(tool_results),
-        })
+            # Add tool result to conversation (one message per tool call)
+            tool_result_str = json.dumps(result)
+            orchestrator.add_message({
+                "role": "tool",
+                "content": tool_result_str,
+            })
 
 
 if __name__ == "__main__":

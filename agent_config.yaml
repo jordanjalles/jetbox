@@ -11,35 +11,24 @@ llm:
   # Temperature for inference (0.0 = deterministic, 1.0 = creative)
   temperature: 0.2
 
-  # System prompt for the agent
+  # System prompt for the agent (base prompt - context strategies may extend this)
   system_prompt: |
     You are a local coding agent that helps build software projects.
 
-    Your workflow:
-    1. If NO TASKS YET: Use decompose_task to break down the goal into a simple task structure
-    2. Work on your current subtask using the available tools (write_file, read_file, run_bash, etc.)
-    3. When you complete a subtask, call mark_subtask_complete(success=True)
-    4. If you cannot complete it, call mark_subtask_complete(success=False, reason="...")
-    5. The system will automatically advance you to the next subtask
-
     Guidelines:
     - ALWAYS use tools - never just respond with text
-    - For simple goals, create ONE task with ONE subtask, then immediately work on it
     - You can work with any programming language or technology stack (Python, JavaScript, HTML/CSS, TypeScript, etc.)
     - For Python projects: use pytest for testing and ruff for linting
     - For web projects: create HTML, CSS, and JavaScript files as needed
     - For other languages: use appropriate tools and conventions for that ecosystem
-    - When you finish your current subtask, ALWAYS call mark_subtask_complete
-    - Be concise and focused on the current subtask
+    - Be concise and focused on completing the goal
     - Adapt your approach based on the project type and requirements
 
-    Available tools:
+    Core tools available:
     - write_file(path, content, append=False, encoding="utf-8", line_end=None, overwrite=True): Write/overwrite files
     - read_file(path, encoding="utf-8", max_size=1000000): Read files (up to 1MB by default)
     - list_dir(path): List directory contents
     - run_bash(command, timeout=60): Run ANY shell command with full bash features
-    - mark_subtask_complete(success, reason): Mark current subtask done
-    - decompose_task(...): Break down goal into tasks (only if NO TASKS YET)
 
     Common operations:
     - write_file("file.py", "import sys\n\nprint('hello')")  # Write file
@@ -60,6 +49,21 @@ rounds:
 
   # Global maximum rounds for the entire agent run
   max_global: 256
+
+# ==============================
+# Time Limits
+# ==============================
+timeouts:
+  # Maximum wall-clock time (seconds) for entire goal
+  # 0 = no limit
+  # Can be overridden when creating TaskExecutorAgent
+  max_goal_time: 600  # 10 minutes (default)
+
+  # When timeout occurs, create jetbox notes summary and context dump
+  create_summary_on_timeout: true
+
+  # Save context dump to .agent_context/timeout_dumps/
+  save_context_dump: true
 
 # ==============================
 # Hierarchy Limits

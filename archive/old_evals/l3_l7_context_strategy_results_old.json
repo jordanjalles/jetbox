@@ -1,0 +1,521 @@
+[
+  {
+    "task": "L3_calculator",
+    "level": 3,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 46.07,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L3_file_processor",
+    "level": 3,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 46.99,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_todo_list",
+    "level": 4,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 44.64,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_stack",
+    "level": 4,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 38.7,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L5_blog_system",
+    "level": 5,
+    "strategy": "hierarchical",
+    "status": "exception",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "rounds": 0,
+    "wall_time": 0,
+    "partial_credit": {
+      "total_score": 0.0,
+      "rating": "poor"
+    },
+    "error": "error parsing tool call: raw='{\"path\":\"blog.py\",\"content\":\"\\\"\\\"\\\"Blog system models and manager.\\n\\nThis module defines the core data structures for a simple blog system:\\n- :class:`Post` \u2013 represents a blog post with a title, content, author, creation timestamp and a list of comments.\\n- :class:`Comment` \u2013 represents a comment on a post with an author, content and creation timestamp.\\n\\nThe module also contains a :class:`BlogManager` class that manages a collection of posts and provides CRUD operations as well as persistence to/from JSON.\\n\\nThe implementation uses the standard library only and is intentionally lightweight so it can be used in educational settings or as a starting point for more complex projects.\\n\\\"\\\"\\\"\\n\\nfrom __future__ import annotations\\n\\nfrom dataclasses import dataclass, field, asdict\\nfrom datetime import datetime\\nfrom typing import List, Dict, Any\\nimport json\\n\\n\\n@dataclass\\nclass Comment:\\n    \\\"\\\"\\\"Represents a comment on a blog post.\\n\\n    Attributes\\n    ----------\\n    author: str\\n        Name of the comment author.\\n    content: str\\n        Text of the comment.\\n    created_at: datetime\\n        Timestamp when the comment was created. Defaults to ``datetime.utcnow()``.\\n    \\\"\\\"\\\"\\n\\n    author: str\\n    content: str\\n    created_at: datetime = field(default_factory=datetime.utcnow)\\n\\n    def to_dict(self) -> Dict[str, Any]:\\n        \\\"\\\"\\\"Return a serialisable dictionary representation of the comment.\\n\\n        The ``created_at`` field is converted to an ISO\u20118601 string.\\n        \\\"\\\"\\\"\\n        return {\\n            \\\"author\\\": self.author,\\n            \\\"content\\\": self.content,\\n            \\\"created_at\\\": self.created_at.isoformat(),\\n        }\\n\\n    @classmethod\\n    def from_dict(cls, data: Dict[str, Any]) -> \\\"Comment\\\":\\n        \\\"\\\"\\\"Create a :class:`Comment` instance from a dictionary.\\n\\n        Parameters\\n        ----------\\n        data: dict\\n            Dictionary containing ``author``, ``content`` and ``created_at``.\\n        \\\"\\\"\\\"\\n        return cls(\\n            author=data[\\\"author\\\"],\\n            content=data[\\\"content\\\"],\\n            created_at=datetime.fromisoformat(data[\\\"created_at\\\"]),\\n        )\\n\\n\\n@dataclass\\nclass Post:\\n    \\\"\\\"\\\"Represents a blog post.\\n\\n    Attributes\\n    ----------\\n    title: str\\n        Title of the post.\\n    content: str\\n        Body of the post.\\n    author: str\\n        Name of the post author.\\n    created_at: datetime\\n        Timestamp when the post was created. Defaults to ``datetime.utcnow()``.\\n    comments: List[Comment]\\n        List of comments attached to the post.\\n    \\\"\\\"\\\"\\n\\n    title: str\\n    content: str\\n    author: str\\n    created_at: datetime = field(default_factory=datetime.utcnow)\\n    comments: List[Comment] = field(default_factory=list)\\n\\n    def add_comment(self, comment: Comment) -> None:\\n        \\\"\\\"\\\"Append a comment to the post.\\\"\\\"\\\"\\n        self.comments.append(comment)\\n\\n    def to_dict(self) -> Dict[str, Any]:\\n        \\\"\\\"\\\"Return a serialisable dictionary representation of the post.\\n\\n        The ``created_at`` field is converted to an ISO\u20118601 string and\\n        comments are represented as a list of dictionaries.\\n        \\\"\\\"\\\"\\n        return {\\n            \\\"title\\\": self.title,\\n            \\\"content\\\": self.content,\\n            \\\"author\\\": self.author,\\n            \\\"created_at\\\": self.created_at.isoformat(),\\n            \\\"comments\\\": [c.to_dict() for c in self.comments],\\n        }\\n\\n    @classmethod\\n    def from_dict(cls, data: Dict[str, Any]) -> \\\"Post\\\":\\n        \\\"\\\"\\\"Create a :class:`Post` instance from a dictionary.\\n\\n        Parameters\\n        ----------\\n        data: dict\\n            Dictionary containing ``title``, ``content``, ``author``, ``created_at`` and ``comments``.\\n        \\\"\\\"\\\"\\n        comments = [Comment.from_dict(c) for c in data.get(\\\"comments\\\", [])]\\n        return cls(\\n            title=data[\\\"title\\\"],\\n            content=data[\\\"content\\\"],\\n            author=data[\\\"author\\\"],\\n            created_at=datetime.fromisoformat(data[\\\"created_at\\\"]),\\n            comments=comments,\\n        )\\n\\n\\n# The BlogManager will be implemented in the next subtask.\\n\\n\"],\"append\":false,\"encoding\":\"utf-8\",\"line_end\":null,\"overwrite\":true}', err=invalid character ']' after object key:value pair (status code: -1)"
+  },
+  {
+    "task": "L5_inventory",
+    "level": 5,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 1,
+    "validation_failed": 1,
+    "validation_found": {
+      "classes": [
+        "Inventory"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Product"
+      ],
+      "functions": []
+    },
+    "rounds": 0,
+    "wall_time": 153.73,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.75,
+      "breakdown": {
+        "validation": 0.25,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "good"
+    }
+  },
+  {
+    "task": "L6_observer",
+    "level": 6,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 3,
+    "validation_failed": 2,
+    "validation_found": {
+      "classes": [
+        "Subject",
+        "Observer"
+      ],
+      "functions": [
+        "notify"
+      ]
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": [
+        "subscribe",
+        "unsubscribe"
+      ]
+    },
+    "rounds": 0,
+    "wall_time": 66.02,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.8,
+      "breakdown": {
+        "validation": 0.3,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L6_factory",
+    "level": 6,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 3,
+    "validation_found": {
+      "classes": [],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Factory"
+      ],
+      "functions": [
+        "create",
+        "create_product"
+      ]
+    },
+    "rounds": 0,
+    "wall_time": 46.88,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L7_rate_limiter",
+    "level": 7,
+    "strategy": "hierarchical",
+    "status": "exception",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "rounds": 0,
+    "wall_time": 0,
+    "partial_credit": {
+      "total_score": 0.0,
+      "rating": "poor"
+    },
+    "error": "write_file() missing 1 required positional argument: 'content'"
+  },
+  {
+    "task": "L7_lru_cache",
+    "level": 7,
+    "strategy": "hierarchical",
+    "status": "timeout",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 303.23,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.06,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.0,
+        "completion": 0.06
+      },
+      "rating": "poor"
+    }
+  },
+  {
+    "task": "L3_calculator",
+    "level": 3,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 30.69,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L3_file_processor",
+    "level": 3,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 26.9,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_todo_list",
+    "level": 4,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 29.67,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_stack",
+    "level": 4,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 26.61,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L5_blog_system",
+    "level": 5,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": true,
+    "validation_passed": 3,
+    "validation_failed": 0,
+    "validation_found": {
+      "classes": [
+        "BlogManager",
+        "Post",
+        "Comment"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": []
+    },
+    "rounds": 0,
+    "wall_time": 29.7,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 1.0,
+      "breakdown": {
+        "validation": 0.5,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L5_inventory",
+    "level": 5,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 1,
+    "validation_failed": 1,
+    "validation_found": {
+      "classes": [
+        "Inventory"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Product"
+      ],
+      "functions": []
+    },
+    "rounds": 0,
+    "wall_time": 30.72,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.75,
+      "breakdown": {
+        "validation": 0.25,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "good"
+    }
+  },
+  {
+    "task": "L6_observer",
+    "level": 6,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 3,
+    "validation_failed": 2,
+    "validation_found": {
+      "classes": [
+        "Subject",
+        "Observer"
+      ],
+      "functions": [
+        "notify"
+      ]
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": [
+        "subscribe",
+        "unsubscribe"
+      ]
+    },
+    "rounds": 0,
+    "wall_time": 28.19,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.8,
+      "breakdown": {
+        "validation": 0.3,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L6_factory",
+    "level": 6,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 3,
+    "validation_found": {
+      "classes": [],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Factory"
+      ],
+      "functions": [
+        "create",
+        "create_product"
+      ]
+    },
+    "rounds": 0,
+    "wall_time": 38.92,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L7_rate_limiter",
+    "level": 7,
+    "strategy": "append_until_full",
+    "status": "exception",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "rounds": 0,
+    "wall_time": 0,
+    "partial_credit": {
+      "total_score": 0.0,
+      "rating": "poor"
+    },
+    "error": "LLM call exceeded max_total_time of 180s (elapsed: 180.0s). Context dumped to .agent_context/timeout_dumps/"
+  },
+  {
+    "task": "L7_lru_cache",
+    "level": 7,
+    "strategy": "append_until_full",
+    "status": "failure",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 226.36,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.225,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.22499999999999998,
+        "completion": 0.0
+      },
+      "rating": "poor"
+    }
+  }
+]

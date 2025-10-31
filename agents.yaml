@@ -7,7 +7,14 @@ agents:
     class: OrchestratorAgent
     description: "Manages user conversation and delegates coding tasks"
     can_delegate_to:
+      - architect       # Can consult architect for complex projects
       - task_executor
+
+  # Architect: Architecture design consultant
+  architect:
+    class: ArchitectAgent
+    description: "Software architecture consultant for complex project design"
+    can_delegate_to: []  # Consultant agent (doesn't delegate)
 
   # TaskExecutor: Coding agent that executes specific tasks
   task_executor:

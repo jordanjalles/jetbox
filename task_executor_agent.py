@@ -13,7 +13,7 @@ import os
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
-from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy, ContextStrategy  # Use strategy classes
+from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy, ContextStrategy, JetboxNotesEnhancement  # Use strategy classes
 from status_display import StatusDisplay
 from llm_utils import chat_with_inactivity_timeout, clear_ollama_context
 from completion_detector import analyze_llm_response
@@ -73,6 +73,9 @@ class TaskExecutorAgent(BaseAgent):
         # Evaluation showed: 74% fewer rounds, 30% faster than hierarchical
         self.context_strategy = context_strategy or AppendUntilFullStrategy()
 
+        # Context enhancements (composable plugins)
+        self.enhancements = []
+
         # Initialize context manager
         self.init_context_manager()
         self.context_manager = self.context_manager or ContextManager()
@@ -98,20 +101,82 @@ class TaskExecutorAgent(BaseAgent):
         """
         Return tools available to TaskExecutor.
 
-        Uses centralized tool definitions from tools.get_tool_definitions()
-        to avoid duplication and ensure consistency.
+        Merges base tools from tools.get_tool_definitions() with
+        strategy-specific tools from the context strategy and
+        enhancement tools.
 
-        Tools include:
+        Base tools include:
         - File operations: write_file, read_file, list_dir, grep_file
-        - Command execution: run_cmd (whitelisted: python, pytest, ruff, pip)
-        - Task management: mark_subtask_complete, decompose_task
+        - Command execution: run_bash (any shell command)
         - Server management: start_server, stop_server, check_server, list_servers
+
+        Strategy-specific tools (added by context strategy):
+        - Hierarchical: mark_subtask_complete, decompose_task
+        - Other strategies: custom tools as needed
+
+        Enhancement tools (added by enhancements):
+        - JetboxNotes: no tools (auto-generated)
+        - TaskManagement: task CRUD operations
+
+        Returns:
+            Combined list of all available tools
         """
-        return tools.get_tool_definitions()
+        # Get base tools (file ops, bash, server management)
+        base_tools = tools.get_tool_definitions()
+
+        # Filter out hierarchical-specific tools from base (they'll come from strategy)
+        hierarchical_tool_names = {"mark_subtask_complete", "decompose_task"}
+        filtered_base = [
+            tool for tool in base_tools
+            if tool.get("function", {}).get("name") not in hierarchical_tool_names
+        ]
+
+        # Get strategy-specific tools
+        strategy_tools = []
+        if self.context_strategy:
+            strategy_tools = self.context_strategy.get_strategy_tools()
+
+        # Get enhancement tools
+        enhancement_tools = []
+        for enhancement in self.enhancements:
+            enhancement_tools.extend(enhancement.get_enhancement_tools())
+
+        # Merge: base tools + strategy tools + enhancement tools
+        return filtered_base + strategy_tools + enhancement_tools
 
     def get_system_prompt(self) -> str:
-        """Return system prompt from config."""
-        return config.llm.system_prompt
+        """
+        Return system prompt with strategy-specific and enhancement instructions injected.
+
+        Combines:
+        1. Base system prompt from config (generic coding instructions)
+        2. Strategy-specific instructions (workflow, tools, guidelines)
+        3. Enhancement instructions (jetbox notes, task management, etc.)
+
+        Returns:
+            Complete system prompt for LLM
+        """
+        base_prompt = config.llm.system_prompt
+
+        # Get strategy-specific instructions
+        strategy_instructions = ""
+        if self.context_strategy:
+            strategy_instructions = self.context_strategy.get_strategy_instructions()
+
+        # Get enhancement instructions
+        enhancement_instructions = []
+        for enhancement in self.enhancements:
+            inst = enhancement.get_enhancement_instructions()
+            if inst:
+                enhancement_instructions.append(inst)
+
+        # Combine base + strategy + enhancements
+        parts = [base_prompt]
+        if strategy_instructions:
+            parts.append(strategy_instructions)
+        parts.extend(enhancement_instructions)
+
+        return "\n".join(parts)
 
     def get_context_strategy(self) -> str:
         """TaskExecutor uses hierarchical context management."""
@@ -160,13 +225,16 @@ class TaskExecutorAgent(BaseAgent):
 
     def build_context(self) -> list[dict[str, Any]]:
         """
-        Build context using configured strategy.
+        Build context using configured strategy + enhancements.
+
+        Uses context_strategy.build_context() which handles compaction automatically,
+        then injects enhancement context sections.
 
         Returns:
-            Context list ready for LLM
+            Context list ready for LLM: [system_prompt, ...enhancements..., ...messages...]
         """
-        # Use configured context strategy (default: hierarchical)
-        return self.context_strategy.build_context(
+        # Use configured context strategy (default: append-until-full)
+        context = self.context_strategy.build_context(
             context_manager=self.context_manager,
             messages=self.state.messages,
             system_prompt=self.get_system_prompt(),
@@ -174,6 +242,19 @@ class TaskExecutorAgent(BaseAgent):
             probe_state_func=self._probe_state if hasattr(self, '_probe_state') else None,
             workspace=self.workspace_manager.workspace_dir if self.workspace_manager else None,
         )
+
+        # Inject enhancements after system prompt (index 1)
+        enhancement_index = 1
+        for enhancement in self.enhancements:
+            enhancement_context = enhancement.get_context_injection(
+                context_manager=self.context_manager,
+                workspace=self.workspace_manager.workspace_dir if self.workspace_manager else None,
+            )
+            if enhancement_context:
+                context.insert(enhancement_index, enhancement_context)
+                enhancement_index += 1
+
+        return context
 
     def execute_round(self, model: str, temperature: float) -> dict[str, Any]:
         """
@@ -210,11 +291,17 @@ class TaskExecutorAgent(BaseAgent):
         tools.set_workspace(self.workspace_manager)
         tools.set_ledger(self.workspace_manager.workspace_dir / "agent_ledger.log")
 
-        # Initialize jetbox notes (pass WorkspaceManager object)
+        # Initialize jetbox notes system (always set workspace)
         jetbox_notes.set_workspace(self.workspace_manager)
         jetbox_notes.set_llm_caller(self._llm_caller_for_jetbox)
 
-        # Load existing notes
+        # Add JetboxNotesEnhancement to enhancements list
+        # This will inject notes into context if they exist
+        jetbox_enhancement = JetboxNotesEnhancement(workspace_manager=self.workspace_manager)
+        self.enhancements.append(jetbox_enhancement)
+        print(f"[task_executor] Added JetboxNotesEnhancement")
+
+        # Load existing notes for display (optional)
         existing_notes = jetbox_notes.load_jetbox_notes()
         if existing_notes:
             print(f"[jetbox] Loaded notes: {len(existing_notes)} chars")
@@ -249,8 +336,9 @@ class TaskExecutorAgent(BaseAgent):
         """
         print(f"[timeout] Handling goal timeout after {elapsed_seconds:.1f}s")
 
-        # Create jetbox notes summary if enabled
-        if self.config.timeouts.create_summary_on_timeout:
+        # Create jetbox notes summary if enabled by config and enhancement present
+        jetbox_enabled = any(isinstance(e, JetboxNotesEnhancement) for e in self.enhancements)
+        if self.config.timeouts.create_summary_on_timeout and jetbox_enabled:
             try:
                 print("[timeout] Creating jetbox notes summary...")
                 jetbox_notes.create_timeout_summary(
@@ -604,33 +692,45 @@ class TaskExecutorAgent(BaseAgent):
             raise
 
     def _handle_goal_success(self) -> None:
-        """Handle goal success with jetbox notes."""
-        goal_summary = jetbox_notes.prompt_for_goal_summary(
-            goal_description=self.context_manager.state.goal.description,
-            success=True,
-        )
-        jetbox_notes.append_to_jetbox_notes(goal_summary, section="goal_success")
+        """Handle goal success with jetbox notes (if enabled)."""
+        jetbox_enabled = any(isinstance(e, JetboxNotesEnhancement) for e in self.enhancements)
+        if jetbox_enabled:
+            goal_summary = jetbox_notes.prompt_for_goal_summary(
+                goal_description=self.context_manager.state.goal.description,
+                success=True,
+            )
+            jetbox_notes.append_to_jetbox_notes(goal_summary, section="goal_success")
 
-        print("\n" + "="*70)
-        print("GOAL COMPLETE - SUMMARY")
-        print("="*70)
-        print(goal_summary)
-        print("="*70)
+            print("\n" + "="*70)
+            print("GOAL COMPLETE - SUMMARY")
+            print("="*70)
+            print(goal_summary)
+            print("="*70)
+        else:
+            print("\n" + "="*70)
+            print("GOAL COMPLETE")
+            print("="*70)
 
     def _handle_goal_failure(self, goal: str, reason: str) -> None:
-        """Handle goal failure with jetbox notes."""
-        goal_summary = jetbox_notes.prompt_for_goal_summary(
-            goal_description=goal,
-            success=False,
-            reason=reason,
-        )
-        jetbox_notes.append_to_jetbox_notes(goal_summary, section="goal_failure")
+        """Handle goal failure with jetbox notes (if enabled)."""
+        jetbox_enabled = any(isinstance(e, JetboxNotesEnhancement) for e in self.enhancements)
+        if jetbox_enabled:
+            goal_summary = jetbox_notes.prompt_for_goal_summary(
+                goal_description=goal,
+                success=False,
+                reason=reason,
+            )
+            jetbox_notes.append_to_jetbox_notes(goal_summary, section="goal_failure")
 
-        print("\n" + "="*70)
-        print("GOAL FAILED - SUMMARY")
-        print("="*70)
-        print(goal_summary)
-        print("="*70)
+            print("\n" + "="*70)
+            print("GOAL FAILED - SUMMARY")
+            print("="*70)
+            print(goal_summary)
+            print("="*70)
+        else:
+            print("\n" + "="*70)
+            print(f"GOAL FAILED: {reason}")
+            print("="*70)
 
     def _cleanup(self) -> None:
         """

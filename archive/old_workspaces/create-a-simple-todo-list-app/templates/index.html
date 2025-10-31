@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Todo List</title>
+    <style>
+        body {font-family: Arial, sans-serif; margin: 2rem;}
+        ul {list-style: none; padding: 0;}
+        li {margin: 0.5rem 0;}
+        form {display: inline;}
+    </style>
+</head>
+<body>
+    <h1>Todo List</h1>
+    <form action="/add" method="post">
+        <input type="text" name="text" placeholder="New todo" required>
+        <button type="submit">Add</button>
+    </form>
+    <ul>
+        {% for todo in todos %}
+        <li>
+            {{ todo.text }}
+            <form action="/delete/{{ todo.id }}" method="post" style="display:inline;">
+                <button type="submit">Delete</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

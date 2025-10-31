@@ -1,0 +1,60 @@
+{
+  "generated_at": "2025-10-31T17:57:10.717210",
+  "total_tasks": 6,
+  "tasks": [
+    {
+      "dependencies": [],
+      "description": "Set up React frontend project with TypeScript and WebGL context",
+      "estimated_complexity": "medium",
+      "id": "T1",
+      "module": "frontend",
+      "priority": 1
+    },
+    {
+      "dependencies": [
+        "T1"
+      ],
+      "description": "Implement basic noise shader in WebGL with parameter controls",
+      "estimated_complexity": "high",
+      "id": "T2",
+      "module": "frontend",
+      "priority": 2
+    },
+    {
+      "dependencies": [
+        "T2"
+      ],
+      "description": "Create WebSocket client for parameter message transmission",
+      "estimated_complexity": "medium",
+      "id": "T3",
+      "module": "frontend",
+      "priority": 3
+    },
+    {
+      "dependencies": [],
+      "description": "Set up Node.js WebSocket server with Express",
+      "estimated_complexity": "medium",
+      "id": "T4",
+      "module": "websocket-server",
+      "priority": 1
+    },
+    {
+      "dependencies": [
+        "T4"
+      ],
+      "description": "Implement parameter message broadcasting between clients",
+      "estimated_complexity": "low",
+      "id": "T5",
+      "module": "websocket-server",
+      "priority": 2
+    },
+    {
+      "dependencies": [],
+      "description": "Develop Perlin noise GLSL shader module",
+      "estimated_complexity": "high",
+      "id": "T6",
+      "module": "noise-algorithm",
+      "priority": 1
+    }
+  ]
+}

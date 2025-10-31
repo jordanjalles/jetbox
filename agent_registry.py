@@ -14,6 +14,7 @@ import yaml
 from base_agent import BaseAgent
 from orchestrator_agent import OrchestratorAgent
 from task_executor_agent import TaskExecutorAgent
+from architect_agent import ArchitectAgent
 
 
 class AgentRegistry:
@@ -98,6 +99,8 @@ class AgentRegistry:
             agent = OrchestratorAgent(workspace=self.workspace)
         elif agent_class == "TaskExecutorAgent":
             agent = TaskExecutorAgent(workspace=self.workspace)
+        elif agent_class == "ArchitectAgent":
+            agent = ArchitectAgent(workspace=self.workspace)
         else:
             raise ValueError(f"Unknown agent class: {agent_class}")
 

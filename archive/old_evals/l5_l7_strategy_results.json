@@ -1,0 +1,122 @@
+{
+  "results": [
+    {
+      "task": "L5_blog_system",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": true,
+      "validation_passed": 3,
+      "validation_failed": 0,
+      "validation_found": {
+        "classes": [
+          "BlogManager",
+          "Post",
+          "Comment"
+        ],
+        "functions": []
+      },
+      "validation_missing": {
+        "classes": [],
+        "functions": []
+      },
+      "rounds": 11,
+      "wall_time": 28.09,
+      "total_messages": 8,
+      "final_context_tokens": 2473
+    },
+    {
+      "task": "L6_observer",
+      "strategy": "hierarchical",
+      "status": "success",
+      "success": false,
+      "validation_passed": 3,
+      "validation_failed": 2,
+      "validation_found": {
+        "classes": [
+          "Subject",
+          "Observer"
+        ],
+        "functions": [
+          "notify"
+        ]
+      },
+      "validation_missing": {
+        "classes": [],
+        "functions": [
+          "subscribe",
+          "unsubscribe"
+        ]
+      },
+      "rounds": 18,
+      "wall_time": 92.91,
+      "total_messages": 10,
+      "final_context_tokens": 1212
+    },
+    {
+      "task": "L7_rate_limiter",
+      "strategy": "hierarchical",
+      "status": "error",
+      "success": false,
+      "error": "LLM call exceeded max_total_time of 180s (elapsed: 180.0s). Context dumped to .agent_context/timeout_dumps/"
+    },
+    {
+      "task": "L5_blog_system",
+      "strategy": "append_until_full",
+      "status": "success",
+      "success": true,
+      "validation_passed": 3,
+      "validation_failed": 0,
+      "validation_found": {
+        "classes": [
+          "BlogManager",
+          "Post",
+          "Comment"
+        ],
+        "functions": []
+      },
+      "validation_missing": {
+        "classes": [],
+        "functions": []
+      },
+      "rounds": 3,
+      "wall_time": 24.56,
+      "total_messages": 8,
+      "final_context_tokens": 1020
+    },
+    {
+      "task": "L6_observer",
+      "strategy": "append_until_full",
+      "status": "failure",
+      "success": false,
+      "validation_passed": 3,
+      "validation_failed": 2,
+      "validation_found": {
+        "classes": [
+          "Subject",
+          "Observer"
+        ],
+        "functions": [
+          "notify"
+        ]
+      },
+      "validation_missing": {
+        "classes": [],
+        "functions": [
+          "subscribe",
+          "unsubscribe"
+        ]
+      },
+      "rounds": 30,
+      "wall_time": 118.5,
+      "total_messages": 60,
+      "final_context_tokens": 4363
+    },
+    {
+      "task": "L7_rate_limiter",
+      "strategy": "append_until_full",
+      "status": "error",
+      "success": false,
+      "error": "write_file() missing 1 required positional argument: 'content'"
+    }
+  ]
+}

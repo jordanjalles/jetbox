@@ -61,6 +61,12 @@ class ContextConfig:
     compression_threshold: int
 
 @dataclass
+class TimeoutsConfig:
+    max_goal_time: int
+    create_summary_on_timeout: bool
+    save_context_dump: bool
+
+@dataclass
 class AgentConfig:
     llm: LLMConfig
     rounds: RoundsConfig
@@ -70,6 +76,7 @@ class AgentConfig:
     decomposition: DecompositionConfig
     approach_retry: ApproachRetryConfig
     context: ContextConfig
+    timeouts: TimeoutsConfig
 
     @classmethod
     def load(cls, config_path = "agent_config.yaml"):
@@ -105,6 +112,13 @@ class AgentConfig:
                 "compression_threshold": 20
             }
 
+        if "timeouts" not in config_dict:
+            config_dict["timeouts"] = {
+                "max_goal_time": 600,  # 10 minutes
+                "create_summary_on_timeout": True,
+                "save_context_dump": True
+            }
+
         return cls(
             llm=LLMConfig(**config_dict["llm"]),
             rounds=RoundsConfig(**config_dict["rounds"]),
@@ -114,6 +128,7 @@ class AgentConfig:
             decomposition=DecompositionConfig(**config_dict["decomposition"]),
             approach_retry=ApproachRetryConfig(**config_dict["approach_retry"]),
             context=ContextConfig(**config_dict["context"]),
+            timeouts=TimeoutsConfig(**config_dict["timeouts"]),
         )
 
 config = AgentConfig.load()

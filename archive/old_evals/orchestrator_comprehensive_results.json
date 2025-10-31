@@ -1,0 +1,68 @@
+{
+  "summary": {
+    "passed": 4,
+    "total": 6,
+    "pass_rate": 0.6666666666666666
+  },
+  "results": [
+    {
+      "test": "complex_web_project",
+      "success": true,
+      "files_created": true,
+      "cross_references": true
+    },
+    {
+      "test": "iterative_refinement",
+      "success": false,
+      "functions_count": 5,
+      "has_tests": false,
+      "has_notes": true
+    },
+    {
+      "test": "error_recovery",
+      "success": true,
+      "package_structure": true,
+      "tests_created": true,
+      "rounds": 27
+    },
+    {
+      "test": "mixed_success_failure",
+      "success": false,
+      "easy_tasks": false,
+      "hard_task_attempted": false
+    },
+    {
+      "test": "context_size_across_executors",
+      "success": true,
+      "all_successful": true,
+      "reasonable_rounds": true,
+      "results": [
+        {
+          "status": "success",
+          "rounds": 2,
+          "messages": 6
+        },
+        {
+          "status": "success",
+          "rounds": 2,
+          "messages": 6
+        },
+        {
+          "status": "success",
+          "rounds": 2,
+          "messages": 6
+        }
+      ]
+    },
+    {
+      "test": "jetbox_notes_accumulation",
+      "success": true,
+      "notes_growth": [
+        613,
+        1421,
+        2372
+      ],
+      "mentions_shapes": true
+    }
+  ]
+}

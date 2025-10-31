@@ -3,6 +3,8 @@ Orchestrator agent - manages user conversation and delegates to TaskExecutor.
 
 Uses append-until-full context management: keeps all messages until near token limit,
 then performs compaction pass to summarize old messages.
+
+Can switch to task management strategy when working with structured tasks.
 """
 from __future__ import annotations
 from typing import Any
@@ -12,6 +14,8 @@ import os
 from base_agent import BaseAgent
 from agent_config import config
 from llm_utils import chat_with_inactivity_timeout
+from context_strategies import AppendUntilFullStrategy, TaskManagementEnhancement, ContextStrategy
+from workspace_manager import WorkspaceManager
 
 
 class OrchestratorAgent(BaseAgent):
@@ -19,15 +23,17 @@ class OrchestratorAgent(BaseAgent):
     Agent specialized for user interaction and task delegation.
 
     Context strategy: Append until full, then compact
+    Can switch to TaskManagementStrategy when task breakdown exists
     Tools: Delegation, clarification, planning
     """
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path, context_strategy: ContextStrategy | None = None):
         """
         Initialize Orchestrator agent.
 
         Args:
             workspace: Working directory
+            context_strategy: Optional context strategy (defaults to AppendUntilFullStrategy)
         """
         super().__init__(
             name="orchestrator",
@@ -51,6 +57,23 @@ class OrchestratorAgent(BaseAgent):
 
         print(f"[orchestrator] Model: {self.model}, Context window: {self.context_window} tokens, Threshold: {self.token_threshold} tokens")
 
+        # Workspace manager (initialized when needed for task management)
+        self.workspace_manager = None
+
+        # Primary context strategy (always AppendUntilFull for orchestrator)
+        self.context_strategy = context_strategy or AppendUntilFullStrategy()
+
+        # Context enhancements (composable plugins)
+        self.enhancements = []
+
+        print(f"[orchestrator] Context strategy: {self.context_strategy.get_name()}")
+
+        # Initialize simple context manager (for strategy compatibility)
+        from context_manager import ContextManager
+        self.context_manager = ContextManager()
+        # Set a default goal (will be updated when user makes a request)
+        self.context_manager.load_or_init("User conversation")
+
     def get_tools(self) -> list[dict[str, Any]]:
         """
         Return tools available to Orchestrator.
@@ -60,8 +83,38 @@ class OrchestratorAgent(BaseAgent):
         - clarify_with_user: Ask user for clarification
         - create_task_plan: Break down user request into tasks
         - get_executor_status: Check TaskExecutor progress
+        + strategy-specific tools (e.g., task management tools)
         """
-        return [
+        base_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "consult_architect",
+                    "description": "Consult the Architect agent for complex project design. Use this for multi-component systems, architecture decisions, technology recommendations, or when you need structured breakdown of a complex project. The architect will produce architecture documents, module specifications, and a task breakdown.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "project_description": {
+                                "type": "string",
+                                "description": "What the user wants to build (high-level description)",
+                            },
+                            "requirements": {
+                                "type": "string",
+                                "description": "Functional and non-functional requirements (performance, scale, features, etc.)",
+                            },
+                            "constraints": {
+                                "type": "string",
+                                "description": "Constraints and context (team size, tech stack preferences, timeline, existing infrastructure, etc.)",
+                            },
+                            "workspace_path": {
+                                "type": "string",
+                                "description": "Optional: Path to existing workspace if consulting on existing project (use find_workspace to get this)",
+                            },
+                        },
+                        "required": ["project_description"],
+                    },
+                },
+            },
             {
                 "type": "function",
                 "function": {
@@ -176,15 +229,48 @@ class OrchestratorAgent(BaseAgent):
             },
         ]
 
+        # Add strategy-specific tools if available
+        strategy_tools = []
+        if self.context_strategy:
+            strategy_tools = self.context_strategy.get_strategy_tools()
+
+        # Add enhancement tools
+        enhancement_tools = []
+        for enhancement in self.enhancements:
+            enhancement_tools.extend(enhancement.get_enhancement_tools())
+
+        # Merge base tools + strategy tools + enhancement tools
+        return base_tools + strategy_tools + enhancement_tools
+
     def get_system_prompt(self) -> str:
         """Return Orchestrator-specific system prompt."""
-        return """You are an orchestrator agent that helps users plan and execute software projects.
+        base_text = """You are an orchestrator agent that helps users plan and execute software projects.
 
 Your workflow:
 1. When user makes a request, check if you need clarification
-2. Determine if this is NEW work or EXISTING work (MANDATORY STEP)
-3. Delegate to TaskExecutor with explicit workspace_mode
-4. After delegation completes, report results back to user WITH FILE LOCATIONS
+2. Assess complexity: SIMPLE (direct implementation) vs COMPLEX (needs architecture)
+3. For COMPLEX projects: Consult Architect first, get architecture + task breakdown
+4. For SIMPLE projects or after architect: Delegate to TaskExecutor with explicit workspace_mode
+5. After delegation completes, report results back to user WITH FILE LOCATIONS
+
+COMPLEXITY ASSESSMENT (NEW STEP):
+Before delegating, determine if project needs architecture design:
+
+CONSULT ARCHITECT when:
+- Multi-component/multi-service systems (microservices, distributed systems)
+- Complex data flows or processing pipelines
+- Technology stack decisions needed (which database? which framework?)
+- Performance/scaling concerns (handle X req/sec, support Y users)
+- Multiple modules with interfaces/dependencies
+- User explicitly asks for architecture/design
+- Refactoring large existing codebases
+
+SKIP ARCHITECT (delegate directly) when:
+- Simple single-file scripts or utilities
+- Small feature additions to existing code
+- Bug fixes
+- Straightforward CRUD applications
+- User explicitly asks for quick implementation
 
 WORKSPACE MODE (CRITICAL - YOU MUST ALWAYS SPECIFY):
 The delegate_to_executor tool REQUIRES a workspace_mode parameter with value "new" or "existing".
@@ -199,7 +285,7 @@ Step 2: Choose workspace_mode:
 - If NEW work → workspace_mode="new" (no workspace_path needed)
 - If EXISTING work → MUST call find_workspace first, then workspace_mode="existing" with workspace_path
 
-Step 3: Delegate with correct parameters
+Step 3: Delegate with correct parameters (to Architect or TaskExecutor)
 
 EXAMPLE WORKFLOWS:
 
@@ -229,6 +315,29 @@ User: "add square root to calculator"
 → If found: use existing workspace
 → If not found: ask user or use workspace_mode="new"
 
+Example 4 - COMPLEX PROJECT (with Architect):
+User: "build a real-time analytics platform for 1M events/sec"
+→ Assess complexity: multi-component, scaling concerns → COMPLEX
+→ consult_architect(
+    project_description="real-time analytics platform",
+    requirements="1M events/sec ingestion, multi-tenant isolation, schema evolution",
+    constraints="AWS + Kubernetes, 4-person team, Go/Python"
+  )
+→ [Architect returns: task list with 5 tasks, workspace path]
+→ ITERATE through each task in the returned task list:
+  - Task 1: delegate_to_executor(
+      task_description="Implement ingestion module per architecture/modules/ingestion.md",
+      workspace_mode="existing",
+      workspace_path=".agent_workspace/real-time-analytics-platform"
+    )
+  - Task 2: delegate_to_executor(
+      task_description="Implement processing module per architecture/modules/processing.md",
+      workspace_mode="existing",
+      workspace_path=".agent_workspace/real-time-analytics-platform"
+    )
+  - [Continue for all tasks...]
+→ Report: "Completed 5 tasks. Architecture in workspace/architecture/, all modules implemented"
+
 MANDATORY RULES:
 1. ALWAYS specify workspace_mode in delegate_to_executor - no exceptions
 2. If workspace_mode="existing", MUST provide workspace_path
@@ -246,56 +355,97 @@ REPORTING RESULTS:
 Guidelines:
 - Be conversational and brief
 - Ask clarifying questions ONLY if truly needed
-- For simple requests, delegate immediately without planning
-- For complex requests, you may create_task_plan first
-- ALWAYS delegate to TaskExecutor for coding work
+- For simple requests, delegate immediately to TaskExecutor
+- For complex requests, consult Architect first
+- ALWAYS delegate to TaskExecutor for coding work (after Architect if needed)
+- **CRITICAL**: After Architect consultation, you MUST delegate EACH task from the returned task list
+  - Architect result includes "tasks" array with full task details
+  - Make ONE delegate_to_executor call PER task
+  - Use workspace_mode="existing" and the workspace_path from architect result
+  - Include reference to architecture module spec in task_description
 
 Tools available:
+- consult_architect: Get architecture design for complex projects (produces docs, specs, task breakdown)
 - delegate_to_executor: Send coding tasks (REQUIRES workspace_mode: "new" or "existing")
 - find_workspace: Find workspace by project name (REQUIRED before workspace_mode="existing")
 - list_workspaces: List all existing workspaces
 - clarify_with_user: Ask user questions
-- create_task_plan: Structure complex requests (optional)
+- create_task_plan: Structure complex requests (optional, architect does this better for complex projects)
 - get_executor_status: Check TaskExecutor progress
 """
 
+        # Add strategy-specific instructions if available
+        base_prompt = base_text
+        if self.context_strategy:
+            strategy_instructions = self.context_strategy.get_strategy_instructions()
+            if strategy_instructions:
+                base_prompt = base_prompt + "\n" + strategy_instructions
+
+        # Add enhancement instructions
+        for enhancement in self.enhancements:
+            enhancement_instructions = enhancement.get_enhancement_instructions()
+            if enhancement_instructions:
+                base_prompt = base_prompt + "\n" + enhancement_instructions
+
+        return base_prompt
+
     def get_context_strategy(self) -> str:
-        """Orchestrator uses append-until-full strategy."""
-        return "append_until_full"
+        """Orchestrator uses append-until-full strategy (or task management if tasks exist)."""
+        return self.context_strategy.get_name()
+
+    def add_task_management(self, workspace_path: Path | str) -> None:
+        """
+        Add TaskManagementEnhancement for structured task tracking.
+
+        Call this after architect consultation creates task breakdown.
+
+        Args:
+            workspace_path: Path to workspace containing architecture/task-breakdown.json
+        """
+        workspace_path = Path(workspace_path)
+
+        # Create workspace manager for this workspace (use generic goal)
+        self.workspace_manager = WorkspaceManager(
+            goal="orchestrator-task-management",
+            workspace_path=workspace_path
+        )
+
+        # Add task management enhancement
+        task_enhancement = TaskManagementEnhancement(workspace_manager=self.workspace_manager)
+        self.enhancements.append(task_enhancement)
+
+        print(f"[orchestrator] Added task management enhancement (workspace: {workspace_path})")
 
     def build_context(self) -> list[dict[str, Any]]:
         """
-        Build context using append-until-full strategy.
+        Build context using configured context strategy + enhancements.
 
-        Strategy:
-        1. Always include system prompt
-        2. Append all messages until approaching token limit
-        3. When near limit, compact old messages into summary
-        4. CRITICAL: Update self.state.messages to compacted version
+        Uses context_strategy.build_context() which handles compaction automatically,
+        then injects enhancement context sections.
 
         Returns:
-            [system_prompt, ...all_messages_or_compacted...]
+            [system_prompt, ...enhancements..., ...messages...]
         """
-        context = [{"role": "system", "content": self.get_system_prompt()}]
+        # Use configured context strategy to build base context
+        context = self.context_strategy.build_context(
+            context_manager=self.context_manager,
+            messages=self.state.messages,
+            system_prompt=self.get_system_prompt(),
+            config=self.config,
+            workspace=self.workspace,
+        )
 
-        # Estimate token count (rough: 1 token ≈ 4 chars)
-        current_tokens = self._estimate_tokens(context + self.state.messages)
+        # Inject enhancements after system prompt (index 1)
+        enhancement_index = 1
+        for enhancement in self.enhancements:
+            enhancement_context = enhancement.get_context_injection(
+                context_manager=self.context_manager,
+                workspace=self.workspace
+            )
+            if enhancement_context:
+                context.insert(enhancement_index, enhancement_context)
+                enhancement_index += 1
 
-        # If we need to compact, do it NOW and update state
-        if current_tokens >= self.token_threshold:
-            # Compact and UPDATE state.messages to prevent infinite growth
-            compacted = self._compact_messages(self.state.messages)
-            old_count = len(self.state.messages)
-            self.state.messages = compacted
-            new_count = len(self.state.messages)
-
-            # Persist the compacted state
-            self.persist_state()
-
-            print(f"[context_compaction] Compacted messages: {old_count} → {new_count} (saved {old_count - new_count} messages)")
-
-        # Now just use state.messages (which is compacted if needed)
-        context.extend(self.state.messages)
         return context
 
     def _get_model_context_window(self) -> int:

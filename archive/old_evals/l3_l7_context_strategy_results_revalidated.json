@@ -1,0 +1,531 @@
+[
+  {
+    "task": "L3_calculator",
+    "level": 3,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 19,
+    "wall_time": 41.01,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L3_file_processor",
+    "level": 3,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 16,
+    "wall_time": 37.63,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_todo_list",
+    "level": 4,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 18,
+    "wall_time": 59.06,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_stack",
+    "level": 4,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 16,
+    "wall_time": 38.34,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L5_blog_system",
+    "level": 5,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": true,
+    "validation_passed": 3,
+    "validation_failed": 0,
+    "validation_found": {
+      "classes": [
+        "BlogManager",
+        "Post",
+        "Comment"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": []
+    },
+    "rounds": 22,
+    "wall_time": 51.35,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 1.0,
+      "breakdown": {
+        "validation": 0.5,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L5_inventory",
+    "level": 5,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 1,
+    "validation_failed": 1,
+    "validation_found": {
+      "classes": [
+        "Inventory"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Product"
+      ],
+      "functions": []
+    },
+    "rounds": 12,
+    "wall_time": 39.58,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.75,
+      "breakdown": {
+        "validation": 0.25,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "good"
+    }
+  },
+  {
+    "task": "L6_observer",
+    "level": 6,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 3,
+    "validation_failed": 2,
+    "validation_found": {
+      "classes": [
+        "Subject",
+        "Observer"
+      ],
+      "functions": [
+        "notify"
+      ]
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": [
+        "subscribe",
+        "unsubscribe"
+      ]
+    },
+    "rounds": 20,
+    "wall_time": 47.34,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.8,
+      "breakdown": {
+        "validation": 0.3,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L6_factory",
+    "level": 6,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 3,
+    "validation_found": {
+      "classes": [],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Factory"
+      ],
+      "functions": [
+        "create",
+        "create_product"
+      ]
+    },
+    "rounds": 32,
+    "wall_time": 69.87,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L7_rate_limiter",
+    "level": 7,
+    "strategy": "hierarchical",
+    "status": "exception",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "rounds": 0,
+    "wall_time": 0,
+    "partial_credit": {
+      "total_score": 0.0,
+      "rating": "poor"
+    },
+    "error": "error parsing tool call: raw='We wrote the file. Need to create tests.{\"path\":\"tests/test_rate_limiter.py\",\"content\":\"import time\\nimport pytest\\n\\nfrom rate_limiter import RateLimiter\\n\\n# Helper to wait a bit\\n\\ndef wait(seconds: float):\\n    time.sleep(seconds)\\n\\n\\ndef test_initial_capacity():\\n    limiter = RateLimiter(capacity=3, refill_rate=1)\\n    # Initially full\\n    assert limiter.tokens() == 3\\n    assert limiter.allow_request() is True\\n    assert limiter.tokens() == 2\\n\\n\\ndef test_allow_and_deny():\\n    limiter = RateLimiter(capacity=2, refill_rate=0.5)  # 0.5 tokens per second\\n    # Consume two tokens\\n    assert limiter.allow_request() is True\\n    assert limiter.allow_request() is True\\n    # Bucket empty now\\n    assert limiter.allow_request() is False\\n    # Wait 2 seconds to refill 1 token\\n    wait(2)\\n    assert limiter.allow_request() is True\\n    # Still one token left\\n    assert limiter.tokens() == 1\\n\\n\\ndef test_refill_over_capacity():\\n    limiter = RateLimiter(capacity=5, refill_rate=10)  # 10 tokens per second\\n    # Wait 0.3 seconds -> should refill 3 tokens but capped at capacity\\n    wait(0.3)\\n    assert limiter.tokens() == 5\\n\\n\\ndef test_reset():\\n    limiter = RateLimiter(capacity=4, refill_rate=1)\\n    limiter.allow_request()\\n    limiter.allow_request()\\n    assert limiter.tokens() == 2\\n    limiter.reset()\\n    assert limiter.tokens() == 4\\n\\n\\n# Run tests if executed directly\\nif __name__ == \\\"__main__\\\":\\n    pytest.main([__file__])\\n\"}', err=invalid character 'W' looking for beginning of value (status code: 500)"
+  },
+  {
+    "task": "L7_lru_cache",
+    "level": 7,
+    "strategy": "hierarchical",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 13,
+    "wall_time": 43.79,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L3_calculator",
+    "level": 3,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 7,
+    "wall_time": 26.31,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L3_file_processor",
+    "level": 3,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 26.71,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L4_todo_list",
+    "level": 4,
+    "strategy": "append_until_full",
+    "status": "exception",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "rounds": 0,
+    "wall_time": 0,
+    "partial_credit": {
+      "total_score": 0.0,
+      "rating": "poor"
+    },
+    "error": "error parsing tool call: raw='{\"path\":\"todo.py\",\"content\":\"\\\"\\\"\\\"TodoList implementation.\\n\\nThis module defines a simple TodoList class that manages tasks.\\nEach task is represented as a dictionary with keys:\\n- id: unique integer identifier\\n- title: string\\n- completed: bool\\n\\nThe class provides methods to add, complete, list, and remove tasks.\\n\\\"\\\"\\\"\\n\\nfrom __future__ import annotations\\n\\nfrom dataclasses import dataclass, field\\nfrom typing import Dict, List\\n\\n\\n@dataclass\\nclass Task:\\n    id: int\\n    title: str\\n    completed: bool = False\\n\\n\\nclass TodoList:\\n    \\\"\\\"\\\"Simple in-memory todo list.\\n\\n    The list assigns incremental integer IDs starting from 1.\\n    \\\"\\\"\\\"\\n\\n    def __init__(self) -> None:\\n        self._tasks: Dict[int, Task] = {}\\n        self._next_id: int = 1\\n\\n    def add_task(self, title: str) -> Task:\\n        \\\"\\\"\\\"Add a new task with the given title.\\n\\n        Returns the created Task instance.\\n        \\\"\\\"\\\"\\n        task = Task(id=self._next_id, title=title)\\n        self._tasks[self._next_id] = task\\n        self._next_id += 1\\n        return task\\n\\n    def complete_task(self, task_id: int) -> bool:\\n        \\\"\\\"\\\"Mark the task with ``task_id`` as completed.\\n\\n        Returns ``True`` if the task existed and was marked, ``False`` otherwise.\\n        \\\"\\\"\\\"\\n        task = self._tasks.get(task_id)\\n        if task is None:\\n            return False\\n        task.completed = True\\n        return True\\n\\n    def remove_task(self, task_id: int) -> bool:\\n        \\\"\\\"\\\"Remove the task with ``task_id``.\\n\\n        Returns ``True`` if the task existed and was removed, ``False`` otherwise.\\n        \\\"\\\"\\\"\\n        return self._tasks.pop(task_id, None) is not None\\n\\n    def list_tasks(self) -> List[Task]:\\n        \\\"\\\"\\\"Return a list of all tasks sorted by ID.\\\"\\\"\\\"\\n        return [self._tasks[key] for key in sorted(self._tasks)]\\n\\n    def get_task(self, task_id: int) -> Task | None:\\n        \\\"\\\"\\\"Return the task with ``task_id`` or ``None`` if not found.\\\"\\\"\\\"\\n        return self._tasks.get(task_id)\\n\\n\\n# If run as a script, demonstrate basic usage\\nif __name__ == \\\"__main__\\\":\\n    todo = TodoList()\\n    todo.add_task(\\\"Buy milk\\\")\\n    todo.add_task(\\\"Write tests\\\")\\n    print(\\\"All tasks:\\\")\\n    for t in todo.list_tasks():\\n        print(t)\\n    todo.complete_task(1)\\n    print(\\\"After completing task 1:\\\")\\n    for t in todo.list_tasks():\\n        print(t)\\n\"},\"append\":false,\"encoding\":\"utf-8\",\"line_end\":null,\"overwrite\":true}', err=invalid character ',' after top-level value (status code: -1)"
+  },
+  {
+    "task": "L4_stack",
+    "level": 4,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 0,
+    "wall_time": 26.0,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L5_blog_system",
+    "level": 5,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": true,
+    "validation_passed": 3,
+    "validation_failed": 0,
+    "validation_found": {
+      "classes": [
+        "BlogManager",
+        "Post",
+        "Comment"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": []
+    },
+    "rounds": 5,
+    "wall_time": 40.1,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 1.0,
+      "breakdown": {
+        "validation": 0.5,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L5_inventory",
+    "level": 5,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 1,
+    "validation_failed": 1,
+    "validation_found": {
+      "classes": [
+        "Inventory"
+      ],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Product"
+      ],
+      "functions": []
+    },
+    "rounds": 10,
+    "wall_time": 46.52,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.75,
+      "breakdown": {
+        "validation": 0.25,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "good"
+    }
+  },
+  {
+    "task": "L6_observer",
+    "level": 6,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 3,
+    "validation_failed": 2,
+    "validation_found": {
+      "classes": [
+        "Subject",
+        "Observer"
+      ],
+      "functions": [
+        "notify"
+      ]
+    },
+    "validation_missing": {
+      "classes": [],
+      "functions": [
+        "subscribe",
+        "unsubscribe"
+      ]
+    },
+    "rounds": 13,
+    "wall_time": 33.37,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.8,
+      "breakdown": {
+        "validation": 0.3,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "excellent"
+    }
+  },
+  {
+    "task": "L6_factory",
+    "level": 6,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 3,
+    "validation_found": {
+      "classes": [],
+      "functions": []
+    },
+    "validation_missing": {
+      "classes": [
+        "Factory"
+      ],
+      "functions": [
+        "create",
+        "create_product"
+      ]
+    },
+    "rounds": 0,
+    "wall_time": 26.39,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  },
+  {
+    "task": "L7_rate_limiter",
+    "level": 7,
+    "strategy": "append_until_full",
+    "status": "exception",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "rounds": 0,
+    "wall_time": 0,
+    "partial_credit": {
+      "total_score": 0.0,
+      "rating": "poor"
+    },
+    "error": "error parsing tool call: raw='{\"command\":\"python - <<'PY'\\nimport time\\nfrom rate_limiter import RateLimiter\\n\\nrl=RateLimiter(2,5.0)\\nprint('initial tokens', rl._tokens())\\nprint('allow', rl.allow_request())\\nprint('tokens after', rl._tokens())\\n# simulate time\\nimport time\\n# monkey patch time.time\\norig=time.time\\nclass Dummy:\\n    t=orig()\\n    def time(self): return Dummy.t\\n    def advance(self, s): Dummy.t+=s\\n\\nd=Dummy()\\n# patch\\nimport builtins\\nimport types\\n\\n# Actually patch time.time\\nimport time as tmod\\norig_time=tmod.time\\n\\ndef new_time(): return d.time()\\n\\n# monkey patch\\nimport sys\\nsys.modules['time'].time=new_time\\n\\n# now advance\\nprint('advance 0.1')\\nd.advance(0.1)\\nprint('allow', rl.allow_request())\\nprint('tokens', rl._tokens())\\nPY\"]}', err=invalid character ']' after object key:value pair (status code: 500)"
+  },
+  {
+    "task": "L7_lru_cache",
+    "level": 7,
+    "strategy": "append_until_full",
+    "status": "success",
+    "success": false,
+    "validation_passed": 0,
+    "validation_failed": 0,
+    "validation_found": {},
+    "validation_missing": {},
+    "rounds": 8,
+    "wall_time": 28.99,
+    "timeout_limit": 300,
+    "partial_credit": {
+      "total_score": 0.5,
+      "breakdown": {
+        "validation": 0.0,
+        "jetbox_notes": 0.3,
+        "completion": 0.2
+      },
+      "rating": "partial"
+    }
+  }
+]

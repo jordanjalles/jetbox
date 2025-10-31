@@ -1,0 +1,32 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  margin: 0;
+  padding: 0;
+}
+
+.todo-list {
+  list-style: none;
+  padding: 0;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.todo-item.completed .title {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.todo-item button {
+  margin-left: auto;
+  background: #ff4d4d;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+}

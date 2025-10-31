@@ -178,12 +178,19 @@ class StatusDisplay:
         except Exception:
             pass  # Non-critical
 
-    def record_llm_call(self, duration: float, messages_count: int) -> None:
-        """Record an LLM call for statistics."""
+    def record_llm_call(self, duration: float, eval_count: int, prompt_eval_count: int = 0) -> None:
+        """
+        Record an LLM call for statistics.
+
+        Args:
+            duration: Time taken for LLM call
+            eval_count: Number of tokens generated (output)
+            prompt_eval_count: Number of tokens in prompt (input)
+        """
         self.stats.llm_call_times.append(duration)
-        self.stats.messages_sent += messages_count
-        # Rough token estimation: ~100 tokens per message
-        self.stats.total_tokens_estimated += messages_count * 100
+        self.stats.messages_sent += 1
+        # Use actual token counts from Ollama
+        self.stats.total_tokens_estimated += prompt_eval_count + eval_count
         self._save_stats()
 
     def record_action(self, success: bool) -> None:

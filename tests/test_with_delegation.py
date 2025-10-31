@@ -1,6 +1,7 @@
 """
 Test orchestrator to see if it delegates after planning.
 """
+import json
 from pathlib import Path
 from agent_registry import AgentRegistry
 from agent_config import config
@@ -95,13 +96,13 @@ def display_and_execute(response, registry, orchestrator, turn):
                 result = execute_orchestrator_tool(tc, registry)
 
             print(f"  Result: {result.get('message', 'done')}")
-            tool_results.append(result)
 
-        # Add tool results to conversation
-        orchestrator.add_message({
-            "role": "tool",
-            "content": str(tool_results),
-        })
+            # Add tool result to conversation (one message per tool call)
+            tool_result_str = json.dumps(result)
+            orchestrator.add_message({
+                "role": "tool",
+                "content": tool_result_str,
+            })
     else:
         print("No tool calls")
 
