@@ -151,10 +151,29 @@ class TestBehaviorIsolation:
 
     def test_delegation_behavior_isolation(self):
         """DelegationBehavior works without other behaviors."""
+        # Use full config with delegation_tool definitions
         relationships = {
             "can_delegate_to": ["architect", "task_executor"],
-            "architect": {"description": "Design agent"},
-            "task_executor": {"description": "Execution agent"}
+            "architect": {
+                "description": "Design agent",
+                "delegation_tool": {
+                    "name": "consult_architect",
+                    "description": "Consult architect",
+                    "parameters": {
+                        "project_description": {"type": "string", "description": "Project desc", "required": True}
+                    }
+                }
+            },
+            "task_executor": {
+                "description": "Execution agent",
+                "delegation_tool": {
+                    "name": "delegate_to_executor",
+                    "description": "Delegate to executor",
+                    "parameters": {
+                        "task_description": {"type": "string", "description": "Task desc", "required": True}
+                    }
+                }
+            }
         }
         behavior = DelegationBehavior(agent_relationships=relationships)
 

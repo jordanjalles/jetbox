@@ -50,71 +50,55 @@ class DelegationBehavior(AgentBehavior):
         """
         Build delegation tools based on can_delegate_to relationships.
 
-        For each delegatable agent, creates a tool definition.
+        For each delegatable agent, creates a tool definition from config.
         """
         can_delegate_to = self.agent_relationships.get("can_delegate_to", [])
 
         for target_agent in can_delegate_to:
             # Get agent info from relationships
             agent_info = self.agent_relationships.get(target_agent, {})
-            description = agent_info.get("description", f"Delegate to {target_agent}")
 
-            # Create tool based on agent type
-            if target_agent == "architect":
-                tool = {
-                    "type": "function",
-                    "function": {
-                        "name": "consult_architect",
-                        "description": "Consult the Architect agent for complex project architecture design",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "project_description": {
-                                    "type": "string",
-                                    "description": "Brief description of the project"
-                                },
-                                "requirements": {
-                                    "type": "string",
-                                    "description": "Functional and non-functional requirements"
-                                },
-                                "constraints": {
-                                    "type": "string",
-                                    "description": "Technical constraints (team size, tech stack, timeline, etc.)"
-                                }
-                            },
-                            "required": ["project_description", "requirements", "constraints"]
-                        }
+            # Check if agent has delegation_tool defined in config
+            if "delegation_tool" in agent_info:
+                tool_config = agent_info["delegation_tool"]
+
+                # Build tool parameters from config
+                properties = {}
+                required = []
+
+                for param_name, param_config in tool_config.get("parameters", {}).items():
+                    # Build property definition
+                    prop = {
+                        "type": param_config.get("type", "string"),
+                        "description": param_config.get("description", "")
                     }
-                }
-            elif target_agent == "task_executor":
+
+                    # Add enum if present
+                    if "enum" in param_config:
+                        prop["enum"] = param_config["enum"]
+
+                    properties[param_name] = prop
+
+                    # Add to required list if marked as required
+                    if param_config.get("required", False):
+                        required.append(param_name)
+
+                # Build tool from config
                 tool = {
                     "type": "function",
                     "function": {
-                        "name": "delegate_to_executor",
-                        "description": "Delegate a coding task to the TaskExecutor agent",
+                        "name": tool_config["name"],
+                        "description": tool_config["description"],
                         "parameters": {
                             "type": "object",
-                            "properties": {
-                                "task_description": {
-                                    "type": "string",
-                                    "description": "Clear description of the task to execute"
-                                },
-                                "workspace_mode": {
-                                    "type": "string",
-                                    "description": "Workspace mode: 'new' for new projects, 'existing' for updates",
-                                    "enum": ["new", "existing"]
-                                },
-                                "workspace_path": {
-                                    "type": "string",
-                                    "description": "Path to existing workspace (required if workspace_mode='existing')"
-                                }
-                            },
-                            "required": ["task_description", "workspace_mode"]
+                            "properties": properties,
+                            "required": required
                         }
                     }
                 }
             else:
-                # Generic delegation tool for unknown agent types
+                # Fallback: generic delegation tool for agents without delegation_tool config
+                description = agent_info.get("description", f"Delegate to {target_agent}")
                 tool = {
                     "type": "function",
                     "function": {
@@ -168,8 +152,8 @@ class DelegationBehavior(AgentBehavior):
         elif tool_name == "delegate_to_executor":
             return self._delegate_to_executor(args, agent)
         else:
-            # Generic delegation
-            return {"error": f"Unknown delegation tool: {tool_name}"}
+            # Generic delegation - tool found but handler not implemented
+            return {"error": f"Delegation tool '{tool_name}' found but handler not implemented"}
 
     def _consult_architect(self, args: dict[str, Any], agent: Any) -> dict[str, Any]:
         """
@@ -315,20 +299,39 @@ Please design the architecture for this project and create:
         Return delegation workflow instructions.
 
         Returns:
-            Instructions for using delegation tools
+            Instructions for using delegation tools (config-driven from agent blurbs)
         """
         can_delegate_to = self.agent_relationships.get("can_delegate_to", [])
         if not can_delegate_to:
             return ""
+
+        # Build guidelines from agent blurbs
+        guidelines = []
+        for target_agent in can_delegate_to:
+            agent_info = self.agent_relationships.get(target_agent, {})
+            blurb = agent_info.get("blurb", agent_info.get("description", ""))
+            if blurb:
+                # Extract key guidance from blurb (usually starts with "Best for...")
+                # Take first sentence or find "Best for" clause
+                blurb_lines = blurb.strip().split(". ")
+                guidance = None
+                for line in blurb_lines:
+                    if "Best for" in line or "best for" in line:
+                        guidance = line.strip()
+                        break
+                if guidance:
+                    guidelines.append(f"- Use {target_agent} for: {guidance}")
+                else:
+                    # Fall back to description
+                    guidelines.append(f"- Use {target_agent}: {agent_info.get('description', '')}")
+
+        guidelines_text = "\n".join(guidelines) if guidelines else "- Assess task complexity and choose appropriate agent"
 
         return f"""
 DELEGATION WORKFLOW:
 You can delegate work to the following agents: {', '.join(can_delegate_to)}
 
 Guidelines:
-- Assess task complexity before delegating
-- Use architect for complex multi-component projects
-- Use task_executor for coding implementation
-- Always specify workspace_mode when delegating to executor
-- Report delegation results back to user
+{guidelines_text}
+- Always report delegation results back to user
 """
