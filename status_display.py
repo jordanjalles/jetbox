@@ -235,15 +235,16 @@ class StatusDisplay:
         self._save_stats()
 
     def render(self, round_no: int = 0, context_stats: dict[str, int] | None = None,
-               in_place: bool = False, subtask_rounds: int = 0, max_rounds: int = 6) -> str:
+               in_place: bool = False, subtask_rounds: int = 0, max_rounds: int = 6,
+               show_hierarchical: bool = False) -> str:
         """
         Render complete status display.
 
         Returns a clean text summary showing:
         - Performance stats (top)
         - Context usage visualization
-        - Current position in task hierarchy (with elbow connectors)
-        - Turn counter (circles showing rounds used vs limit)
+        - Current position in task hierarchy (with elbow connectors) - if show_hierarchical=True
+        - Turn counter (circles showing rounds used vs limit) - if show_hierarchical=True
         - Agent status and current activity (bottom)
 
         Args:
@@ -252,6 +253,7 @@ class StatusDisplay:
             in_place: If True, prepend ANSI codes to clear previous output for in-place update
             subtask_rounds: Number of rounds used on current subtask
             max_rounds: Max rounds allowed before forced decomposition
+            show_hierarchical: If True, show hierarchical displays (turn counter, task tree)
         """
         self.update_runtime()
 
@@ -282,13 +284,20 @@ class StatusDisplay:
             lines.append(self._render_context_usage(context_stats))
             lines.append("")
 
-        # TURN COUNTER before task tree
-        lines.append(self._render_turn_counter(subtask_rounds, max_rounds))
-        lines.append("")
+        # HIERARCHICAL DISPLAYS - only show for hierarchical strategy
+        if show_hierarchical:
+            # TURN COUNTER before task tree
+            lines.append(self._render_turn_counter(subtask_rounds, max_rounds))
+            lines.append("")
 
-        # Enhanced hierarchy with elbow connectors
-        lines.append(self._render_hierarchy_with_elbows())
-        lines.append("")
+            # Enhanced hierarchy with elbow connectors
+            lines.append(self._render_hierarchy_with_elbows())
+            lines.append("")
+        else:
+            # For non-hierarchical strategies, show simple goal
+            if self.ctx and self.ctx.state and self.ctx.state.goal:
+                lines.append(f"GOAL: {self.ctx.state.goal.description}")
+                lines.append("")
 
         # AGENT STATUS at bottom
         lines.append(self._render_agent_status())

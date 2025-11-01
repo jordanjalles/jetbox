@@ -47,10 +47,17 @@ class ApproachRetryConfig:
     retry_style: str
 
 @dataclass
+class LLMTimeoutConfig:
+    inactivity_timeout: int
+    max_call_time: int
+    max_consecutive_timeouts: int
+
+@dataclass
 class LLMConfig:
     model: str
     temperature: float
     system_prompt: str
+    timeout: LLMTimeoutConfig | None = None
 
 @dataclass
 class ContextConfig:
@@ -103,6 +110,14 @@ class AgentConfig:
         if "OLLAMA_MODEL" in os.environ:
             config_dict["llm"]["model"] = os.environ["OLLAMA_MODEL"]
 
+        # Add default timeout config if not present
+        if "timeout" not in config_dict["llm"]:
+            config_dict["llm"]["timeout"] = {
+                "inactivity_timeout": 30,
+                "max_call_time": 180,
+                "max_consecutive_timeouts": 3
+            }
+
         if "context" not in config_dict:
             config_dict["context"] = {
                 "history_keep": 12,
@@ -119,8 +134,16 @@ class AgentConfig:
                 "save_context_dump": True
             }
 
+        # Build LLMConfig with timeout sub-config
+        llm_dict = config_dict["llm"].copy()
+        timeout_dict = llm_dict.pop("timeout", None)
+        llm_config = LLMConfig(
+            **llm_dict,
+            timeout=LLMTimeoutConfig(**timeout_dict) if timeout_dict else None
+        )
+
         return cls(
-            llm=LLMConfig(**config_dict["llm"]),
+            llm=llm_config,
             rounds=RoundsConfig(**config_dict["rounds"]),
             hierarchy=HierarchyConfig(**config_dict["hierarchy"]),
             escalation=EscalationConfig(**config_dict["escalation"]),

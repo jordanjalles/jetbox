@@ -728,6 +728,26 @@ def execute_orchestrator_tool(
             traceback.print_exc()
             return {"success": False, "message": f"Error finding workspace: {e}"}
 
+    # Check if this is a task management tool (if enhancement is active)
+    elif tool_name in ["read_task_breakdown", "get_next_task", "mark_task_status", "update_task"]:
+        # Dispatch to task management tools
+        import task_management_tools
+
+        tool_map = {
+            "read_task_breakdown": task_management_tools.read_task_breakdown,
+            "get_next_task": task_management_tools.get_next_task,
+            "mark_task_status": task_management_tools.mark_task_status,
+            "update_task": task_management_tools.update_task,
+        }
+
+        try:
+            result = tool_map[tool_name](**args)
+            return result
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"status": "error", "message": f"Task management tool failed: {e}"}
+
     else:
         return {"success": False, "message": f"Unknown tool: {tool_name}"}
 

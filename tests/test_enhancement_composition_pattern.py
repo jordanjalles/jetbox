@@ -18,12 +18,12 @@ from context_strategies import (
 
 
 def test_default_composition():
-    """Test TaskExecutor default composition: AppendUntilFull + JetboxNotes."""
+    """Test TaskExecutor default composition: SubAgent + JetboxNotes."""
     with tempfile.TemporaryDirectory() as temp_dir:
         agent = TaskExecutorAgent(workspace=Path(temp_dir))
 
-        # Default strategy should be AppendUntilFull
-        assert agent.context_strategy.get_name() == "append_until_full"
+        # Default strategy should be SubAgent (for delegated work)
+        assert agent.context_strategy.get_name() == "sub_agent"
 
         # No enhancements initially
         assert len(agent.enhancements) == 0
@@ -34,7 +34,7 @@ def test_default_composition():
         assert len(agent.enhancements) == 1
         assert isinstance(agent.enhancements[0], JetboxNotesEnhancement)
 
-        print("✓ Default composition: AppendUntilFull + JetboxNotes")
+        print("✓ Default composition: SubAgent + JetboxNotes")
 
 
 def test_hierarchical_with_jetbox():
