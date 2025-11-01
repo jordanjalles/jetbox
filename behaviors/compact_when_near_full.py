@@ -255,17 +255,13 @@ Concise summary (max 200 words):"""
             Tool result dict
         """
         if tool_name == "mark_goal_complete":
-            # Signal goal completion
-            context_manager = kwargs.get('context_manager')
             summary = args.get('summary', 'Goal completed')
 
-            # Mark goal as complete in context manager if available
-            if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
-                context_manager.state.goal.mark_complete(success=True)
-
+            # Return goal_complete status to trigger agent exit
+            # This matches what legacy mark_goal_complete() in tools.py returns
             return {
-                "success": True,
-                "result": f"Goal marked complete: {summary}",
+                "status": "goal_complete",
+                "message": "Goal completed!",
                 "summary": summary
             }
 
