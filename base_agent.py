@@ -401,6 +401,7 @@ class BaseAgent(ABC):
         Auto-add DelegationBehavior if this agent has delegation relationships.
 
         Reads agents.yaml to determine can_delegate_to list.
+        Reads individual agent config files for delegation_tool schemas.
         If this agent can delegate, creates and adds DelegationBehavior.
         """
         import yaml
@@ -433,9 +434,30 @@ class BaseAgent(ABC):
             agent_relationships = {
                 "can_delegate_to": can_delegate_to
             }
-            # Add info about delegatable agents
+
+            # Load delegation_tool and blurb from individual agent config files
             for target_agent in can_delegate_to:
-                agent_relationships[target_agent] = agents.get(target_agent, {})
+                agent_info = agents.get(target_agent, {})
+
+                # Try to load target agent's config file for delegation_tool and blurb
+                agent_config_file = Path(f"{target_agent}_config.yaml")
+                if agent_config_file.exists():
+                    try:
+                        with open(agent_config_file) as f:
+                            target_config = yaml.safe_load(f)
+
+                        # Add delegation_tool if present in config
+                        if target_config and "delegation_tool" in target_config:
+                            agent_info["delegation_tool"] = target_config["delegation_tool"]
+
+                        # Add blurb if present in config
+                        if target_config and "blurb" in target_config:
+                            agent_info["blurb"] = target_config["blurb"]
+
+                    except Exception as e:
+                        print(f"[{self.name}] Warning: Failed to load {agent_config_file}: {e}")
+
+                agent_relationships[target_agent] = agent_info
 
             # Create and add DelegationBehavior
             from behaviors.delegation import DelegationBehavior

@@ -1,6 +1,9 @@
 """
 StatusDisplayBehavior - Real-time progress and performance visualization.
 
+DEPRECATED: This behavior is deprecated and will be removed in v2.0.
+Status display is being redesigned for the behavior system.
+
 This behavior wraps the StatusDisplay class to provide progress tracking
 and performance monitoring through the AgentBehavior interface.
 
@@ -15,9 +18,18 @@ Features:
 The behavior delegates to the StatusDisplay class for actual rendering.
 """
 
+import warnings
 from typing import Any
 from behaviors.base import AgentBehavior
 from status_display import StatusDisplay
+
+# Emit deprecation warning when module is imported
+warnings.warn(
+    "StatusDisplayBehavior is deprecated and will be removed in v2.0. "
+    "Status display is being redesigned for the behavior system.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 class StatusDisplayBehavior(AgentBehavior):

@@ -18,6 +18,10 @@ blurb: |
 system_prompt: |
   You are an orchestrator agent that helps users plan and execute software projects.
 
+# Token limits are based on model capabilities, not agent type.
+# Default: 8000 tokens for qwen2.5-coder:3b/7b models.
+# Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
+
 behaviors:
   # Context Management
   # CompactWhenNearFullBehavior provides append-until-full context management

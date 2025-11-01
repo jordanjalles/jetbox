@@ -14,6 +14,25 @@ blurb: |
   architecture patterns, and justifies design trade-offs. Best for multi-component
   systems, service architecture, and projects requiring clear technical design.
 
+# Delegation Tool Configuration
+# Defines how other agents (orchestrator) delegate to this agent
+delegation_tool:
+  name: "consult_architect"
+  description: "Consult the Architect agent for complex project architecture design"
+  parameters:
+    project_description:
+      type: string
+      description: "Brief description of the project"
+      required: true
+    requirements:
+      type: string
+      description: "Functional and non-functional requirements"
+      required: true
+    constraints:
+      type: string
+      description: "Technical constraints (team size, tech stack, timeline, etc.)"
+      required: true
+
 # System Prompt
 system_prompt: |
   You are an expert Software Architect agent that helps design robust, scalable software systems.
@@ -91,13 +110,16 @@ system_prompt: |
   - Focus on high-level design - leave implementation details to task executor agents
   - Be clear and specific - vague architecture causes implementation chaos
 
+# Token limits are based on model capabilities, not agent type.
+# Default: 8000 tokens for qwen2.5-coder:3b/7b models.
+# Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
+
 behaviors:
   # Context Management
   # CompactWhenNearFullBehavior provides context management for all agents
-  # Token max is based on model/hardware, not agent type
   - type: CompactWhenNearFullBehavior
     params:
-      max_tokens: 32000  # Higher token limit for verbose design discussions
+      max_tokens: 8000  # Model-based, not agent-based
       compact_threshold: 0.75  # Compact at 75% capacity
 
   # Tool Behaviors
@@ -114,7 +136,5 @@ behaviors:
   # Note: Architect does NOT use WorkspaceTaskNotesBehavior
   # Architecture artifacts are the output, not summaries
 
-  # StatusDisplayBehavior renders progress
-  - type: StatusDisplayBehavior
-    params:
-      show_hierarchical: false  # Architect is more conversational
+  # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
+  # Status display is being redesigned for the behavior system.

@@ -14,6 +14,26 @@ blurb: |
   works through them systematically. Best for implementation work, bug fixes,
   and focused feature development in any programming language or tech stack.
 
+# Delegation Tool Configuration
+# Defines how other agents (orchestrator) delegate to this agent
+delegation_tool:
+  name: "delegate_to_executor"
+  description: "Delegate a coding task to the TaskExecutor agent"
+  parameters:
+    task_description:
+      type: string
+      description: "Clear description of the task to execute"
+      required: true
+    workspace_mode:
+      type: string
+      description: "Workspace mode: 'new' for new projects, 'existing' for updates"
+      enum: ["new", "existing"]
+      required: true
+    workspace_path:
+      type: string
+      description: "Path to existing workspace (required if workspace_mode='existing')"
+      required: false
+
 # System Prompt
 system_prompt: |
   You are a local coding agent that helps build software projects.
@@ -43,6 +63,10 @@ system_prompt: |
   - run_bash("grep -r 'pattern' *.py")  # Search code
   - run_bash("find . -name '*.py' | wc -l")  # Find files
 
+# Token limits are based on model capabilities, not agent type.
+# Default: 8000 tokens for qwen2.5-coder:3b/7b models.
+# Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
+
 behaviors:
   # Context Management
   # SubAgentContextBehavior provides delegated work context management
@@ -52,7 +76,7 @@ behaviors:
   # CompactWhenNearFullBehavior handles context compaction
   - type: CompactWhenNearFullBehavior
     params:
-      max_tokens: 128000  # High token limit for complex delegated tasks
+      max_tokens: 8000  # Model-based, not agent-based
       compact_threshold: 0.75
       keep_recent: 20
 
@@ -84,7 +108,5 @@ behaviors:
   - type: WorkspaceTaskNotesBehavior
     params: {}
 
-  # StatusDisplayBehavior renders progress and performance stats
-  - type: StatusDisplayBehavior
-    params:
-      show_hierarchical: true
+  # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
+  # Status display is being redesigned for the behavior system.
