@@ -54,6 +54,12 @@ llm:
   # Temperature for inference (0.0 = deterministic, 1.0 = creative)
   temperature: 0.2
 
+  # Timeout settings for LLM calls
+  timeout:
+    inactivity_timeout: 30      # Max seconds without activity (default: 30s)
+    max_call_time: 180          # Max seconds per LLM call (default: 3 minutes)
+    max_consecutive_timeouts: 3 # Circuit breaker threshold (default: 3)
+
   # System prompt for the agent (base prompt - context strategies may extend this)
   system_prompt: |
     You are a local coding agent that helps build software projects.

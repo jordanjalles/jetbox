@@ -139,6 +139,21 @@ class BaseAgent(ABC):
         self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
         self.config_blurb: str | None = None  # Agent blurb loaded from config (if any)
 
+        # Timeout handling
+        self.consecutive_timeouts = 0
+        self.total_timeouts = 0
+
+        # Load timeout settings from config
+        if config and hasattr(config, 'llm') and hasattr(config.llm, 'timeout') and config.llm.timeout:
+            self.inactivity_timeout = config.llm.timeout.inactivity_timeout
+            self.max_call_time = config.llm.timeout.max_call_time
+            self.max_consecutive_timeouts = config.llm.timeout.max_consecutive_timeouts
+        else:
+            # Fallback defaults
+            self.inactivity_timeout = 30
+            self.max_call_time = 180
+            self.max_consecutive_timeouts = 3
+
     # ===========================
     # Abstract methods (must implement)
     # ===========================
@@ -222,7 +237,48 @@ class BaseAgent(ABC):
                 tools=tools,
                 inactivity_timeout=timeout,
             )
+
+            # Reset timeout counter on successful LLM call
+            self.consecutive_timeouts = 0
+
             return response
+
+        except TimeoutError as e:
+            # LLM timeout - handle gracefully with circuit breaker
+            print(f"\n⚠️  LLM TIMEOUT: {e}")
+            print(f"[timeout] Incrementing timeout counter...")
+
+            # Increment timeout counter
+            self.consecutive_timeouts = getattr(self, 'consecutive_timeouts', 0) + 1
+            self.total_timeouts = getattr(self, 'total_timeouts', 0) + 1
+
+            # Check circuit breaker threshold
+            if self.consecutive_timeouts >= self.max_consecutive_timeouts:
+                print(f"[timeout] {self.consecutive_timeouts} consecutive timeouts (max: {self.max_consecutive_timeouts})")
+                print(f"[timeout] Circuit breaker triggered - LLM service appears unavailable")
+
+                # Return a special response indicating circuit breaker triggered
+                # The calling agent's run() method should detect this and save partial progress
+                return {
+                    "message": {
+                        "role": "assistant",
+                        "content": "__CIRCUIT_BREAKER_TRIGGERED__",
+                    },
+                    "_circuit_breaker": True,
+                    "_consecutive_timeouts": self.consecutive_timeouts,
+                }
+
+            # Otherwise, return timeout message but allow retry
+            print(f"[timeout] Timeout {self.consecutive_timeouts}/{self.max_consecutive_timeouts} - will retry")
+            return {
+                "message": {
+                    "role": "assistant",
+                    "content": f"__LLM_TIMEOUT__ (attempt {self.consecutive_timeouts}/{self.max_consecutive_timeouts})",
+                },
+                "_timeout": True,
+                "_consecutive_timeouts": self.consecutive_timeouts,
+            }
+
         except Exception as e:
             return {
                 "message": {
@@ -849,3 +905,71 @@ class BaseAgent(ABC):
                     event_method(agent=self, **kwargs)
             except Exception as e:
                 print(f"[{self.name}] Behavior {behavior.get_name()} {event_name} error: {e}")
+
+    def _save_partial_progress(self) -> dict:
+        """
+        Save progress when LLM becomes unavailable (circuit breaker triggered).
+
+        This method scans the workspace for files created and checks for completed
+        tasks in the context manager (if available). Returns a structured summary
+        of work completed so far.
+
+        Returns:
+            dict: Summary with status, files_created, completed_tasks, etc.
+        """
+        # Count files created in workspace
+        files_created = []
+        if hasattr(self, 'workspace') and self.workspace and self.workspace.exists():
+            try:
+                all_files = list(self.workspace.rglob("*"))
+                files_created = [f for f in all_files if f.is_file()]
+            except Exception as e:
+                print(f"[partial_progress] Error scanning workspace: {e}")
+
+        # Get completed tasks from context manager if available
+        completed_tasks = []
+        if hasattr(self, 'context_manager') and self.context_manager:
+            try:
+                if hasattr(self.context_manager, 'state') and self.context_manager.state:
+                    if hasattr(self.context_manager.state, 'goal') and self.context_manager.state.goal:
+                        for task in self.context_manager.state.goal.tasks:
+                            if hasattr(task, 'status') and task.status == "completed":
+                                completed_tasks.append(task.description)
+            except Exception as e:
+                print(f"[partial_progress] Error extracting completed tasks: {e}")
+
+        # Generate summary
+        summary = {
+            "status": "partial_success",
+            "reason": f"LLM timeout - circuit breaker triggered after {self.consecutive_timeouts} consecutive failures",
+            "files_created": len(files_created),
+            "file_list": [str(f.relative_to(self.workspace)) for f in files_created] if files_created and self.workspace else [],
+            "completed_tasks": len(completed_tasks),
+            "task_list": completed_tasks,
+            "workspace": str(self.workspace) if hasattr(self, 'workspace') and self.workspace else None,
+            "total_timeouts": getattr(self, 'total_timeouts', 0),
+            "agent": self.name,
+        }
+
+        # Print user-friendly summary
+        print("\n" + "="*70)
+        print(f"PARTIAL SUCCESS - Work Saved Despite Timeout ({self.name.upper()})")
+        print("="*70)
+        print(f"Files created: {len(files_created)}")
+        for f in summary["file_list"][:10]:  # Show first 10
+            print(f"  - {f}")
+        if len(files_created) > 10:
+            print(f"  ... and {len(files_created) - 10} more")
+
+        if completed_tasks:
+            print(f"\nCompleted tasks: {len(completed_tasks)}")
+            for t in completed_tasks[:5]:  # Show first 5
+                print(f"  - {t}")
+            if len(completed_tasks) > 5:
+                print(f"  ... and {len(completed_tasks) - 5} more")
+
+        print(f"\nWorkspace: {summary['workspace']}")
+        print(f"Total timeouts: {summary['total_timeouts']}")
+        print("="*70)
+
+        return summary

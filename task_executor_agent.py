@@ -854,6 +854,18 @@ You MUST call one of these tools in your next response. The controlling agent is
                         response.get("prompt_eval_count", 0)
                     )
 
+                # Check for circuit breaker (handled by base_agent.call_llm())
+                if response.get("_circuit_breaker"):
+                    print(f"[timeout] Circuit breaker triggered - saving partial progress")
+                    partial_result = self._save_partial_progress()
+                    self._cleanup()
+                    return partial_result
+
+                # Check for timeout (will retry)
+                if response.get("_timeout"):
+                    print(f"[timeout] LLM timeout - continuing to next round (retry)")
+                    continue  # Skip to next round
+
                 # Add assistant message
                 if "message" in response:
                     msg = response["message"]
@@ -923,7 +935,7 @@ You MUST call one of these tools in your next response. The controlling agent is
             return {"status": "failure", "reason": "Max rounds exceeded"}
 
         except Exception as e:
-            # On any exception (including TimeoutError), cleanup and re-raise
+            # Other exceptions
             print(f"[cleanup] Exception during run: {e}")
             self._cleanup()
             raise
