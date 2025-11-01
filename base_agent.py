@@ -1071,7 +1071,7 @@ class BaseAgent(ABC):
         try:
             for round_no in range(1, max_rounds + 1):
                 # Trigger on_round_start
-                self.trigger_behavior_event("on_round_start", round=round_no)
+                self.trigger_behavior_event("on_round_start", round_number=round_no)
 
                 # Build context and call LLM
                 print(f"\n[{self.name}] Round {round_no}/{max_rounds}")
@@ -1120,7 +1120,7 @@ class BaseAgent(ABC):
                                 # Check for mark_complete/mark_failed
                                 if result.get("success") is True and "summary" in result:
                                     print(f"[{self.name}] Goal marked complete")
-                                    self.trigger_behavior_event("on_goal_complete", result=result)
+                                    self.trigger_behavior_event("on_goal_complete", success=True, result=result)
                                     return {
                                         "status": "success",
                                         "summary": result.get("summary"),
@@ -1128,7 +1128,7 @@ class BaseAgent(ABC):
                                     }
                                 elif result.get("success") is False and "reason" in result:
                                     print(f"[{self.name}] Goal marked failed")
-                                    self.trigger_behavior_event("on_goal_failed", result=result)
+                                    self.trigger_behavior_event("on_goal_complete", success=False, result=result)
                                     return {
                                         "status": "failure",
                                         "reason": result.get("reason"),
@@ -1139,7 +1139,7 @@ class BaseAgent(ABC):
                                 actual_result = result.get("result", result)
                                 if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
                                     print(f"[{self.name}] Goal completed (legacy signal)")
-                                    self.trigger_behavior_event("on_goal_complete", result=actual_result)
+                                    self.trigger_behavior_event("on_goal_complete", success=True, result=actual_result)
                                     return {
                                         "status": "success",
                                         "message": actual_result.get("message", "Goal completed"),
@@ -1147,7 +1147,7 @@ class BaseAgent(ABC):
                                     }
 
                 # Trigger on_round_end
-                self.trigger_behavior_event("on_round_end", round=round_no)
+                self.trigger_behavior_event("on_round_end", round_number=round_no)
 
                 # Increment round counter
                 self.increment_round()
