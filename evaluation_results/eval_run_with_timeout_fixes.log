@@ -1,0 +1,897 @@
+================================================================================
+THREE-LEVEL EVALUATION TEST SUITE
+================================================================================
+Model: gpt-oss:20b
+Start: 2025-11-01 22:02:01
+================================================================================
+
+================================================================================
+LEVEL 1: DIRECT TASKEXECUTOR (L1-L4)
+================================================================================
+
+================================================================================
+LEVEL 1 - L1: Simple File
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l1_simple_file
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 9.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      9.26s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      1,808
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 10.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.96s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      3,655
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 12.7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.20s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      5,833
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 17.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.27s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      8,309
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L1: Simple File: FAIL (23.8s, 1/1 files)
+
+================================================================================
+LEVEL 1 - L2: File with Function
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l2_file_with_function
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+[file_tools] list_dir ignoring unsupported parameters: depth
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 5.5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.53s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      1,795
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 6.1s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      3.03s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      3,616
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 6.5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.14s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      5,479
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 7.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.72s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      7,391
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 6 | Runtime: 8.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.51s
+  Avg subtask time:  0.0s
+  LLM calls:         5
+  Actions executed:  5
+  Tokens (est):      9,453
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+[completion_detector] NUDGE: completion_signal_detected: goal complete
+================================================================================
+AGENT STATUS - Round 7 | Runtime: 8.7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.39s
+  Avg subtask time:  0.0s
+  LLM calls:         6
+  Actions executed:  6
+  Tokens (est):      11,584
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 8 | Runtime: 11.5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.58s
+  Avg subtask time:  0.0s
+  LLM calls:         7
+  Actions executed:  7
+  Tokens (est):      14,092
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 9 | Runtime: 14.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.75s
+  Avg subtask time:  0.0s
+  LLM calls:         8
+  Actions executed:  8
+  Tokens (est):      16,678
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 10 | Runtime: 17.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.84s
+  Avg subtask time:  0.0s
+  LLM calls:         9
+  Actions executed:  9
+  Tokens (est):      19,271
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L2: File with Function: FAIL (27.8s, 1/2 files)
+
+================================================================================
+LEVEL 1 - L3: Multi-File Package
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l3_multi-file_package
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 8.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      8.29s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      2,169
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 9.5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.73s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      4,145
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 10.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      3.37s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      6,128
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 10.9s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.69s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      8,187
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 6 | Runtime: 11.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.34s
+  Avg subtask time:  0.0s
+  LLM calls:         5
+  Actions executed:  5
+  Tokens (est):      10,353
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 7 | Runtime: 15.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.61s
+  Avg subtask time:  0.0s
+  LLM calls:         6
+  Actions executed:  6
+  Tokens (est):      13,014
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 8 | Runtime: 17.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.33s
+  Avg subtask time:  0.0s
+  LLM calls:         7
+  Actions executed:  7
+  Tokens (est):      15,719
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 9 | Runtime: 17.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.14s
+  Avg subtask time:  0.0s
+  LLM calls:         8
+  Actions executed:  8
+  Tokens (est):      18,508
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 10 | Runtime: 20.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.23s
+  Avg subtask time:  0.0s
+  LLM calls:         9
+  Actions executed:  8
+  Tokens (est):      21,639
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 11 | Runtime: 26.9s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.62s
+  Avg subtask time:  0.0s
+  LLM calls:         10
+  Actions executed:  9
+  Tokens (est):      25,161
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 12 | Runtime: 31.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.81s
+  Avg subtask time:  0.0s
+  LLM calls:         11
+  Actions executed:  10
+  Tokens (est):      28,545
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 13 | Runtime: 32.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.66s
+  Avg subtask time:  0.0s
+  LLM calls:         12
+  Actions executed:  10
+  Tokens (est):      31,501
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 14 | Runtime: 33.7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.52s
+  Avg subtask time:  0.0s
+  LLM calls:         13
+  Actions executed:  10
+  Tokens (est):      34,456
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 15 | Runtime: 35.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.44s
+  Avg subtask time:  0.0s
+  LLM calls:         14
+  Actions executed:  10
+  Tokens (est):      37,479
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 16 | Runtime: 36.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.36s
+  Avg subtask time:  0.0s
+  LLM calls:         15
+  Actions executed:  10
+  Tokens (est):      40,509
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 17 | Runtime: 37.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.27s
+  Avg subtask time:  0.0s
+  LLM calls:         16
+  Actions executed:  10
+  Tokens (est):      43,464
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 18 | Runtime: 38.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.18s
+  Avg subtask time:  0.0s
+  LLM calls:         17
+  Actions executed:  10
+  Tokens (est):      46,420
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 19 | Runtime: 38.9s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.11s
+  Avg subtask time:  0.0s
+  LLM calls:         18
+  Actions executed:  10
+  Tokens (est):      49,376
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 20 | Runtime: 39.7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.04s
+  Avg subtask time:  0.0s
+  LLM calls:         19
+  Actions executed:  10
+  Tokens (est):      52,332
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L3: Multi-File Package: FAIL (46.2s, 3/3 files)
+
+================================================================================
+LEVEL 1 - L4: Package with Dependencies
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l4_package_with_dependencies
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+[file_tools] list_dir ignoring unsupported parameters: depth
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 5.5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.48s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      1,824
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+[file_tools] list_dir ignoring unsupported parameters: depth
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 5.9s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.93s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      3,623
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+[file_tools] list_dir ignoring unsupported parameters: depth
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 6.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.08s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      5,468
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 6.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.68s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      7,361
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 6 | Runtime: 7.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.47s
+  Avg subtask time:  0.0s
+  LLM calls:         5
+  Actions executed:  5
+  Tokens (est):      9,927
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 7 | Runtime: 8.5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.39s
+  Avg subtask time:  0.0s
+  LLM calls:         6
+  Actions executed:  6
+  Tokens (est):      13,146
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 8 | Runtime: 9.6s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.30s
+  Avg subtask time:  0.0s
+  LLM calls:         7
+  Actions executed:  7
+  Tokens (est):      16,455
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+[completion_detector] NUDGE: completion_signal_detected: goal complete
+================================================================================
+AGENT STATUS - Round 9 | Runtime: 10.6s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.26s
+  Avg subtask time:  0.0s
+  LLM calls:         8
+  Actions executed:  8
+  Tokens (est):      19,852
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 10 | Runtime: 14.1s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.51s
+  Avg subtask time:  0.0s
+  LLM calls:         9
+  Actions executed:  9
+  Tokens (est):      23,685
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 11 | Runtime: 15.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.49s
+  Avg subtask time:  0.0s
+  LLM calls:         10
+  Actions executed:  10
+  Tokens (est):      27,303
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 12 | Runtime: 20.1s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.77s
+  Avg subtask time:  0.0s
+  LLM calls:         11
+  Actions executed:  11
+  Tokens (est):      31,395
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 13 | Runtime: 24.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      1.98s
+  Avg subtask time:  0.0s
+  LLM calls:         12
+  Actions executed:  12
+  Tokens (est):      35,518
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 14 | Runtime: 29.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.20s
+  Avg subtask time:  0.0s
+  LLM calls:         13
+  Actions executed:  13
+  Tokens (est):      39,735
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 15 | Runtime: 35.7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.50s
+  Avg subtask time:  0.0s
+  LLM calls:         14
+  Actions executed:  14
+  Tokens (est):      44,217
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 16 | Runtime: 39.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.61s
+  Avg subtask time:  0.0s
+  LLM calls:         15
+  Actions executed:  15
+  Tokens (est):      48,449
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 17 | Runtime: 44.6s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.74s
+  Avg subtask time:  0.0s
+  LLM calls:         16
+  Actions executed:  16
+  Tokens (est):      52,786
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 18 | Runtime: 54.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      3.16s
+  Avg subtask time:  0.0s
+  LLM calls:         17
+  Actions executed:  17
+  Tokens (est):      57,791
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================

@@ -1,0 +1,95 @@
+================================================================================
+EVALUATION LOG: level3_full_stack_eval.log
+Started: 2025-11-01 22:18:17
+Model: gpt-oss:20b
+================================================================================
+
+
+================================================================================
+Test: L5: Multi-Component System
+User Request: Design and implement a task queue system
+Start Time: 2025-11-01 22:24:39
+================================================================================
+
+Instantiating all agents...
+  ✓ Orchestrator created
+  ✓ Architect created
+  ✓ TaskExecutor created
+
+All Agents Configured:
+  Orchestrator: 3 behaviors, 3 tools
+  Architect: 4 behaviors, 8 tools
+  TaskExecutor: 7 behaviors, 11 tools
+
+Delegation Setup:
+  Can consult architect: True
+  Can delegate to executor: True
+
+Architect Tools: mark_complete, mark_failed, mark_goal_complete, write_architecture_doc, write_module_spec, write_task_list, list_architecture_docs, read_architecture_doc
+
+TaskExecutor Tools: mark_complete, mark_failed, mark_goal_complete, write_file, read_file, list_dir, run_bash, start_server, stop_server, check_server, list_servers
+
+Results:
+  All Agents Configured: YES
+  Full Stack Ready: True
+  Duration: 0.17s
+
+
+================================================================================
+Test: L6: Service Architecture
+User Request: Design a microservices order processing system
+Start Time: 2025-11-01 22:24:39
+================================================================================
+
+Instantiating all agents...
+  ✓ Orchestrator created
+  ✓ Architect created
+  ✓ TaskExecutor created
+
+All Agents Configured:
+  Orchestrator: 3 behaviors, 3 tools
+  Architect: 4 behaviors, 8 tools
+  TaskExecutor: 7 behaviors, 11 tools
+
+Delegation Setup:
+  Can consult architect: True
+  Can delegate to executor: True
+
+Architect Tools: mark_complete, mark_failed, mark_goal_complete, write_architecture_doc, write_module_spec, write_task_list, list_architecture_docs, read_architecture_doc
+
+TaskExecutor Tools: mark_complete, mark_failed, mark_goal_complete, write_file, read_file, list_dir, run_bash, start_server, stop_server, check_server, list_servers
+
+Results:
+  All Agents Configured: YES
+  Full Stack Ready: True
+  Duration: 0.17s
+
+
+================================================================================
+Test: L7: Complex System
+User Request: Design and implement a distributed cache system
+Start Time: 2025-11-01 22:24:39
+================================================================================
+
+Instantiating all agents...
+  ✓ Orchestrator created
+  ✓ Architect created
+  ✓ TaskExecutor created
+
+All Agents Configured:
+  Orchestrator: 3 behaviors, 3 tools
+  Architect: 4 behaviors, 8 tools
+  TaskExecutor: 7 behaviors, 11 tools
+
+Delegation Setup:
+  Can consult architect: True
+  Can delegate to executor: True
+
+Architect Tools: mark_complete, mark_failed, mark_goal_complete, write_architecture_doc, write_module_spec, write_task_list, list_architecture_docs, read_architecture_doc
+
+TaskExecutor Tools: mark_complete, mark_failed, mark_goal_complete, write_file, read_file, list_dir, run_bash, start_server, stop_server, check_server, list_servers
+
+Results:
+  All Agents Configured: YES
+  Full Stack Ready: True
+  Duration: 0.17s

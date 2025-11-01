@@ -1,0 +1,109 @@
+================================================================================
+EVALUATION LOG: level1_task_executor_eval.log
+Started: 2025-11-01 22:18:17
+Model: gpt-oss:20b
+================================================================================
+
+
+================================================================================
+Test: L1: Simple File
+Goal: Create a file hello.py that prints 'Hello World'
+Max Rounds: 5
+Expected Files: hello.py
+Start Time: 2025-11-01 22:18:17
+================================================================================
+
+Workspace: .agent_workspace/level1_l1_simple_file
+
+Agent Setup:
+  Workspace: .agent_workspace/level1_l1_simple_file
+  Behaviors: ['subagent_context', 'compact_when_near_full', 'file_tools', 'command_tools', 'server_tools', 'loop_detection', 'workspace_task_notes']
+  Tools: 11 available
+
+Running agent...
+
+Results:
+  Status: failure
+  Reason: Max rounds exceeded
+  Duration: 27.01s
+  Rounds Used: N/A
+  Files Created: 1/1
+  Files: ['hello.py']
+
+
+================================================================================
+Test: L2: File with Function
+Goal: Create calculator.py with an add(a, b) function and a test for it
+Max Rounds: 10
+Expected Files: calculator.py, test_calculator.py
+Start Time: 2025-11-01 22:18:44
+================================================================================
+
+Workspace: .agent_workspace/level1_l2_file_with_function
+
+Agent Setup:
+  Workspace: .agent_workspace/level1_l2_file_with_function
+  Behaviors: ['subagent_context', 'compact_when_near_full', 'file_tools', 'command_tools', 'server_tools', 'loop_detection', 'workspace_task_notes']
+  Tools: 11 available
+
+Running agent...
+
+Results:
+  Status: failure
+  Reason: Max rounds exceeded
+  Duration: 22.78s
+  Rounds Used: N/A
+  Files Created: 1/2
+  Files: ['calculator.py']
+
+
+================================================================================
+Test: L3: Multi-File Package
+Goal: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+Max Rounds: 20
+Expected Files: mathx/__init__.py, mathx/add.py, tests/test_mathx.py
+Start Time: 2025-11-01 22:19:07
+================================================================================
+
+Workspace: .agent_workspace/level1_l3_multi-file_package
+
+Agent Setup:
+  Workspace: .agent_workspace/level1_l3_multi-file_package
+  Behaviors: ['subagent_context', 'compact_when_near_full', 'file_tools', 'command_tools', 'server_tools', 'loop_detection', 'workspace_task_notes']
+  Tools: 11 available
+
+Running agent...
+
+Results:
+  Status: failure
+  Reason: Max rounds exceeded
+  Duration: 83.71s
+  Rounds Used: N/A
+  Files Created: 3/3
+  Files: ['mathx/__init__.py', 'mathx/add.py', 'tests/test_mathx.py']
+
+
+================================================================================
+Test: L4: Package with Dependencies
+Goal: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+Max Rounds: 30
+Expected Files: requests_wrapper/__init__.py, requests_wrapper/client.py, tests/test_client.py
+Start Time: 2025-11-01 22:20:31
+================================================================================
+
+Workspace: .agent_workspace/level1_l4_package_with_dependencies
+
+Agent Setup:
+  Workspace: .agent_workspace/level1_l4_package_with_dependencies
+  Behaviors: ['subagent_context', 'compact_when_near_full', 'file_tools', 'command_tools', 'server_tools', 'loop_detection', 'workspace_task_notes']
+  Tools: 11 available
+
+Running agent...
+
+Results:
+  Status: failure
+  Reason: Max rounds exceeded
+  Duration: 248.13s
+  Rounds Used: N/A
+  Files Created: 2/3
+  Files: ['requests_wrapper/__init__.py', 'requests_wrapper/client.py']

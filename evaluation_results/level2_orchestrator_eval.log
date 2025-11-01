@@ -1,0 +1,53 @@
+================================================================================
+EVALUATION LOG: level2_orchestrator_eval.log
+Started: 2025-11-01 22:18:17
+Model: gpt-oss:20b
+================================================================================
+
+
+================================================================================
+Test: L4: Simple Delegation
+User Request: Create a JSON parser utility with validation
+Max Rounds: 40
+Start Time: 2025-11-01 22:24:39
+================================================================================
+
+Creating OrchestratorAgent...
+
+Orchestrator Setup:
+  Behaviors: ['delegation', 'compact_when_near_full', 'loop_detection']
+  Tools (3): consult_architect, delegate_to_executor, mark_goal_complete
+
+Delegation Capabilities:
+  Can delegate to executor: True
+  Can consult architect: True
+
+Results:
+  Orchestrator Configured: YES
+  Can Delegate to Executor: True
+  Can Consult Architect: True
+  Duration: 0.12s
+
+
+================================================================================
+Test: L4: Multi-Step Project
+User Request: Create a CLI tool for file encryption
+Max Rounds: 50
+Start Time: 2025-11-01 22:24:39
+================================================================================
+
+Creating OrchestratorAgent...
+
+Orchestrator Setup:
+  Behaviors: ['delegation', 'compact_when_near_full', 'loop_detection']
+  Tools (3): consult_architect, delegate_to_executor, mark_goal_complete
+
+Delegation Capabilities:
+  Can delegate to executor: True
+  Can consult architect: True
+
+Results:
+  Orchestrator Configured: YES
+  Can Delegate to Executor: True
+  Can Consult Architect: True
+  Duration: 0.12s

@@ -1,0 +1,157 @@
+================================================================================
+THREE-LEVEL EVALUATION TEST SUITE
+================================================================================
+Model: qwen2.5-coder:3b
+Start: 2025-11-01 20:06:41
+================================================================================
+
+================================================================================
+LEVEL 1: DIRECT TASKEXECUTOR (L1-L4)
+================================================================================
+
+================================================================================
+LEVEL 1 - L1: Simple File
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l1_simple_file
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200656.json
+[timeout_dump] Stats: 2 messages, ~1,122 tokens, 15.0s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200727.json
+[timeout_dump] Stats: 3 messages, ~1,236 tokens, 30.0s elapsed
+[timeout_nudge] Final nudge attempt failed: No response from Ollama for 30s - likely hung or dead. Context dumped to .agent_context/timeout_dumps/
+[timeout_nudge] Forcing mark_failed
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 45.1s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      45.12s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200742.json
+[timeout_dump] Stats: 5 messages, ~1,257 tokens, 15.0s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200812.json
+[timeout_dump] Stats: 6 messages, ~1,371 tokens, 30.0s elapsed
+[timeout_nudge] Final nudge attempt failed: No response from Ollama for 30s - likely hung or dead. Context dumped to .agent_context/timeout_dumps/
+[timeout_nudge] Forcing mark_failed
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 1m 30s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      45.07s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200827.json
+[timeout_dump] Stats: 8 messages, ~1,392 tokens, 15.0s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200857.json
+[timeout_dump] Stats: 9 messages, ~1,507 tokens, 30.0s elapsed
+[timeout_nudge] Final nudge attempt failed: No response from Ollama for 30s - likely hung or dead. Context dumped to .agent_context/timeout_dumps/
+[timeout_nudge] Forcing mark_failed
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 2m 15s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      45.05s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200912.json
+[timeout_dump] Stats: 11 messages, ~1,528 tokens, 15.0s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200942.json
+[timeout_dump] Stats: 12 messages, ~1,642 tokens, 30.0s elapsed
+[timeout_nudge] Final nudge attempt failed: No response from Ollama for 30s - likely hung or dead. Context dumped to .agent_context/timeout_dumps/
+[timeout_nudge] Forcing mark_failed
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 3m 0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      45.06s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_200957.json
+[timeout_dump] Stats: 14 messages, ~1,663 tokens, 15.0s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_201027.json
+[timeout_dump] Stats: 15 messages, ~1,777 tokens, 30.0s elapsed
+[timeout_nudge] Final nudge attempt failed: No response from Ollama for 30s - likely hung or dead. Context dumped to .agent_context/timeout_dumps/
+[timeout_nudge] Forcing mark_failed
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for qwen2.5-coder:3b

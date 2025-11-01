@@ -1,0 +1,150 @@
+================================================================================
+THREE-LEVEL EVALUATION TEST SUITE
+================================================================================
+Model: qwen2.5-coder:3b
+Start: 2025-11-01 19:54:35
+================================================================================
+
+================================================================================
+LEVEL 1: DIRECT TASKEXECUTOR (L1-L4)
+================================================================================
+
+================================================================================
+LEVEL 1 - L1: Simple File
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l1_simple_file
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for qwen2.5-coder:3b
+✗ L1: Simple File: FAIL (6.8s, 0/1 files)
+
+================================================================================
+LEVEL 1 - L2: File with Function
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l2_file_with_function
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for qwen2.5-coder:3b
+✗ L2: File with Function: FAIL (7.6s, 0/2 files)
+
+================================================================================
+LEVEL 1 - L3: Multi-File Package
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l3_multi-file_package
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for qwen2.5-coder:3b
+✗ L3: Multi-File Package: FAIL (12.9s, 0/3 files)
+
+================================================================================
+LEVEL 1 - L4: Package with Dependencies
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l4_package_with_dependencies
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[status_display] Error rendering status: 'TaskExecutorAgent' object has no attribute '_behaviors'
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_max_total_time_20251101_195817.json
+[timeout_dump] Stats: 15 messages, ~2,617 tokens, 180.0s elapsed
+[cleanup] Exception during run: 'TaskExecutorAgent' object has no attribute '_behaviors'
+[cleanup] Clearing Ollama context for qwen2.5-coder:3b

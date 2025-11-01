@@ -1,0 +1,1332 @@
+================================================================================
+THREE-LEVEL EVALUATION TEST SUITE
+================================================================================
+Model: gpt-oss:20b
+Start: 2025-11-01 21:27:47
+================================================================================
+
+================================================================================
+LEVEL 1: DIRECT TASKEXECUTOR (L1-L4)
+================================================================================
+
+================================================================================
+LEVEL 1 - L1: Simple File
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l1_simple_file
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 10.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      10.83s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      1,807
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 12.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      6.09s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      3,653
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 18.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      6.06s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      5,798
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 23.6s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.89s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      7,969
+
+GOAL: Create a file hello.py that prints 'Hello World'
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L1: Simple File: FAIL (42.2s, 1/1 files)
+
+================================================================================
+LEVEL 1 - L2: File with Function
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l2_file_with_function
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+[file_tools] list_dir ignoring unsupported parameters: depth
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 7.1s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      7.04s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      1,786
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+[file_tools] list_dir ignoring unsupported parameters: depth
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 8.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.10s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      3,601
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 9.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.98s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      5,431
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 10.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.53s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      7,353
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 6 | Runtime: 11.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.18s
+  Avg subtask time:  0.0s
+  LLM calls:         5
+  Actions executed:  5
+  Tokens (est):      9,334
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 7 | Runtime: 13.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.21s
+  Avg subtask time:  0.0s
+  LLM calls:         6
+  Actions executed:  6
+  Tokens (est):      11,432
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 8 | Runtime: 16.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.30s
+  Avg subtask time:  0.0s
+  LLM calls:         7
+  Actions executed:  7
+  Tokens (est):      13,620
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 9 | Runtime: 17.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.15s
+  Avg subtask time:  0.0s
+  LLM calls:         8
+  Actions executed:  8
+  Tokens (est):      15,855
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 10 | Runtime: 19.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      2.06s
+  Avg subtask time:  0.0s
+  LLM calls:         9
+  Actions executed:  9
+  Tokens (est):      18,164
+
+GOAL: Create calculator.py with an add(a, b) function and a test for it
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L2: File with Function: FAIL (29.3s, 1/2 files)
+
+================================================================================
+LEVEL 1 - L3: Multi-File Package
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l3_multi-file_package
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 13.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      12.99s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      2,091
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 14.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      7.00s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      4,008
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 16.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.41s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      6,029
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 18.7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.64s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      8,174
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 6 | Runtime: 21.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.19s
+  Avg subtask time:  0.0s
+  LLM calls:         5
+  Actions executed:  5
+  Tokens (est):      10,444
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 7 | Runtime: 24.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.02s
+  Avg subtask time:  0.0s
+  LLM calls:         6
+  Actions executed:  6
+  Tokens (est):      12,880
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 8 | Runtime: 30.3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.30s
+  Avg subtask time:  0.0s
+  LLM calls:         7
+  Actions executed:  7
+  Tokens (est):      15,619
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 9 | Runtime: 32.2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      3.90s
+  Avg subtask time:  0.0s
+  LLM calls:         8
+  Actions executed:  8
+  Tokens (est):      18,405
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 10 | Runtime: 48.9s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.33s
+  Avg subtask time:  0.0s
+  LLM calls:         9
+  Actions executed:  9
+  Tokens (est):      23,682
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 11 | Runtime: 51.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.96s
+  Avg subtask time:  0.0s
+  LLM calls:         10
+  Actions executed:  10
+  Tokens (est):      28,746
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 12 | Runtime: 53.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      4.69s
+  Avg subtask time:  0.0s
+  LLM calls:         11
+  Actions executed:  11
+  Tokens (est):      33,893
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 13 | Runtime: 1m 5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.35s
+  Avg subtask time:  0.0s
+  LLM calls:         12
+  Actions executed:  12
+  Tokens (est):      39,628
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 14 | Runtime: 1m 13s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.56s
+  Avg subtask time:  0.0s
+  LLM calls:         13
+  Actions executed:  13
+  Tokens (est):      45,203
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 15 | Runtime: 1m 20s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.66s
+  Avg subtask time:  0.0s
+  LLM calls:         14
+  Actions executed:  14
+  Tokens (est):      50,778
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 16 | Runtime: 1m 31s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      5.98s
+  Avg subtask time:  0.0s
+  LLM calls:         15
+  Actions executed:  15
+  Tokens (est):      56,587
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 17 | Runtime: 1m 43s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      6.40s
+  Avg subtask time:  0.0s
+  LLM calls:         16
+  Actions executed:  16
+  Tokens (est):      62,564
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 18 | Runtime: 2m 7s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      7.40s
+  Avg subtask time:  0.0s
+  LLM calls:         17
+  Actions executed:  17
+  Tokens (est):      69,099
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 19 | Runtime: 2m 33s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      8.42s
+  Avg subtask time:  0.0s
+  LLM calls:         18
+  Actions executed:  18
+  Tokens (est):      75,790
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 20 | Runtime: 2m 42s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      8.48s
+  Avg subtask time:  0.0s
+  LLM calls:         19
+  Actions executed:  19
+  Tokens (est):      81,747
+
+GOAL: Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L3: Multi-File Package: FAIL (180.6s, 3/3 files)
+
+================================================================================
+LEVEL 1 - L4: Package with Dependencies
+================================================================================
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/level1_l4_package_with_dependencies
+================================================================================
+AGENT STATUS - Round 1 | Runtime: 0.0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      0.00s
+  Avg subtask time:  0.0s
+  LLM calls:         0
+  Actions executed:  0
+  Tokens (est):      0
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 2 | Runtime: 11.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      11.69s
+  Avg subtask time:  0.0s
+  LLM calls:         1
+  Actions executed:  1
+  Tokens (est):      2,020
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 3 | Runtime: 12.8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      6.36s
+  Avg subtask time:  0.0s
+  LLM calls:         2
+  Actions executed:  2
+  Tokens (est):      3,907
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_213227.json
+[timeout_dump] Stats: 6 messages, ~1,155 tokens, 15.0s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+[timeout_nudge] Agent responded to nudge
+================================================================================
+AGENT STATUS - Round 4 | Runtime: 51.4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      17.09s
+  Avg subtask time:  0.0s
+  LLM calls:         3
+  Actions executed:  3
+  Tokens (est):      6,944
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 5 | Runtime: 1m 2s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.64s
+  Avg subtask time:  0.0s
+  LLM calls:         4
+  Actions executed:  4
+  Tokens (est):      10,141
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 6 | Runtime: 1m 4s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      12.73s
+  Avg subtask time:  0.0s
+  LLM calls:         5
+  Actions executed:  5
+  Tokens (est):      13,389
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+[timeout_dump] Context saved to .agent_context/timeout_dumps/timeout_inactivity_20251101_213331.json
+[timeout_dump] Stats: 13 messages, ~1,530 tokens, 27.7s elapsed
+[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status
+[timeout_nudge] Giving agent one final chance to report status...
+[timeout_nudge] Agent responded to nudge
+================================================================================
+AGENT STATUS - Round 7 | Runtime: 2m 15s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      22.41s
+  Avg subtask time:  0.0s
+  LLM calls:         6
+  Actions executed:  6
+  Tokens (est):      18,764
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 8 | Runtime: 2m 17s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      19.42s
+  Avg subtask time:  0.0s
+  LLM calls:         7
+  Actions executed:  7
+  Tokens (est):      23,001
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 9 | Runtime: 2m 18s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      17.21s
+  Avg subtask time:  0.0s
+  LLM calls:         8
+  Actions executed:  8
+  Tokens (est):      27,334
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 10 | Runtime: 2m 39s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      17.53s
+  Avg subtask time:  0.0s
+  LLM calls:         9
+  Actions executed:  9
+  Tokens (est):      32,631
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 11 | Runtime: 2m 43s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      16.22s
+  Avg subtask time:  0.0s
+  LLM calls:         10
+  Actions executed:  10
+  Tokens (est):      37,245
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 12 | Runtime: 2m 54s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.73s
+  Avg subtask time:  0.0s
+  LLM calls:         11
+  Actions executed:  11
+  Tokens (est):      42,241
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 13 | Runtime: 3m 11s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.87s
+  Avg subtask time:  0.0s
+  LLM calls:         12
+  Actions executed:  12
+  Tokens (est):      47,622
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 14 | Runtime: 3m 23s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.57s
+  Avg subtask time:  0.0s
+  LLM calls:         13
+  Actions executed:  13
+  Tokens (est):      52,814
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 15 | Runtime: 3m 44s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.90s
+  Avg subtask time:  0.0s
+  LLM calls:         14
+  Actions executed:  14
+  Tokens (est):      58,468
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 16 | Runtime: 3m 53s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.51s
+  Avg subtask time:  0.0s
+  LLM calls:         15
+  Actions executed:  15
+  Tokens (est):      63,707
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 17 | Runtime: 4m 39s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      17.39s
+  Avg subtask time:  0.0s
+  LLM calls:         16
+  Actions executed:  16
+  Tokens (est):      70,713
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 18 | Runtime: 4m 48s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      16.90s
+  Avg subtask time:  0.0s
+  LLM calls:         17
+  Actions executed:  16
+  Tokens (est):      76,035
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 19 | Runtime: 5m 3s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      16.78s
+  Avg subtask time:  0.0s
+  LLM calls:         18
+  Actions executed:  17
+  Tokens (est):      81,639
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 20 | Runtime: 6m 51s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      21.59s
+  Avg subtask time:  0.0s
+  LLM calls:         19
+  Actions executed:  17
+  Tokens (est):      91,653
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 21 | Runtime: 6m 57s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      20.82s
+  Avg subtask time:  0.0s
+  LLM calls:         20
+  Actions executed:  17
+  Tokens (est):      96,746
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 22 | Runtime: 7m 0s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      19.97s
+  Avg subtask time:  0.0s
+  LLM calls:         21
+  Actions executed:  17
+  Tokens (est):      101,839
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 23 | Runtime: 7m 5s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      19.28s
+  Avg subtask time:  0.0s
+  LLM calls:         22
+  Actions executed:  17
+  Tokens (est):      107,014
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 24 | Runtime: 7m 8s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      18.58s
+  Avg subtask time:  0.0s
+  LLM calls:         23
+  Actions executed:  17
+  Tokens (est):      112,107
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 25 | Runtime: 7m 12s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      17.94s
+  Avg subtask time:  0.0s
+  LLM calls:         24
+  Actions executed:  17
+  Tokens (est):      117,200
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 26 | Runtime: 7m 15s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      17.35s
+  Avg subtask time:  0.0s
+  LLM calls:         25
+  Actions executed:  17
+  Tokens (est):      122,294
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 27 | Runtime: 7m 18s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      16.80s
+  Avg subtask time:  0.0s
+  LLM calls:         26
+  Actions executed:  17
+  Tokens (est):      127,388
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 28 | Runtime: 7m 21s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      16.29s
+  Avg subtask time:  0.0s
+  LLM calls:         27
+  Actions executed:  17
+  Tokens (est):      132,482
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 29 | Runtime: 7m 24s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.82s
+  Avg subtask time:  0.0s
+  LLM calls:         28
+  Actions executed:  17
+  Tokens (est):      137,576
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+================================================================================
+AGENT STATUS - Round 30 | Runtime: 7m 27s
+================================================================================
+
+PERFORMANCE:
+  Avg LLM call:      15.39s
+  Avg subtask time:  0.0s
+  LLM calls:         29
+  Actions executed:  17
+  Tokens (est):      142,671
+
+GOAL: Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.
+
+AGENT STATUS: 💤 idle
+================================================================================
+
+======================================================================
+GOAL FAILED: Max rounds exceeded
+======================================================================
+[cleanup] Clearing Ollama context for gpt-oss:20b
+✗ L4: Package with Dependencies: FAIL (1424.9s, 2/3 files)
+
+================================================================================
+LEVEL 2: ORCHESTRATOR + TASKEXECUTOR (L4)
+================================================================================
+
+================================================================================
+LEVEL 2 - L4: Simple Delegation
+================================================================================
+⚠️  [orchestrator] Failed to query model context window: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download, using config default
+[orchestrator] Model: gpt-oss:20b, Context window: 8000 tokens, Threshold: 6000 tokens
+[orchestrator] Using behavior system
+[context] Different goal detected. Starting fresh.
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded system prompt from config (83 chars)
+[orchestrator] Loaded blurb from config (356 chars)
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[orchestrator] Loaded behavior: LoopDetectionBehavior (using global defaults)
+✓ L4: Simple Delegation: Orchestrator configured correctly (3 tools available)
+
+================================================================================
+LEVEL 2 - L4: Multi-Step Project
+================================================================================
+⚠️  [orchestrator] Failed to query model context window: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download, using config default
+[orchestrator] Model: gpt-oss:20b, Context window: 8000 tokens, Threshold: 6000 tokens
+[orchestrator] Using behavior system
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded system prompt from config (83 chars)
+[orchestrator] Loaded blurb from config (356 chars)
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[orchestrator] Loaded behavior: LoopDetectionBehavior (using global defaults)
+✓ L4: Multi-Step Project: Orchestrator configured correctly (3 tools available)
+
+================================================================================
+LEVEL 3: FULL STACK (ORCHESTRATOR + ARCHITECT + TASKEXECUTOR) (L5-L7)
+================================================================================
+
+================================================================================
+LEVEL 3 - L5: Multi-Component System
+================================================================================
+⚠️  [orchestrator] Failed to query model context window: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download, using config default
+[orchestrator] Model: gpt-oss:20b, Context window: 8000 tokens, Threshold: 6000 tokens
+[orchestrator] Using behavior system
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded system prompt from config (83 chars)
+[orchestrator] Loaded blurb from config (356 chars)
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[orchestrator] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[architect] Using behavior system
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded system prompt from config (3398 chars)
+[architect] Loaded blurb from config (388 chars)
+[architect] Auto-added SubAgentContextBehavior (agent is subagent)
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[architect] Loaded behavior: ArchitectToolsBehavior (no parameters)
+[architect] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/test_executor
+✓ L5: Multi-Component System: Full stack configured correctly
+
+================================================================================
+LEVEL 3 - L6: Service Architecture
+================================================================================
+⚠️  [orchestrator] Failed to query model context window: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download, using config default
+[orchestrator] Model: gpt-oss:20b, Context window: 8000 tokens, Threshold: 6000 tokens
+[orchestrator] Using behavior system
+[context] Failed to load state: Extra data: line 15 column 2 (char 317)
+[context] Different goal detected. Starting fresh.
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded system prompt from config (83 chars)
+[orchestrator] Loaded blurb from config (356 chars)
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[orchestrator] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[architect] Using behavior system
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded system prompt from config (3398 chars)
+[architect] Loaded blurb from config (388 chars)
+[architect] Auto-added SubAgentContextBehavior (agent is subagent)
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[architect] Loaded behavior: ArchitectToolsBehavior (no parameters)
+[architect] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/test_executor
+✓ L6: Service Architecture: Full stack configured correctly
+
+================================================================================
+LEVEL 3 - L7: Complex System
+================================================================================
+⚠️  [orchestrator] Failed to query model context window: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download, using config default
+[orchestrator] Model: gpt-oss:20b, Context window: 8000 tokens, Threshold: 6000 tokens
+[orchestrator] Using behavior system
+[context] Different goal detected. Starting fresh.
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded system prompt from config (83 chars)
+[orchestrator] Loaded blurb from config (356 chars)
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[orchestrator] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[architect] Using behavior system
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded system prompt from config (3398 chars)
+[architect] Loaded blurb from config (388 chars)
+[architect] Auto-added SubAgentContextBehavior (agent is subagent)
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[architect] Loaded behavior: ArchitectToolsBehavior (no parameters)
+[architect] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/test_executor
+✓ L7: Complex System: Full stack configured correctly
+
+================================================================================
+GENERATING SUMMARY REPORT
+================================================================================
+✓ Summary report generated: evaluation_results/THREE_LEVEL_EVAL_SUMMARY.md
+
+================================================================================
+EVALUATION COMPLETE
+================================================================================
+End: 2025-11-01 21:55:45
+
+Results:
+  Level 1: 0/4 passed
+  Level 2: 2/2 configured
+  Level 3: 3/3 ready
+
+Logs:
+  - evaluation_results/level1_task_executor_eval.log
+  - evaluation_results/level2_orchestrator_eval.log
+  - evaluation_results/level3_full_stack_eval.log
+  - evaluation_results/THREE_LEVEL_EVAL_SUMMARY.md
+================================================================================
+ behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/test_executor
+✓ L6: Service Architecture: Full stack configured correctly
+
+================================================================================
+LEVEL 3 - L7: Complex System
+================================================================================
+⚠️  [orchestrator] Failed to query model context window: Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download, using config default
+[orchestrator] Model: qwen2.5-coder:3b, Context window: 8000 tokens, Threshold: 6000 tokens
+[orchestrator] Using behavior system
+[context] Different goal detected. Starting fresh.
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded system prompt from config (83 chars)
+[orchestrator] Loaded blurb from config (356 chars)
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator] Loading behaviors from orchestrator_config.yaml
+[orchestrator] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[orchestrator] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[architect] Using behavior system
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded system prompt from config (3398 chars)
+[architect] Loaded blurb from config (388 chars)
+[architect] Auto-added SubAgentContextBehavior (agent is subagent)
+[architect] Loading behaviors from architect_config.yaml
+[architect] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[architect] Loaded behavior: ArchitectToolsBehavior (no parameters)
+[architect] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded system prompt from config (644 chars)
+[task_executor] Loaded blurb from config (376 chars)
+[task_executor] Auto-added SubAgentContextBehavior (agent is subagent)
+[task_executor] Loading behaviors from task_executor_config.yaml
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: FileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (using global defaults)
+[task_executor] Loaded behavior: ServerToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+[context] Different goal detected. Starting fresh.
+[task_executor] Reusing workspace: .agent_workspace/test_executor
+✓ L7: Complex System: Full stack configured correctly
+
+================================================================================
+GENERATING SUMMARY REPORT
+================================================================================
+✓ Summary report generated: evaluation_results/THREE_LEVEL_EVAL_SUMMARY.md
+
+================================================================================
+EVALUATION COMPLETE
+================================================================================
+End: 2025-11-01 21:55:45
+
+Results:
+  Level 1: 0/4 passed
+  Level 2: 2/2 configured
+  Level 3: 3/3 ready
+
+Logs:
+  - evaluation_results/level1_task_executor_eval.log
+  - evaluation_results/level2_orchestrator_eval.log
+  - evaluation_results/level3_full_stack_eval.log
+  - evaluation_results/THREE_LEVEL_EVAL_SUMMARY.md
+================================================================================
