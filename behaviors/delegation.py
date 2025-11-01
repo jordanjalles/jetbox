@@ -1,23 +1,31 @@
 """
-DelegationBehavior - Auto-configured delegation tools from agent relationships.
+DelegationBehavior - Bidirectional delegation (delegate TO and be delegated to).
 
-This behavior dynamically creates delegation tools based on the agent's
-can_delegate_to relationships defined in agents.yaml.
+This behavior handles BOTH directions of delegation:
+1. Delegating TO other agents (orchestrator → task_executor)
+2. Being delegated to (receiving work from another agent)
 
 Features:
-- Auto-generates delegation tools (consult_X, delegate_to_X)
-- Injects delegatable agent descriptions into context
-- Handles delegation tool dispatch
-- No hardcoded agent relationships
+- Auto-generates delegation tools based on can_delegate_to relationships
+- Provides mark_complete/mark_failed tools when acting as delegatee
+- Handles goal initialization when delegated to
+- Injects delegation context as appropriate
+- Works for ALL agent types (TaskExecutor, Orchestrator, Architect)
 
-Example:
-    If agents.yaml defines:
-        orchestrator:
-            can_delegate_to: [architect, task_executor]
+Examples:
+    Orchestrator (delegator):
+        - Can delegate to architect, task_executor
+        - Gets consult_architect, delegate_to_executor tools
 
-    Then DelegationBehavior will create:
-        - consult_architect(project_description, requirements, constraints)
-        - delegate_to_executor(task_description, workspace_mode, workspace_path)
+    TaskExecutor (delegatee):
+        - Can be delegated to by orchestrator
+        - Gets mark_complete, mark_failed tools
+        - Shows "DELEGATED GOAL" in context
+
+    Orchestrator (both):
+        - Can delegate to others (delegator mode)
+        - Can be delegated to (delegatee mode)
+        - Gets all tools for both directions
 """
 
 from typing import Any
@@ -26,21 +34,31 @@ from behaviors.base import AgentBehavior
 
 class DelegationBehavior(AgentBehavior):
     """
-    Behavior that provides dynamic delegation tools based on agent relationships.
+    Unified bidirectional delegation behavior.
 
-    Automatically creates delegation tools for each agent in can_delegate_to list.
+    Handles both delegating TO agents and being delegated to BY agents.
+    Auto-configures based on agent_relationships from agents.yaml.
     """
 
-    def __init__(self, agent_relationships: dict[str, Any]):
+    def __init__(
+        self,
+        agent_relationships: dict[str, Any],
+        is_delegatee: bool = False
+    ):
         """
         Initialize delegation behavior.
 
         Args:
-            agent_relationships: Dict mapping agent name -> {class, description, can_delegate_to}
+            agent_relationships: Dict mapping agent name → {class, description, can_delegate_to}
+            is_delegatee: True if this agent can be delegated to (provides mark_complete tools)
         """
         self.agent_relationships = agent_relationships
+        self.is_delegatee = is_delegatee  # Can be delegated to
         self.delegation_tools = []
         self.delegated_tasks: list[dict[str, Any]] = []  # Track delegated tasks
+        self.goal = None  # Store goal for delegatee mode context injection
+
+        # Build delegation tools based on mode
         self._build_delegation_tools()
 
     def get_name(self) -> str:
@@ -51,8 +69,11 @@ class DelegationBehavior(AgentBehavior):
         """
         Build delegation tools based on can_delegate_to relationships.
 
-        For each delegatable agent, creates a tool definition from config.
+        Builds two types of tools:
+        1. Delegator tools: consult_X, delegate_to_X (for delegating TO others)
+        2. Delegatee tools: mark_complete, mark_failed (for being delegated to)
         """
+        # 1. Build delegator tools (if this agent can delegate to others)
         can_delegate_to = self.agent_relationships.get("can_delegate_to", [])
 
         for target_agent in can_delegate_to:
@@ -120,12 +141,51 @@ class DelegationBehavior(AgentBehavior):
 
             self.delegation_tools.append(tool)
 
+        # 2. Build delegatee tools (if this agent is a delegatee)
+        if self.is_delegatee:
+            self.delegation_tools.extend([
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "mark_complete",
+                        "description": "Mark the delegated task as complete and report success to controlling agent. REQUIRED when work is finished.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "summary": {
+                                    "type": "string",
+                                    "description": "Brief summary of what was accomplished (2-4 sentences)"
+                                }
+                            },
+                            "required": ["summary"]
+                        }
+                    }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "mark_failed",
+                        "description": "Mark the delegated task as failed and report reason to controlling agent. Use when you cannot complete the task.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string",
+                                    "description": "Explanation of why the task could not be completed"
+                                }
+                            },
+                            "required": ["reason"]
+                        }
+                    }
+                }
+            ])
+
     def get_tools(self) -> list[dict[str, Any]]:
         """
         Return delegation tool definitions.
 
         Returns:
-            List of dynamically generated delegation tools
+            List of dynamically generated delegation tools (delegator + delegatee)
         """
         return self.delegation_tools
 
@@ -138,23 +198,69 @@ class DelegationBehavior(AgentBehavior):
         """
         Dispatch delegation tool calls.
 
+        Handles both delegator tools (consult_X, delegate_to_X) and
+        delegatee tools (mark_complete, mark_failed).
+
         Args:
-            tool_name: Tool name (consult_architect, delegate_to_executor, etc.)
+            tool_name: Tool name
             args: Tool arguments
-            **kwargs: Additional context (agent, workspace, etc.)
+            **kwargs: Additional context (agent, workspace, context_manager, etc.)
 
         Returns:
             Delegation result
         """
         agent = kwargs.get("agent")
+        context_manager = kwargs.get("context_manager")
+
+        # Handle delegatee tools (mark_complete, mark_failed)
+        if tool_name == "mark_complete":
+            summary = args.get('summary', 'Task completed')
+
+            # Mark goal as complete in context manager if available
+            if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
+                context_manager.state.goal.mark_complete(success=True)
+
+            return {
+                "success": True,
+                "result": f"Task marked complete: {summary}",
+                "summary": summary
+            }
+
+        elif tool_name == "mark_failed":
+            reason = args.get('reason', 'Task failed')
+
+            # Mark goal as failed in context manager if available
+            if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
+                context_manager.state.goal.mark_complete(success=False)
+
+            return {
+                "success": False,
+                "result": f"Task marked failed: {reason}",
+                "reason": reason
+            }
+
+        # Handle delegator tools (consult_X, delegate_to_X)
+        # Map tool names to target agent names
+        target_agent_name = None
 
         if tool_name == "consult_architect":
-            return self._consult_architect(args, agent)
+            target_agent_name = "architect"
         elif tool_name == "delegate_to_executor":
-            return self._delegate_to_executor(args, agent)
+            target_agent_name = "task_executor"
+        elif tool_name == "delegate_to_orchestrator":
+            target_agent_name = "orchestrator"
+        elif tool_name.startswith("delegate_to_"):
+            # Generic delegation tool
+            target_agent_name = tool_name.replace("delegate_to_", "")
+        elif tool_name.startswith("consult_"):
+            # Generic consultation tool
+            target_agent_name = tool_name.replace("consult_", "")
+
+        if target_agent_name:
+            return self._delegate_to_agent(target_agent_name, args, agent)
         else:
-            # Generic delegation - tool found but handler not implemented
-            return {"error": f"Delegation tool '{tool_name}' found but handler not implemented"}
+            # Unknown delegation tool
+            return {"error": f"Unknown delegation tool: {tool_name}"}
 
     def track_delegation(
         self,
@@ -176,116 +282,141 @@ class DelegationBehavior(AgentBehavior):
             "result": result,
         })
 
-    def _consult_architect(self, args: dict[str, Any], agent: Any) -> dict[str, Any]:
+    def _delegate_to_agent(
+        self,
+        target_agent_name: str,
+        args: dict[str, Any],
+        calling_agent: Any
+    ) -> dict[str, Any]:
         """
-        Consult architect agent for project design.
+        Generic delegation to any agent.
+
+        This method handles delegation to ANY agent type by:
+        1. Looking up agent class from relationships
+        2. Instantiating target agent
+        3. Setting goal and running agent
+        4. Collecting results
 
         Args:
-            args: Tool arguments (project_description, requirements, constraints)
-            agent: Calling agent (orchestrator)
+            target_agent_name: Name of target agent (e.g., "task_executor", "architect", "orchestrator")
+            args: Tool arguments (varies by agent, but usually includes task/goal description)
+            calling_agent: The agent initiating the delegation
 
         Returns:
-            Architect consultation result
+            Delegation result dict
         """
-        from architect_agent import ArchitectAgent
         from pathlib import Path
 
-        # Create architect agent
-        workspace = Path(".agent_workspace") / "architecture_consultation"
-        architect = ArchitectAgent(workspace=workspace, use_behaviors=True)
+        # Get agent info from relationships
+        agent_info = self.agent_relationships.get(target_agent_name, {})
+        if not agent_info:
+            return {
+                "success": False,
+                "error": f"Unknown target agent: {target_agent_name}"
+            }
 
-        # Build consultation prompt
-        prompt = f"""Project: {args['project_description']}
+        agent_class_name = agent_info.get("class")
+        if not agent_class_name:
+            return {
+                "success": False,
+                "error": f"No class defined for agent: {target_agent_name}"
+            }
 
-Requirements:
-{args['requirements']}
+        # Import agent class dynamically
+        try:
+            # Map class names to module imports
+            class_to_module = {
+                "TaskExecutorAgent": "task_executor_agent",
+                "OrchestratorAgent": "orchestrator_agent",
+                "ArchitectAgent": "architect_agent",
+            }
 
-Constraints:
-{args['constraints']}
-
-Please design the architecture for this project and create:
-1. Architecture overview document
-2. Module specifications for each component
-3. Task breakdown for implementation"""
-
-        # Run architect consultation
-        # This is a simplified placeholder - actual implementation would:
-        # 1. Call architect.run() with the prompt
-        # 2. Wait for completion
-        # 3. Extract architecture docs and task list
-        # 4. Return structured result
-
-        result = {
-            "status": "success",
-            "message": "Architect consultation would happen here",
-            "workspace_path": str(workspace),
-            "architecture_docs": ["architecture/overview.md"],
-            "module_specs": ["architecture/modules/ingestion.md"],
-            "tasks": [
-                {
-                    "task_id": "T1",
-                    "description": "Implement ingestion module",
-                    "module": "ingestion",
-                    "priority": 1
+            module_name = class_to_module.get(agent_class_name)
+            if not module_name:
+                return {
+                    "success": False,
+                    "error": f"Unknown agent class: {agent_class_name}"
                 }
-            ]
-        }
 
-        # Track delegation
-        self.track_delegation("architect", args['project_description'], result)
+            # Import the class
+            import importlib
+            module = importlib.import_module(module_name)
+            agent_class = getattr(module, agent_class_name)
 
-        return result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to import {agent_class_name}: {e}"
+            }
 
-    def _delegate_to_executor(self, args: dict[str, Any], agent: Any) -> dict[str, Any]:
-        """
-        Delegate task to executor agent.
+        # Extract goal/task description from args
+        # Different tools use different parameter names
+        goal_description = None
+        for key in ["task_description", "project_description", "goal", "query"]:
+            if key in args:
+                goal_description = args[key]
+                break
 
-        Args:
-            args: Tool arguments (task_description, workspace_mode, workspace_path)
-            agent: Calling agent (orchestrator)
-
-        Returns:
-            Executor delegation result
-        """
-        from task_executor_agent import TaskExecutorAgent
-        from pathlib import Path
+        if not goal_description:
+            return {
+                "success": False,
+                "error": f"No goal/task description found in args: {list(args.keys())}"
+            }
 
         # Determine workspace
-        workspace_mode = args["workspace_mode"]
-        if workspace_mode == "existing":
-            workspace_path = args.get("workspace_path")
-            if not workspace_path:
-                return {"error": "workspace_path required when workspace_mode='existing'"}
-            workspace = Path(workspace_path)
+        workspace = None
+        if "workspace_mode" in args:
+            workspace_mode = args["workspace_mode"]
+            if workspace_mode == "existing":
+                workspace_path = args.get("workspace_path")
+                if not workspace_path:
+                    return {
+                        "success": False,
+                        "error": "workspace_path required when workspace_mode='existing'"
+                    }
+                workspace = Path(workspace_path)
+            # else: workspace_mode == "new", workspace = None (agent creates new)
+        elif "workspace_path" in args:
+            # Direct workspace path provided
+            workspace = Path(args["workspace_path"])
         else:
-            # New workspace
-            workspace = None  # TaskExecutor will create new isolated workspace
+            # No workspace specified - create new workspace
+            workspace = None
 
-        # Create executor agent
-        executor = TaskExecutorAgent(
-            workspace=workspace,
-            goal=args["task_description"],
-            use_behaviors=True
-        )
+        # Instantiate target agent
+        try:
+            print(f"\n[delegation] Delegating to {target_agent_name}: {goal_description[:60]}...")
 
-        # Run executor
-        # This is a simplified placeholder - actual implementation would:
-        # 1. Call executor.run() with the task
-        # 2. Wait for completion
-        # 3. Extract results
-        # 4. Return structured result
+            target_agent = agent_class(
+                workspace=workspace,
+                goal=goal_description,
+                use_behaviors=True
+            )
 
-        result = {
-            "status": "success",
-            "message": "Task execution would happen here",
-            "files_created": ["example.py"],
-            "workspace_path": str(executor.workspace) if executor.workspace else ".agent_workspace/new"
-        }
+            # NOTE: Actual execution happens in orchestrator_main.py via subprocess
+            # This is just the setup phase - we return info for orchestrator to execute
 
-        # Track delegation
-        self.track_delegation("task_executor", args["task_description"], result)
+            result = {
+                "success": True,
+                "message": f"Delegation to {target_agent_name} prepared",
+                "target_agent": target_agent_name,
+                "goal": goal_description,
+                "workspace": str(target_agent.workspace) if hasattr(target_agent, 'workspace') and target_agent.workspace else None,
+                "agent_class": agent_class_name,
+            }
 
-        return result
+            # Track delegation
+            self.track_delegation(target_agent_name, goal_description, result)
+
+            return result
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "error": f"Failed to delegate to {target_agent_name}: {e}"
+            }
 
     def enhance_context(
         self,
@@ -295,7 +426,9 @@ Please design the architecture for this project and create:
         """
         Inject delegation information into context.
 
-        Adds descriptions of delegatable agents after system prompt.
+        Injects two types of context:
+        1. Delegator context: Descriptions of agents this agent can delegate to
+        2. Delegatee context: "DELEGATED GOAL" header when this agent was delegated to
 
         Args:
             context: Current context
@@ -304,24 +437,45 @@ Please design the architecture for this project and create:
         Returns:
             Modified context with delegation info
         """
-        can_delegate_to = self.agent_relationships.get("can_delegate_to", [])
-        if not can_delegate_to or len(context) == 0:
+        if len(context) == 0:
             return context
 
-        # Build delegation info
-        delegation_info = ["## Available Agents for Delegation\n"]
-        for target_agent in can_delegate_to:
-            agent_info = self.agent_relationships.get(target_agent, {})
-            # Use blurb if available, fallback to description
-            blurb = agent_info.get("blurb", agent_info.get("description", f"Agent: {target_agent}"))
-            delegation_info.append(f"- **{target_agent}**: {blurb}")
+        context_manager = kwargs.get('context_manager')
 
-        # Insert after system prompt (index 1)
-        delegation_message = {
-            "role": "user",
-            "content": "\n".join(delegation_info)
-        }
-        context.insert(1, delegation_message)
+        # 1. Inject delegatee context (if we're a delegatee with a goal)
+        if self.is_delegatee and context_manager and context_manager.state.goal:
+            delegatee_parts = [
+                f"DELEGATED GOAL: {context_manager.state.goal.description}",
+                "",
+                "You are working on a task delegated by another agent.",
+                "When complete, call mark_complete(summary) with what you accomplished.",
+                "If you cannot complete it, call mark_failed(reason) explaining why."
+            ]
+
+            # Insert after system prompt (index 1)
+            context.insert(1, {
+                "role": "user",
+                "content": "\n".join(delegatee_parts)
+            })
+
+        # 2. Inject delegator context (if we can delegate to others)
+        can_delegate_to = self.agent_relationships.get("can_delegate_to", [])
+        if can_delegate_to:
+            # Build delegation info
+            delegation_info = ["## Available Agents for Delegation\n"]
+            for target_agent in can_delegate_to:
+                agent_info = self.agent_relationships.get(target_agent, {})
+                # Use blurb if available, fallback to description
+                blurb = agent_info.get("blurb", agent_info.get("description", f"Agent: {target_agent}"))
+                delegation_info.append(f"- **{target_agent}**: {blurb}")
+
+            # Insert after system prompt and delegatee context (if present)
+            insert_index = 2 if self.is_delegatee and context_manager and context_manager.state.goal else 1
+            delegation_message = {
+                "role": "user",
+                "content": "\n".join(delegation_info)
+            }
+            context.insert(insert_index, delegation_message)
 
         return context
 
@@ -329,40 +483,127 @@ Please design the architecture for this project and create:
         """
         Return delegation workflow instructions.
 
+        Returns different instructions based on mode:
+        - Delegator: How to delegate to other agents
+        - Delegatee: How to complete delegated work
+        - Both: Combined instructions
+
         Returns:
-            Instructions for using delegation tools (config-driven from agent blurbs)
+            Instructions for using delegation tools
         """
+        instructions_parts = []
+
+        # Delegatee instructions
+        if self.is_delegatee:
+            instructions_parts.append("""
+SUB-AGENT WORKFLOW:
+You are working on a task delegated by another agent.
+
+Your job is to:
+1. Complete the delegated goal using available tools
+2. Report results back when done
+
+Available tools:
+- write_file: Create/modify files
+- run_bash: Run commands (tests, linters, build tools, etc.)
+- read_file: Check existing files
+- list_dir: Explore directories
+- mark_complete(summary): Signal successful completion with summary
+- mark_failed(reason): Signal failure with explanation
+
+IMPORTANT - YOU MUST SIGNAL COMPLETION:
+- When work is done and tests pass: call mark_complete(summary="what you accomplished")
+- If you cannot complete the task: call mark_failed(reason="why it failed")
+- DO NOT just stop - always call one of these tools to report results
+""")
+
+        # Delegator instructions
         can_delegate_to = self.agent_relationships.get("can_delegate_to", [])
-        if not can_delegate_to:
-            return ""
+        if can_delegate_to:
+            # Build guidelines from agent blurbs
+            guidelines = []
+            for target_agent in can_delegate_to:
+                agent_info = self.agent_relationships.get(target_agent, {})
+                blurb = agent_info.get("blurb", agent_info.get("description", ""))
+                if blurb:
+                    # Extract key guidance from blurb
+                    blurb_lines = blurb.strip().split(". ")
+                    guidance = None
+                    for line in blurb_lines:
+                        if "Best for" in line or "best for" in line:
+                            guidance = line.strip()
+                            break
+                    if guidance:
+                        guidelines.append(f"- Use {target_agent} for: {guidance}")
+                    else:
+                        guidelines.append(f"- Use {target_agent}: {agent_info.get('description', '')}")
 
-        # Build guidelines from agent blurbs
-        guidelines = []
-        for target_agent in can_delegate_to:
-            agent_info = self.agent_relationships.get(target_agent, {})
-            blurb = agent_info.get("blurb", agent_info.get("description", ""))
-            if blurb:
-                # Extract key guidance from blurb (usually starts with "Best for...")
-                # Take first sentence or find "Best for" clause
-                blurb_lines = blurb.strip().split(". ")
-                guidance = None
-                for line in blurb_lines:
-                    if "Best for" in line or "best for" in line:
-                        guidance = line.strip()
-                        break
-                if guidance:
-                    guidelines.append(f"- Use {target_agent} for: {guidance}")
-                else:
-                    # Fall back to description
-                    guidelines.append(f"- Use {target_agent}: {agent_info.get('description', '')}")
+            guidelines_text = "\n".join(guidelines) if guidelines else "- Assess task complexity and choose appropriate agent"
 
-        guidelines_text = "\n".join(guidelines) if guidelines else "- Assess task complexity and choose appropriate agent"
-
-        return f"""
+            instructions_parts.append(f"""
 DELEGATION WORKFLOW:
 You can delegate work to the following agents: {', '.join(can_delegate_to)}
 
 Guidelines:
 {guidelines_text}
 - Always report delegation results back to user
-"""
+""")
+
+        return "\n".join(instructions_parts) if instructions_parts else ""
+
+    def on_goal_set(self, agent: Any, goal: str, **kwargs: Any) -> None:
+        """
+        Handle goal setting event (delegatee mode).
+
+        This method initializes all subsystems needed for delegated goal execution:
+        - Context manager with goal
+        - Workspace manager (new or existing)
+        - Performance tracking
+        - Status display
+
+        Only runs if this behavior is configured as a delegatee.
+
+        Args:
+            agent: Agent instance
+            goal: Goal description
+            **kwargs: Additional context (workspace, etc.)
+        """
+        if not self.is_delegatee:
+            return  # Only delegatees need goal setup
+
+        # Store goal for context injection
+        self.goal = goal
+
+        # Initialize context manager with goal
+        if not agent.context_manager:
+            from context_manager import ContextManager
+            agent.context_manager = ContextManager()
+        agent.context_manager.load_or_init(goal)
+
+        # Initialize workspace manager
+        # workspace parameter: None = create new, Path = reuse existing
+        workspace_param = kwargs.get('workspace')
+        goal_slug = goal.lower()[:50].replace(" ", "-").replace("/", "-")
+
+        if workspace_param:
+            # Reuse mode: use existing workspace directory
+            print(f"[delegation] Reusing workspace: {workspace_param}")
+            agent.init_workspace_manager(goal_slug, workspace_path=workspace_param)
+        else:
+            # Create new mode: create isolated workspace
+            print(f"[delegation] Creating new workspace for goal")
+            agent.init_workspace_manager(goal_slug, workspace_path=None)
+
+        # Initialize performance tracking
+        agent.init_perf_stats()
+
+        # Initialize status display if not already present
+        if not hasattr(agent, 'status_display') or agent.status_display is None:
+            from status_display import StatusDisplay
+            agent.status_display = StatusDisplay(ctx=agent.context_manager, reset_stats=True)
+
+        # Start wall-clock timer for goal
+        import time
+        agent.goal_start_time = time.time()
+
+        print(f"[delegation] Goal set: {goal}")

@@ -14,12 +14,37 @@ blurb: |
   implementation). Best for project planning, task breakdown, and managing
   multi-step workflows requiring coordination between different agents.
 
+# Delegation Tool Configuration
+# Defines how other agents (e.g., higher-level orchestrators) can delegate to this agent
+delegation_tool:
+  name: "delegate_to_orchestrator"
+  description: "Delegate a complex multi-step project to the Orchestrator agent for planning and execution"
+  parameters:
+    project_description:
+      type: string
+      description: "Description of the project requiring orchestration"
+      required: true
+    workspace_mode:
+      type: string
+      description: "Workspace mode: 'new' for new projects, 'existing' for updates"
+      enum: ["new", "existing"]
+      required: true
+    workspace_path:
+      type: string
+      description: "Path to existing workspace (required if workspace_mode='existing')"
+      required: false
+
 # System Prompt
 system_prompt: |
   You are an orchestrator agent that helps users plan and execute software projects.
 
 
 behaviors:
+  # Execution Mode
+  # NOTE: SubAgentModeBehavior is NOT auto-added (orchestrator is not in anyone's can_delegate_to by default)
+  # But we can manually add it to make orchestrator delegatable by higher-level systems
+  # NOTE: ChatbotBehavior provides interactive chat mode when no goal provided
+  - type: ChatbotBehavior
   # Context Management
   # CompactWhenNearFullBehavior provides append-until-full context management
   - type: CompactWhenNearFullBehavior

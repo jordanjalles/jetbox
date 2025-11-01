@@ -565,11 +565,17 @@ class BaseAgent(ABC):
 
     def _auto_add_delegation_behavior(self) -> None:
         """
-        Auto-add DelegationBehavior if this agent has delegation relationships.
+        Auto-add unified DelegationBehavior based on agent's delegation role.
 
-        Reads agents.yaml to determine can_delegate_to list.
-        Reads individual agent config files for delegation_tool schemas.
-        If this agent can delegate, creates and adds DelegationBehavior.
+        DelegationBehavior is bidirectional - handles BOTH:
+        1. Delegating TO others (delegator tools: consult_X, delegate_to_X)
+        2. Being delegated to (delegatee tools: mark_complete, mark_failed)
+
+        Checks agents.yaml to determine:
+        - Can this agent delegate to others? (has can_delegate_to list)
+        - Can this agent be delegated to? (appears in another agent's can_delegate_to list)
+
+        The is_delegatee parameter determines if mark_complete/mark_failed tools are provided.
         """
         import yaml
 
@@ -591,13 +597,29 @@ class BaseAgent(ABC):
             if not agent_config:
                 return
 
-            # Check if agent can delegate
+            # 1. Check if agent can delegate to others
             can_delegate_to = agent_config.get("can_delegate_to", [])
-            if not can_delegate_to:
+
+            # 2. Check if agent can be delegated to (is in another agent's can_delegate_to list)
+            is_delegatee = False
+            for other_agent_name, other_agent_config in agents.items():
+                if other_agent_name == self.name:
+                    continue
+                other_can_delegate_to = other_agent_config.get("can_delegate_to", [])
+                if self.name in other_can_delegate_to:
+                    is_delegatee = True
+                    break
+
+            # If agent neither delegates nor is delegated to, skip
+            if not can_delegate_to and not is_delegatee:
                 return
 
+            # Check if DelegationBehavior already added
+            has_delegation = any(b.get_name() == "delegation" for b in self._behaviors)
+            if has_delegation:
+                return  # Already added
+
             # Build agent relationships dict for DelegationBehavior
-            # Include all agent info + this agent's delegation list
             agent_relationships = {
                 "can_delegate_to": can_delegate_to
             }
@@ -626,70 +648,37 @@ class BaseAgent(ABC):
 
                 agent_relationships[target_agent] = agent_info
 
-            # Create and add DelegationBehavior
+            # Create and add unified DelegationBehavior
             from behaviors.delegation import DelegationBehavior
-            delegation_behavior = DelegationBehavior(agent_relationships)
+            delegation_behavior = DelegationBehavior(
+                agent_relationships=agent_relationships,
+                is_delegatee=is_delegatee
+            )
             self.add_behavior(delegation_behavior)
-            print(f"[{self.name}] Auto-added DelegationBehavior (can delegate to: {', '.join(can_delegate_to)})")
+
+            # Log what was added
+            modes = []
+            if can_delegate_to:
+                modes.append(f"delegator (can delegate to: {', '.join(can_delegate_to)})")
+            if is_delegatee:
+                modes.append("delegatee (provides mark_complete/mark_failed)")
+            print(f"[{self.name}] Auto-added DelegationBehavior ({', '.join(modes)})")
 
         except Exception as e:
             print(f"[{self.name}] Failed to auto-add DelegationBehavior: {e}")
 
     def _auto_add_subagent_context_behavior(self) -> None:
         """
-        Auto-add SubAgentContextBehavior if this agent is a subagent.
+        DEPRECATED: SubAgentContextBehavior functionality merged into DelegationBehavior.
 
-        An agent is a "subagent" if it appears in another agent's can_delegate_to list.
-        Subagents need special context management for delegated work.
+        This method is kept as a no-op stub for backward compatibility.
+        The unified DelegationBehavior now handles BOTH:
+        - Delegating TO other agents (delegator mode)
+        - Being delegated to (delegatee mode with mark_complete/mark_failed)
 
-        Reads agents.yaml to check if this agent is in any other agent's can_delegate_to list.
-        If yes, adds SubAgentContextBehavior (unless already added).
+        See _auto_add_delegation_behavior() for the unified implementation.
         """
-        import yaml
-
-        agents_yaml = Path("agents.yaml")
-        if not agents_yaml.exists():
-            return
-
-        try:
-            with open(agents_yaml) as f:
-                agents_config = yaml.safe_load(f)
-
-            if not agents_config or "agents" not in agents_config:
-                return
-
-            agents = agents_config["agents"]
-
-            # Check if this agent is in any other agent's can_delegate_to list
-            is_subagent = False
-            for agent_name, agent_info in agents.items():
-                if agent_name == self.name:
-                    continue  # Skip self
-
-                can_delegate_to = agent_info.get("can_delegate_to", [])
-                if self.name in can_delegate_to:
-                    is_subagent = True
-                    break
-
-            if not is_subagent:
-                return
-
-            # Check if SubAgentContextBehavior already added
-            has_subagent_context = any(
-                b.get_name() == "subagent_context" for b in self._behaviors
-            )
-
-            if has_subagent_context:
-                return  # Already added (either manually or by earlier call)
-
-            # Add SubAgentContextBehavior
-            from behaviors.subagent_context import SubAgentContextBehavior
-            behavior = SubAgentContextBehavior()
-            self.add_behavior(behavior)
-            print(f"[{self.name}] Auto-added SubAgentContextBehavior (agent is subagent)")
-
-        except Exception as e:
-            print(f"[{self.name}] Failed to auto-add SubAgentContextBehavior: {e}")
+        pass  # No-op - functionality now in DelegationBehavior
 
     def _import_behavior_class(self, behavior_type: str):
         """
@@ -718,7 +707,9 @@ class BaseAgent(ABC):
         Examples:
             FileToolsBehavior -> file_tools
             LoopDetectionBehavior -> loop_detection
-            SubAgentContextBehavior -> subagent_context
+            SubAgentContextBehavior -> subagent_context (backward compat)
+            SubAgentModeBehavior -> subagent_mode (new name)
+            ChatbotBehavior -> chatbot
             ArchitectToolsBehavior -> architect_tools
 
         Args:

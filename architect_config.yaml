@@ -109,6 +109,12 @@ system_prompt: |
 # Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
 
 behaviors:
+  # Execution Mode
+  # NOTE: SubAgentModeBehavior is auto-added (architect is in orchestrator's can_delegate_to)
+  # This makes the agent delegatable via CLI or tool calls
+  # NOTE: ChatbotBehavior provides interactive chat mode when no goal provided
+  - type: ChatbotBehavior
+
   # Context Management
   # CompactWhenNearFullBehavior provides context management for all agents
   - type: CompactWhenNearFullBehavior
