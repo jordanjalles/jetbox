@@ -74,11 +74,19 @@ A behavior is a self-contained module that:
 - **Adds instructions** to the system prompt
 
 **Benefits**:
-- **Composable**: Mix and match any behaviors
-- **Config-driven**: Change agent behavior without code changes
+- **Composable**: Mix and match any behaviors without conflicts
+- **Config-driven**: Change agent behavior via YAML, not code
 - **Testable**: Each behavior has isolated unit tests
-- **Extensible**: Create custom behaviors easily
-- **Maintainable**: Clear separation of concerns
+- **Extensible**: Create custom behaviors with clear interfaces
+- **Maintainable**: Single responsibility, no hidden dependencies
+
+**Core Principles**:
+1. **Single Responsibility**: Each behavior does ONE thing
+2. **Composability**: Behaviors work independently and in any combination
+3. **No Hidden Dependencies**: No behavior embeds functionality from another
+4. **Config-Driven**: Behaviors configured via YAML, not hardcoded
+5. **Event-Driven**: Behaviors respond to lifecycle events independently
+6. **Clear Interfaces**: Standardized methods across all behaviors
 
 **Example: TaskExecutor with Behaviors**:
 
@@ -95,8 +103,10 @@ agent = TaskExecutorAgent(
 
 ```yaml
 behaviors:
-  # Context management
-  - type: SubAgentContextBehavior
+  # Context management (2 behaviors compose)
+  - type: SubAgentContextBehavior      # Delegated goal header
+    params: {}
+  - type: CompactWhenNearFullBehavior  # Context compaction
     params:
       max_tokens: 128000
 
@@ -113,7 +123,16 @@ behaviors:
   - type: LoopDetectionBehavior
     params:
       max_repeats: 5
+  - type: WorkspaceTaskNotesBehavior    # Persistent context summaries
+    params: {}
 ```
+
+**Why This Composition Works**:
+- `SubAgentContextBehavior` injects delegated goal header
+- `CompactWhenNearFullBehavior` handles context compaction separately
+- `WorkspaceTaskNotesBehavior` loads persistent notes independently
+- Each behavior is single-responsibility and composable
+- No conflicts between behaviors
 
 **Available Behaviors**:
 
@@ -132,10 +151,13 @@ behaviors:
 
 **Utilities**:
 - `LoopDetectionBehavior` - Detect infinite loops
-- `JetboxNotesBehavior` - Persistent context (planned)
-- `TaskManagementBehavior` - Task tracking (planned)
+- `WorkspaceTaskNotesBehavior` - Persistent context summaries (auto-summarizes goals/tasks)
+- `StatusDisplayBehavior` - Progress visualization and performance tracking
 
-See **[docs/behaviors/README.md](docs/behaviors/README.md)** for complete documentation.
+**Delegation**:
+- `DelegationBehavior` - Auto-configured from agents.yaml relationships (orchestrator only)
+
+See **[BEHAVIORS_DOCUMENTATION.md](BEHAVIORS_DOCUMENTATION.md)** for complete documentation.
 
 ### Legacy Mode (Backward Compatible)
 

@@ -1,5 +1,5 @@
 """
-JetboxNotesBehavior - Persistent context summaries across task boundaries.
+WorkspaceTaskNotesBehavior - Persistent context summaries across task boundaries.
 
 This behavior wraps the jetbox_notes module to provide auto-summarization
 and context persistence functionality through the AgentBehavior interface.
@@ -11,6 +11,9 @@ Features:
 - No tools (utility behavior)
 
 The behavior delegates to the jetbox_notes module for actual implementation.
+
+NOTE: The underlying jetbox_notes.py module name is kept for backward compatibility.
+The behavior name has been updated to be more descriptive.
 """
 
 from typing import Any
@@ -18,9 +21,9 @@ from behaviors.base import AgentBehavior
 import jetbox_notes
 
 
-class JetboxNotesBehavior(AgentBehavior):
+class WorkspaceTaskNotesBehavior(AgentBehavior):
     """
-    Behavior that provides persistent context summaries.
+    Behavior that provides persistent workspace task notes (context summaries).
 
     Automatically:
     - Loads existing notes on context enhancement
@@ -34,7 +37,7 @@ class JetboxNotesBehavior(AgentBehavior):
 
     def __init__(self, **kwargs):
         """
-        Initialize jetbox notes behavior.
+        Initialize workspace task notes behavior.
 
         Accepts any config parameters for forward compatibility.
         Common params: enabled (bool)
@@ -45,7 +48,7 @@ class JetboxNotesBehavior(AgentBehavior):
 
     def get_name(self) -> str:
         """Return behavior identifier."""
-        return "jetbox_notes"
+        return "workspace_task_notes"
 
     def enhance_context(
         self,
@@ -91,12 +94,12 @@ class JetboxNotesBehavior(AgentBehavior):
 
                     if notes_tokens > threshold_tokens:
                         pct = (notes_tokens / max_tokens) * 100
-                        print(f"⚠️  Jetbox notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
+                        print(f"⚠️  Workspace task notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
 
             # Insert after system prompt (index 1)
             notes_message = {
                 "role": "user",
-                "content": f"## Previous Context (from jetboxnotes.md)\n\n{self.notes_content}"
+                "content": f"## Previous Context (from workspace task notes)\n\n{self.notes_content}"
             }
             context.insert(1, notes_message)
 
@@ -222,14 +225,14 @@ class JetboxNotesBehavior(AgentBehavior):
 
     def get_instructions(self) -> str:
         """
-        Return jetbox notes instructions.
+        Return workspace task notes instructions.
 
         Returns:
             Instructions about persistent context summaries
         """
         return """
-JETBOX NOTES:
-Your work is automatically summarized and persisted to jetboxnotes.md in the workspace.
+WORKSPACE TASK NOTES:
+Your work is automatically summarized and persisted to workspace task notes (jetboxnotes.md).
 
 Context persistence:
 - Task summaries are created when tasks complete

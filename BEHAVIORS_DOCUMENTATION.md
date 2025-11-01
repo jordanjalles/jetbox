@@ -7,6 +7,45 @@
 
 The Jetbox agent behaviors system provides a composable, config-driven architecture for extending agent capabilities. All agent functionality—context management, tools, utilities—is implemented as pluggable behaviors.
 
+## Architecture Principles
+
+The behavior system is built on six core principles that ensure composability and maintainability:
+
+### 1. Single Responsibility
+Each behavior does ONE thing and does it well. A behavior should not mix multiple concerns.
+
+**Good**: `FileToolsBehavior` - provides file operations only
+**Bad**: `FileAndCommandBehavior` - mixing file and command tools
+
+### 2. Composability
+Behaviors work independently and in any combination. You can mix and match behaviors without conflicts.
+
+**Example**: `SubAgentContextBehavior + CompactWhenNearFullBehavior + WorkspaceTaskNotesBehavior` all work together without interference.
+
+### 3. No Hidden Dependencies
+No behavior embeds functionality from another. Each behavior is self-contained.
+
+**Good**: `WorkspaceTaskNotesBehavior` loads notes, `SubAgentContextBehavior` injects goal header
+**Bad**: `SubAgentContextBehavior` that also loads notes internally
+
+### 4. Config-Driven
+Behaviors are configured via YAML files, not hardcoded in agent constructors.
+
+**Good**: Load from `task_executor_config.yaml`
+**Bad**: Hardcoded `agent.add_behavior(FileToolsBehavior())` in `__init__`
+
+### 5. Event-Driven
+Behaviors respond to lifecycle events (`on_goal_start`, `on_tool_call`, etc.) without knowing about other behaviors.
+
+**Example**: `LoopDetectionBehavior` tracks actions via `on_tool_call` independently.
+
+### 6. Clear Interfaces
+All behaviors implement standardized methods: `get_tools()`, `enhance_context()`, `dispatch_tool()`, event handlers.
+
+**Example**: Every context behavior implements `enhance_context()` but doesn't require other methods.
+
+---
+
 ## Key Concepts
 
 ### What is a Behavior?
@@ -94,47 +133,32 @@ behaviors:
 **Use Case**: TaskExecutor when invoked by Orchestrator
 
 **Features**:
-- "DELEGATED GOAL" header
-- Append-until-full style
-- Higher token limit (128K)
-- Jetbox notes for context continuity
+- "DELEGATED GOAL" header injection
+- COMPOSABLE: Does NOT handle compaction (use CompactWhenNearFullBehavior)
+- COMPOSABLE: Does NOT load notes (use WorkspaceTaskNotesBehavior)
+- ONLY manages delegated goal context and completion tools
 
 **Configuration**:
 ```yaml
 behaviors:
   - type: SubAgentContextBehavior
-    params:
-      max_tokens: 128000
-      recent_keep: 20
+    params: {}  # No params - pure context injection
 ```
 
 **Tools Provided**:
 - `mark_complete(summary)` - Report success to controlling agent
 - `mark_failed(reason)` - Report failure to controlling agent
 
----
-
-#### ArchitectContextBehavior
-
-**Purpose**: Context for architecture design discussions.
-
-**Use Case**: Architect agent
-
-**Features**:
-- Higher token limit for verbose discussions
-- Focus on architecture decisions
-- No jetbox notes (artifacts are output)
-
-**Configuration**:
+**Composition Pattern**:
 ```yaml
+# Full TaskExecutor stack
 behaviors:
-  - type: ArchitectContextBehavior
-    params:
-      max_tokens: 32000
-      recent_keep: 20
+  - type: SubAgentContextBehavior  # Delegated goal context
+  - type: CompactWhenNearFullBehavior  # Context compaction
+  - type: WorkspaceTaskNotesBehavior  # Notes loading
+  - type: FileToolsBehavior  # File operations
+  - type: CommandToolsBehavior  # Command execution
 ```
-
-**Tools Provided**: None (architect tools come from ArchitectToolsBehavior)
 
 ---
 
@@ -217,23 +241,38 @@ behaviors:
 
 **Purpose**: Delegate work to sub-agents (Orchestrator → TaskExecutor/Architect).
 
-**Tools Provided**:
-- `delegate_to_executor(goal, workspace)` - Delegate to TaskExecutor
-- `consult_architect(question)` - Consult Architect for design
-- `list_workspaces()` - List available workspaces
-- `find_workspace(goal_substring)` - Find workspace by goal
+**Features**:
+- **Auto-configured from agents.yaml**: Reads `can_delegate_to` relationships
+- Dynamically generates delegation tools based on relationships
+- Injects delegatable agent descriptions into context
+- No hardcoded agent references
+
+**Tools Provided** (auto-generated):
+- `consult_architect(project_description, requirements, constraints)` - Consult Architect for design
+- `delegate_to_executor(task_description, workspace_mode, workspace_path)` - Delegate to TaskExecutor
 
 **Configuration**:
 ```yaml
 behaviors:
-  - type: DelegationBehavior
-    params: {}
+  # NOTE: DelegationBehavior is auto-added by BaseAgent when can_delegate_to is present
+  # You don't need to list it explicitly in config files
 ```
 
-**Features**:
-- Automatic workspace creation
-- Result capture
-- Jetbox notes integration
+**Example agents.yaml**:
+```yaml
+agents:
+  orchestrator:
+    can_delegate_to:
+      - architect
+      - task_executor
+```
+
+**Auto-Configuration**:
+When an agent has `can_delegate_to` relationships in `agents.yaml`, `BaseAgent` automatically:
+1. Loads delegation relationships from YAML
+2. Creates `DelegationBehavior` with those relationships
+3. Adds the behavior to the agent's behavior list
+4. Generates appropriate delegation tools dynamically
 
 ---
 
@@ -297,7 +336,87 @@ Consider trying a different approach.
 
 ---
 
+#### WorkspaceTaskNotesBehavior
+
+**Purpose**: Persistent context summaries across task boundaries.
+
+**Features**:
+- Loads existing notes from `jetboxnotes.md` in workspace
+- Auto-summarizes completed goals (success/failure)
+- Creates timeout summaries when agent times out
+- Persists summaries for context continuity
+- Warns if notes exceed 10% of max context
+
+**Configuration**:
+```yaml
+behaviors:
+  - type: WorkspaceTaskNotesBehavior
+    params: {}
+```
+
+**Events Used**:
+- `on_goal_start` - Setup workspace and clear cache
+- `on_goal_complete` - Generate and save goal summary
+- `on_timeout` - Generate timeout summary
+
+**Context Enhancement**:
+```
+## Previous Context (from workspace task notes)
+
+[Loaded notes content from jetboxnotes.md]
+```
+
+**Note**: Previously named `JetboxNotesBehavior`. The underlying `jetbox_notes.py` module name is kept for backward compatibility.
+
+---
+
 ## Creating Custom Behaviors
+
+### Composability Checklist
+
+Before implementing a behavior, ensure it follows composability principles:
+
+- [ ] **Single Responsibility**: Does ONE thing only
+- [ ] **No Hidden Dependencies**: Doesn't embed functionality from other behaviors
+- [ ] **Self-Contained**: Can be instantiated and used alone
+- [ ] **No Shared State**: Doesn't rely on global variables or external state
+- [ ] **Accepts kwargs**: All methods accept `**kwargs` for forward compatibility
+- [ ] **Unique Tool Names**: Tools don't conflict with other behaviors
+- [ ] **Event Independence**: Event handlers don't assume other behaviors exist
+
+### Design Patterns
+
+#### GOOD Behavior Design
+
+```python
+class WorkspaceTaskNotesBehavior(AgentBehavior):
+    """
+    GOOD: Single responsibility (load/save notes only).
+    Does NOT handle compaction or context management.
+    """
+    def enhance_context(self, context, **kwargs):
+        # ONLY loads notes and injects
+        notes = self._load_notes()
+        if notes:
+            context.insert(1, {"role": "user", "content": notes})
+        return context
+```
+
+#### BAD Behavior Design
+
+```python
+class SubAgentWithNotesBehavior(AgentBehavior):
+    """
+    BAD: Multiple responsibilities (context + notes + compaction).
+    Embeds functionality that should be separate behaviors.
+    """
+    def enhance_context(self, context, **kwargs):
+        # BAD: Doing too much in one behavior
+        context = self._inject_goal_header(context)  # SubAgent concern
+        notes = self._load_notes()  # Notes concern
+        context = self._compact_if_full(context)  # Compaction concern
+        return context
+```
 
 ### Basic Template
 
@@ -308,8 +427,12 @@ from typing import Any
 class MyBehavior(AgentBehavior):
     """Brief description of what this behavior does."""
 
-    def __init__(self, param1: str = "default"):
-        """Initialize with configurable parameters."""
+    def __init__(self, param1: str = "default", **kwargs):
+        """
+        Initialize with configurable parameters.
+
+        Always accept **kwargs for forward compatibility!
+        """
         self.param1 = param1
 
     def get_name(self) -> str:
@@ -322,7 +445,7 @@ class MyBehavior(AgentBehavior):
             {
                 "type": "function",
                 "function": {
-                    "name": "my_tool",
+                    "name": "my_tool",  # Ensure unique across all behaviors
                     "description": "What this tool does",
                     "parameters": {
                         "type": "object",
@@ -339,7 +462,11 @@ class MyBehavior(AgentBehavior):
         ]
 
     def dispatch_tool(self, tool_name: str, args: dict, **kwargs) -> dict:
-        """Handle tool calls."""
+        """
+        Handle tool calls.
+
+        Always accept **kwargs for additional context!
+        """
         if tool_name == "my_tool":
             result = self._handle_my_tool(args["arg1"])
             return {"result": result}
@@ -469,6 +596,215 @@ class LoggingBehavior(AgentBehavior):
 
     def on_goal_complete(self, success, **kwargs):
         print(f"[LOG] Goal {'succeeded' if success else 'failed'}")
+```
+
+---
+
+## Behavior Composition Examples
+
+This section shows how behaviors compose to create different agent capabilities.
+
+### Example 1: TaskExecutor - Full Behavior Stack
+
+The TaskExecutor combines multiple behaviors for comprehensive coding capabilities:
+
+```yaml
+# task_executor_config.yaml
+behaviors:
+  # Context management (2 behaviors)
+  - type: SubAgentContextBehavior        # Delegated goal header
+  - type: CompactWhenNearFullBehavior    # Context compaction when near full
+
+  # Tool behaviors (3 behaviors)
+  - type: FileToolsBehavior              # write_file, read_file, list_dir
+  - type: CommandToolsBehavior           # run_bash
+  - type: ServerToolsBehavior            # start_server, stop_server, check_server
+
+  # Utility behaviors (3 behaviors)
+  - type: LoopDetectionBehavior          # Detect repeated actions
+  - type: WorkspaceTaskNotesBehavior     # Load/save persistent notes
+  - type: StatusDisplayBehavior          # Progress visualization
+```
+
+**Result**: TaskExecutor can:
+- Accept delegated tasks with proper context framing
+- Manage context efficiently (compaction)
+- Perform file operations
+- Execute commands
+- Manage servers
+- Detect and warn about loops
+- Persist context across runs
+- Display progress
+
+**Composition Benefits**:
+- Each behavior is independent
+- Can remove behaviors without breaking others (e.g., remove ServerToolsBehavior if not needed)
+- Can add new behaviors dynamically
+- No conflicts between behaviors
+
+### Example 2: Orchestrator - Minimal Stack
+
+The Orchestrator uses fewer behaviors for conversational coordination:
+
+```yaml
+# orchestrator_config.yaml
+behaviors:
+  # Context management
+  - type: CompactWhenNearFullBehavior    # Append-until-full style
+
+  # Utility behaviors
+  - type: LoopDetectionBehavior          # Detect repeated actions
+
+  # NOTE: DelegationBehavior auto-added from agents.yaml relationships
+```
+
+**Result**: Orchestrator can:
+- Maintain long conversations without manual compaction
+- Detect conversation loops
+- Delegate to architect/task_executor (auto-configured)
+
+**Why Minimal?**
+- Orchestrator doesn't need file tools (delegates to TaskExecutor)
+- Orchestrator doesn't need server tools (delegates to TaskExecutor)
+- Orchestrator doesn't need workspace notes (no persistent task context)
+
+### Example 3: Custom Agent - Cherry-Picked Behaviors
+
+Create a specialized agent for code review:
+
+```yaml
+# code_reviewer_config.yaml
+behaviors:
+  # Context management
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 16000  # Medium context for code review
+
+  # Tool behaviors (file read only, no write)
+  - type: FileToolsBehavior
+    params: {}
+
+  # Custom behavior for code analysis
+  - type: CodeAnalysisBehavior
+    params:
+      languages: ["python", "javascript", "typescript"]
+
+  # Utility
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 3  # Strict loop detection
+```
+
+**Result**: Code reviewer can:
+- Read code files
+- Analyze code patterns
+- Provide feedback
+- NOT write files (read-only agent)
+
+### Example 4: Testing Composability
+
+Test behaviors in different combinations:
+
+```python
+# Test 1: Minimal agent (context only)
+agent1 = BaseAgent(name="minimal", workspace=".", config_file="minimal_config.yaml")
+# behaviors: [CompactWhenNearFullBehavior]
+
+# Test 2: Tools only (no context management)
+agent2 = BaseAgent(name="tools_only", workspace=".", config_file="tools_config.yaml")
+# behaviors: [FileToolsBehavior, CommandToolsBehavior]
+
+# Test 3: Full stack
+agent3 = BaseAgent(name="full", workspace=".", config_file="task_executor_config.yaml")
+# behaviors: [SubAgent, Compact, Files, Commands, Servers, Loop, Notes, Status]
+
+# Test 4: Custom combination
+agent4 = BaseAgent(name="custom", workspace=".", config_file=None)
+agent4.add_behavior(CompactWhenNearFullBehavior(max_tokens=8000))
+agent4.add_behavior(FileToolsBehavior())
+agent4.add_behavior(LoopDetectionBehavior(max_repeats=3))
+```
+
+**Testing Principles**:
+- Each combination should work without errors
+- Behaviors should not interfere with each other
+- Order shouldn't matter (test different orders)
+- Adding/removing behaviors should be safe
+
+---
+
+## Testing Behaviors
+
+### Isolation Testing
+
+Test each behavior independently:
+
+```python
+def test_file_tools_behavior_isolation():
+    """FileToolsBehavior works without other behaviors."""
+    behavior = FileToolsBehavior()
+
+    # Test tool registration
+    tools = behavior.get_tools()
+    assert len(tools) == 3  # write_file, read_file, list_dir
+
+    # Test tool dispatch
+    result = behavior.dispatch_tool("write_file", {
+        "path": "test.txt",
+        "content": "hello"
+    })
+    assert result["success"] == True
+```
+
+### Composition Testing
+
+Test behaviors working together:
+
+```python
+def test_context_behaviors_compose():
+    """SubAgent + Compact + Notes compose correctly."""
+    behaviors = [
+        SubAgentContextBehavior(),
+        CompactWhenNearFullBehavior(max_tokens=8000),
+        WorkspaceTaskNotesBehavior()
+    ]
+
+    # Build context through all behaviors
+    context = [{"role": "system", "content": "You are an agent"}]
+    for behavior in behaviors:
+        context = behavior.enhance_context(context, **test_kwargs)
+
+    # Verify each behavior contributed
+    assert any("DELEGATED GOAL" in msg["content"] for msg in context)
+    assert any("Previous Context" in msg.get("content", "") for msg in context)
+```
+
+### Independence Testing
+
+Test that behaviors don't depend on each other:
+
+```python
+def test_behavior_independence():
+    """Each behavior can be instantiated alone."""
+    behaviors_to_test = [
+        FileToolsBehavior,
+        CommandToolsBehavior,
+        SubAgentContextBehavior,
+        CompactWhenNearFullBehavior,
+        WorkspaceTaskNotesBehavior,
+        LoopDetectionBehavior
+    ]
+
+    for BehaviorClass in behaviors_to_test:
+        # Should instantiate without errors
+        behavior = BehaviorClass()
+
+        # Should have unique name
+        assert behavior.get_name()
+
+        # Methods should be callable (even if they return empty)
+        tools = behavior.get_tools()
+        assert isinstance(tools, list)
 ```
 
 ---
@@ -650,12 +986,21 @@ class AgentBehavior(ABC):
 
 ## See Also
 
-- **Migration Guide**: `MIGRATION_GUIDE.md`
-- **Architecture Documentation**: `AGENT_ARCHITECTURE.md`
-- **Main Documentation**: `CLAUDE.md`
-- **Configuration System**: `CONFIG_SYSTEM.md`
+- **Extension Guide**: `EXTENDING_BEHAVIORS.md` - Complete guide for creating custom behaviors
+- **Migration Guide**: `MIGRATION_GUIDE.md` - Migrating from old context strategies
+- **Architecture Documentation**: `AGENT_ARCHITECTURE.md` - Overall system architecture
+- **Main Documentation**: `CLAUDE.md` - User guide and quick reference
+- **Configuration System**: `CONFIG_SYSTEM.md` - Agent configuration reference
+
+## Quick Links
+
+- **Config Files**: `task_executor_config.yaml`, `orchestrator_config.yaml`, `architect_config.yaml`
+- **Behavior Source**: `behaviors/` directory
+- **Tests**: `tests/test_*behavior*.py`
+- **Agent Relationships**: `agents.yaml`
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Last Updated**: 2025-01-01
+**Changes**: Added architecture principles, composability examples, and comprehensive testing guidance

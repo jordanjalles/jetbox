@@ -5,6 +5,15 @@
 #
 # The Architect specializes in architecture design conversations and artifact creation.
 
+# Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
+# If not specified, uses blurb from agents.yaml
+blurb: |
+  Architect specializes in software architecture design for complex projects.
+  It creates architecture documents, module specifications, and task breakdowns.
+  It asks clarifying questions about requirements and constraints, proposes
+  architecture patterns, and justifies design trade-offs. Best for multi-component
+  systems, service architecture, and projects requiring clear technical design.
+
 # System Prompt
 system_prompt: |
   You are an expert Software Architect agent that helps design robust, scalable software systems.
@@ -102,7 +111,7 @@ behaviors:
     params:
       max_repeats: 5
 
-  # Note: Architect does NOT use JetboxNotesBehavior
+  # Note: Architect does NOT use WorkspaceTaskNotesBehavior
   # Architecture artifacts are the output, not summaries
 
   # StatusDisplayBehavior renders progress

@@ -136,6 +136,7 @@ class BaseAgent(ABC):
         self.behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
         self.tool_registry: dict[str, Any] = {}  # Map tool_name -> behavior that provides it
         self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
+        self.config_blurb: str | None = None  # Agent blurb loaded from config (if any)
 
     # ===========================
     # Abstract methods (must implement)
@@ -367,6 +368,11 @@ class BaseAgent(ABC):
             self.config_system_prompt = config["system_prompt"]
             print(f"[{self.name}] Loaded system prompt from config ({len(self.config_system_prompt)} chars)")
 
+        # Load blurb if present
+        if "blurb" in config:
+            self.config_blurb = config["blurb"]
+            print(f"[{self.name}] Loaded blurb from config ({len(self.config_blurb)} chars)")
+
         # Auto-add DelegationBehavior if this agent can delegate
         self._auto_add_delegation_behavior()
 
@@ -536,6 +542,44 @@ class BaseAgent(ABC):
             if inst:
                 instructions.append(inst)
         return "\n\n".join(instructions)
+
+    def get_blurb(self) -> str:
+        """
+        Get agent blurb (description for parent agents).
+
+        Tries multiple sources in order:
+        1. config_blurb (from agent config file)
+        2. blurb from agents.yaml
+        3. Fallback: agent name + first 100 words of system prompt
+
+        Returns:
+            Agent blurb string
+        """
+        # First try config blurb
+        if self.config_blurb:
+            return self.config_blurb.strip()
+
+        # Try agents.yaml
+        import yaml
+        agents_yaml = Path("agents.yaml")
+        if agents_yaml.exists():
+            try:
+                with open(agents_yaml) as f:
+                    agents_config = yaml.safe_load(f)
+                if agents_config and "agents" in agents_config:
+                    agent_config = agents_config["agents"].get(self.name)
+                    if agent_config and "blurb" in agent_config:
+                        return agent_config["blurb"].strip()
+            except Exception:
+                pass
+
+        # Fallback: agent name + truncated system prompt
+        system_prompt = self.get_system_prompt()
+        words = system_prompt.split()[:100]  # First 100 words
+        truncated = " ".join(words)
+        if len(words) == 100:
+            truncated += "..."
+        return f"{self.name}: {truncated}"
 
     def enhance_context_with_behaviors(
         self,

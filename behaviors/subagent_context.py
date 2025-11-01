@@ -7,9 +7,12 @@ to complete a specific delegated task.
 Features:
 - Context: "DELEGATED GOAL" injection at top
 - Tools: mark_complete, mark_failed
-- Max tokens: 128000 (large limit for delegated work)
 - Timeout nudging logic
-- Append-until-full with compaction
+
+COMPOSITION:
+- This behavior does NOT handle compaction (use CompactWhenNearFullBehavior)
+- This behavior does NOT handle notes loading (use WorkspaceTaskNotesBehavior)
+- This behavior ONLY manages delegated goal context and completion tools
 """
 
 from typing import Any
@@ -27,28 +30,21 @@ class SubAgentContextBehavior(AgentBehavior):
     Features:
     - Inserts "DELEGATED GOAL" at top of context
     - Provides mark_complete/mark_failed tools
-    - Appends all messages until near token limit
-    - Compacts when needed (at 75% threshold)
-    - Higher token limit (128K) for complex delegated work
+    - Timeout nudging (future: could emit events for timeout detection)
+
+    This behavior is COMPOSABLE:
+    - Does NOT handle compaction (delegate to CompactWhenNearFullBehavior)
+    - Does NOT load notes (delegate to WorkspaceTaskNotesBehavior)
+    - ONLY manages delegated goal context injection and completion signaling
     """
 
-    def __init__(
-        self,
-        max_tokens: int = 128000,
-        compact_threshold: float = 0.75,
-        keep_recent: int = 20,
-    ):
+    def __init__(self):
         """
         Initialize sub-agent context behavior.
 
-        Args:
-            max_tokens: Maximum context tokens before compaction (default: 128K)
-            compact_threshold: Trigger compaction at this fraction (default: 0.75)
-            keep_recent: Number of recent messages to keep during compaction (default: 20)
+        No configuration needed - this behavior only injects context and provides tools.
         """
-        self.max_tokens = max_tokens
-        self.compact_threshold = compact_threshold
-        self.keep_recent = keep_recent
+        pass
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -62,21 +58,22 @@ class SubAgentContextBehavior(AgentBehavior):
         """
         Enhance context with delegated goal information.
 
-        This method:
+        This method ONLY:
         1. Injects "DELEGATED GOAL" header after system prompt
         2. Adds completion instructions
-        3. Includes jetbox notes if available
-        4. Compacts if context exceeds threshold
+
+        It does NOT:
+        - Load jetbox notes (use WorkspaceTaskNotesBehavior)
+        - Compact context (use CompactWhenNearFullBehavior)
 
         Args:
             context: Current context (system + messages)
-            **kwargs: Additional context (context_manager, workspace)
+            **kwargs: Additional context (context_manager)
 
         Returns:
             Modified context with delegated goal info
         """
         context_manager = kwargs.get('context_manager')
-        workspace = kwargs.get('workspace')
 
         if not context_manager:
             return context
@@ -91,17 +88,6 @@ class SubAgentContextBehavior(AgentBehavior):
             context_parts.append("When complete, call mark_complete(summary) with what you accomplished.")
             context_parts.append("If you cannot complete it, call mark_failed(reason) explaining why.")
 
-        # Add jetbox notes if available
-        if workspace:
-            notes_content = self._get_jetbox_notes()
-            if notes_content:
-                context_parts.append("")
-                context_parts.append("="*70)
-                context_parts.append("PREVIOUS WORK (from jetboxnotes.md)")
-                context_parts.append("="*70)
-                context_parts.append(notes_content)
-                context_parts.append("="*70)
-
         # Insert after system prompt (index 1)
         if context_parts and len(context) > 0:
             context.insert(1, {
@@ -109,127 +95,7 @@ class SubAgentContextBehavior(AgentBehavior):
                 "content": "\n".join(context_parts)
             })
 
-        # Check if compaction needed
-        # Find where messages start (after system + delegated goal)
-        messages_start_idx = 2  # system + delegated goal
-        if len(context) > messages_start_idx:
-            messages = context[messages_start_idx:]
-
-            # Estimate token count
-            estimated_tokens = self._estimate_context_size(context)
-
-            if estimated_tokens > self.max_tokens * self.compact_threshold:
-                print(f"[subagent_context] Context at {estimated_tokens:,} tokens "
-                      f"({estimated_tokens/self.max_tokens*100:.1f}% of {self.max_tokens:,}) "
-                      f"- triggering LLM summarization")
-
-                # Keep recent N messages, summarize the rest
-                keep_recent = self.keep_recent
-                to_summarize = messages[:-keep_recent] if len(messages) > keep_recent else []
-
-                if to_summarize:
-                    # Use LLM to summarize old messages
-                    summary = self._summarize_messages(to_summarize)
-
-                    # Rebuild context: base + summary + recent
-                    context_base = context[:messages_start_idx]
-                    context_base.append({
-                        "role": "user",
-                        "content": f"Previous work summary (compacted from {len(to_summarize)} messages):\n{summary}"
-                    })
-                    context_base.extend(messages[-keep_recent:])
-
-                    new_tokens = self._estimate_context_size(context_base)
-                    print(f"[subagent_context] Reduced from {estimated_tokens:,} to {new_tokens:,} tokens "
-                          f"({new_tokens/self.max_tokens*100:.1f}%)")
-
-                    return context_base
-
         return context
-
-    def _get_jetbox_notes(self) -> str | None:
-        """
-        Get jetbox notes content if available.
-
-        Returns:
-            Notes content string or None
-        """
-        try:
-            import jetbox_notes
-            return jetbox_notes.load_jetbox_notes(max_chars=2000)
-        except Exception:
-            return None
-
-    def _estimate_context_size(self, context: list[dict[str, Any]]) -> int:
-        """
-        Estimate context size using 4 chars per token heuristic.
-
-        Args:
-            context: Context to estimate
-
-        Returns:
-            Estimated token count
-        """
-        total_chars = 0
-        for msg in context:
-            total_chars += len(str(msg.get("content", "")))
-        return total_chars // 4
-
-    def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
-        """
-        Use LLM to summarize old messages.
-
-        Args:
-            messages: Messages to summarize
-
-        Returns:
-            Concise summary string
-        """
-        from llm_utils import chat_with_inactivity_timeout
-
-        # Build prompt with truncated messages
-        messages_text = []
-        for msg in messages:
-            role = msg.get("role", "unknown")
-            content = str(msg.get("content", ""))
-            tool_calls = msg.get("tool_calls")
-
-            if tool_calls:
-                # Show tool names only
-                tool_names = str(tool_calls)[:200]
-                messages_text.append(f"[{role}] {tool_names}")
-            elif content:
-                # Truncate tool results heavily
-                if role == "tool":
-                    content = content[:100] + ("..." if len(content) > 100 else "")
-                else:
-                    content = content[:300] + ("..." if len(content) > 300 else "")
-                messages_text.append(f"[{role}] {content}")
-
-        prompt = f"""Provide an extremely concise summary (max 200 words) of this conversation, focusing ONLY on:
-1. Files created/modified (just names, not content)
-2. Commands run (results only if they failed)
-3. Current state/progress
-
-Omit: successful tool outputs, file contents, verbose explanations.
-Format: Dense bullet points.
-
-Conversation:
-{chr(10).join(messages_text)}
-
-Concise summary (max 200 words):"""
-
-        try:
-            response = chat_with_inactivity_timeout(
-                model="gpt-oss:20b",
-                messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0.2},
-                inactivity_timeout=30,
-                max_total_time=60,
-            )
-            return response.get("message", {}).get("content", "Unable to generate summary.")
-        except Exception as e:
-            return f"[Summarization failed: {e}] Previous work included {len(messages)} message exchanges."
 
     def get_tools(self) -> list[dict[str, Any]]:
         """

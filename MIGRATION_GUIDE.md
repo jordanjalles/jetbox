@@ -65,14 +65,19 @@ agent = TaskExecutorAgent(
 
 ### Step 2: Understand the Behavior Mapping
 
-| Old Strategy/Enhancement | New Behavior | Config File |
-|--------------------------|--------------|-------------|
-| `HierarchicalStrategy` | `HierarchicalContextBehavior` | `task_executor_config.yaml` |
-| `AppendUntilFullStrategy` | `CompactWhenNearFullBehavior` | `orchestrator_config.yaml` |
-| `SubAgentStrategy` | `SubAgentContextBehavior` | `task_executor_config.yaml` |
-| `ArchitectStrategy` | `ArchitectContextBehavior` | `architect_config.yaml` |
-| `JetboxNotesEnhancement` | `JetboxNotesBehavior` | (included in configs) |
-| `TaskManagementEnhancement` | `TaskManagementBehavior` | `orchestrator_config.yaml` |
+| Old Strategy/Enhancement | New Behavior | Config File | Notes |
+|--------------------------|--------------|-------------|-------|
+| `HierarchicalStrategy` | `HierarchicalContextBehavior` | `task_executor_config.yaml` | No changes |
+| `AppendUntilFullStrategy` | `CompactWhenNearFullBehavior` | `orchestrator_config.yaml` | No changes |
+| `SubAgentStrategy` | `SubAgentContextBehavior` | `task_executor_config.yaml` | **SIMPLIFIED**: No longer handles compaction or notes loading |
+| `ArchitectStrategy` | **Removed** | N/A | Use `CompactWhenNearFullBehavior` instead |
+| `JetboxNotesEnhancement` | `WorkspaceTaskNotesBehavior` | (included in configs) | **RENAMED** from `JetboxNotesBehavior` |
+| `TaskManagementEnhancement` | `TaskManagementBehavior` | `orchestrator_config.yaml` | Not yet implemented |
+
+**Important Changes**:
+- **SubAgentContextBehavior** has been simplified to only inject delegated goal context. It NO LONGER handles compaction or notes loading. Use `CompactWhenNearFullBehavior` and `WorkspaceTaskNotesBehavior` separately.
+- **WorkspaceTaskNotesBehavior** (renamed from JetboxNotesBehavior) is now a separate, composable behavior.
+- **ArchitectContextBehavior** has been removed. Use `CompactWhenNearFullBehavior` with appropriate max_tokens instead.
 
 ### Step 3: Customize Config (If Needed)
 
@@ -114,6 +119,116 @@ No changes needed! The old system still works in legacy mode:
 # This still works (backward compatible)
 agent = TaskExecutorAgent(workspace=".", goal="Test goal")
 agent.run()
+```
+
+---
+
+## Composing Behaviors Properly
+
+The new behavior system emphasizes **composability**: each behavior does ONE thing and works independently.
+
+### Understanding Composition
+
+**OLD Way (Monolithic)**:
+```python
+# Old SubAgentStrategy did EVERYTHING
+class SubAgentStrategy:
+    def build_context(self):
+        # 1. Inject delegated goal
+        # 2. Compact if near full
+        # 3. Load jetbox notes
+        # 4. Manage message history
+        # All in one method!
+```
+
+**NEW Way (Composable)**:
+```yaml
+# Each concern is a separate behavior
+behaviors:
+  - type: SubAgentContextBehavior      # ONLY: inject delegated goal
+  - type: CompactWhenNearFullBehavior  # ONLY: compact context
+  - type: WorkspaceTaskNotesBehavior   # ONLY: load/save notes
+```
+
+### Composition Rules
+
+1. **No Hidden Dependencies**: Each behavior works independently
+2. **Order Matters for Context**: Context behaviors run in order
+3. **Events Are Independent**: Event handlers don't affect each other
+4. **Tools Must Be Unique**: No two behaviors can provide the same tool name
+
+### Example Compositions
+
+#### Minimal Agent (Context Only)
+```yaml
+behaviors:
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 8000
+```
+
+#### Tool Agent (No Context Management)
+```yaml
+behaviors:
+  - type: FileToolsBehavior
+    params: {}
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "pytest"]
+```
+
+#### Full TaskExecutor Stack
+```yaml
+behaviors:
+  # Context (2 behaviors)
+  - type: SubAgentContextBehavior
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 128000
+
+  # Tools (3 behaviors)
+  - type: FileToolsBehavior
+  - type: CommandToolsBehavior
+  - type: ServerToolsBehavior
+
+  # Utilities (3 behaviors)
+  - type: LoopDetectionBehavior
+  - type: WorkspaceTaskNotesBehavior
+  - type: StatusDisplayBehavior
+```
+
+### Common Mistakes
+
+**Mistake 1: Assuming SubAgent Handles Everything**
+```yaml
+# WRONG: SubAgentContextBehavior alone is not enough
+behaviors:
+  - type: SubAgentContextBehavior  # Only injects goal header!
+```
+
+**Fix**:
+```yaml
+# CORRECT: Add compaction and notes separately
+behaviors:
+  - type: SubAgentContextBehavior
+  - type: CompactWhenNearFullBehavior
+  - type: WorkspaceTaskNotesBehavior
+```
+
+**Mistake 2: Using ArchitectContextBehavior**
+```yaml
+# WRONG: ArchitectContextBehavior has been removed
+behaviors:
+  - type: ArchitectContextBehavior
+```
+
+**Fix**:
+```yaml
+# CORRECT: Use CompactWhenNearFullBehavior with appropriate max_tokens
+behaviors:
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 32000  # Higher for architecture discussions
 ```
 
 ---

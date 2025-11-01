@@ -5,6 +5,15 @@
 #
 # Behaviors are loaded in order and compose to provide the agent's capabilities.
 
+# Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
+# If not specified, uses blurb from agents.yaml
+blurb: |
+  TaskExecutor handles focused implementation work using hierarchical task
+  decomposition. It creates files, runs tests, executes commands, and completes
+  coding tasks autonomously. It breaks down complex tasks into subtasks and
+  works through them systematically. Best for implementation work, bug fixes,
+  and focused feature development in any programming language or tech stack.
+
 # System Prompt
 system_prompt: |
   You are a local coding agent that helps build software projects.
@@ -38,8 +47,14 @@ behaviors:
   # Context Management
   # SubAgentContextBehavior provides delegated work context management
   - type: SubAgentContextBehavior
+    params: {}
+
+  # CompactWhenNearFullBehavior handles context compaction
+  - type: CompactWhenNearFullBehavior
     params:
       max_tokens: 128000  # High token limit for complex delegated tasks
+      compact_threshold: 0.75
+      keep_recent: 20
 
   # Tool Behaviors
   # FileToolsBehavior provides file read/write/list operations
@@ -65,8 +80,8 @@ behaviors:
     params:
       max_repeats: 5  # Warn after 5 identical actions
 
-  # JetboxNotesBehavior provides persistent context summaries
-  - type: JetboxNotesBehavior
+  # WorkspaceTaskNotesBehavior provides persistent context summaries
+  - type: WorkspaceTaskNotesBehavior
     params: {}
 
   # StatusDisplayBehavior renders progress and performance stats

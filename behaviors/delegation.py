@@ -297,8 +297,9 @@ Please design the architecture for this project and create:
         delegation_info = ["## Available Agents for Delegation\n"]
         for target_agent in can_delegate_to:
             agent_info = self.agent_relationships.get(target_agent, {})
-            description = agent_info.get("description", f"Agent: {target_agent}")
-            delegation_info.append(f"- **{target_agent}**: {description}")
+            # Use blurb if available, fallback to description
+            blurb = agent_info.get("blurb", agent_info.get("description", f"Agent: {target_agent}"))
+            delegation_info.append(f"- **{target_agent}**: {blurb}")
 
         # Insert after system prompt (index 1)
         delegation_message = {

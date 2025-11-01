@@ -32,7 +32,7 @@ from behaviors.compact_when_near_full import CompactWhenNearFullBehavior
 from behaviors.hierarchical_context import HierarchicalContextBehavior
 from behaviors.subagent_context import SubAgentContextBehavior
 from behaviors.loop_detection import LoopDetectionBehavior
-from behaviors.jetbox_notes import JetboxNotesBehavior
+from behaviors.workspace_task_notes import WorkspaceTaskNotesBehavior
 from behaviors.status_display import StatusDisplayBehavior
 from behaviors.delegation import DelegationBehavior
 
@@ -46,7 +46,7 @@ __all__ = [
     "HierarchicalContextBehavior",
     "SubAgentContextBehavior",
     "LoopDetectionBehavior",
-    "JetboxNotesBehavior",
+    "WorkspaceTaskNotesBehavior",
     "StatusDisplayBehavior",
     "DelegationBehavior",
 ]

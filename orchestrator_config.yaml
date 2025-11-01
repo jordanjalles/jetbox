@@ -5,6 +5,15 @@
 #
 # The Orchestrator manages high-level task delegation and architecture consultation.
 
+# Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
+# If not specified, uses blurb from agents.yaml
+blurb: |
+  Orchestrator manages user conversations and coordinates work delegation.
+  It assesses task complexity, clarifies requirements, and delegates to
+  appropriate specialist agents (Architect for design, TaskExecutor for
+  implementation). Best for project planning, task breakdown, and managing
+  multi-step workflows requiring coordination between different agents.
+
 # System Prompt
 system_prompt: |
   You are an orchestrator agent that helps users plan and execute software projects.
@@ -30,6 +39,6 @@ behaviors:
   # NOTE: The following behaviors are not yet implemented:
   # - ClarificationBehavior (provides user interaction tools)
   # - WorkspaceToolsBehavior (provides workspace management)
-  # - JetboxNotesBehavior (provides persistent context summaries)
+  # - WorkspaceTaskNotesBehavior (provides persistent context summaries)
   # - StatusDisplayBehavior (renders progress and performance stats)
   # - TaskManagementBehavior (provides task breakdown and tracking)
