@@ -13,13 +13,19 @@ import os
 from base_agent import BaseAgent
 from context_manager import ContextManager
 from agent_config import config
-from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy, SubAgentStrategy, ContextStrategy, JetboxNotesEnhancement  # Use strategy classes
 from status_display import StatusDisplay
 from llm_utils import chat_with_inactivity_timeout, clear_ollama_context
 from completion_detector import analyze_llm_response
 import jetbox_notes
 import tools
 import json
+
+# Legacy strategy support (only imported when use_behaviors=False)
+# Import moved inside __init__ to avoid unnecessary imports when using behaviors
+try:
+    from context_strategies import ContextStrategy
+except ImportError:
+    ContextStrategy = None  # Strategies not available
 
 
 class TaskExecutorAgent(BaseAgent):
@@ -37,9 +43,9 @@ class TaskExecutorAgent(BaseAgent):
         max_rounds: int = 128,
         model: str = None,
         temperature: float = 0.2,
-        context_strategy: ContextStrategy | None = None,
+        context_strategy: "ContextStrategy | None" = None,
         timeout: int | None = None,
-        use_behaviors: bool = False,
+        use_behaviors: bool = True,  # Default to True (behavior system is now preferred)
         config_file: str = "task_executor_config.yaml",
     ):
         """
@@ -80,12 +86,16 @@ class TaskExecutorAgent(BaseAgent):
         # None = create new, Path = reuse existing
         self.workspace = Path(workspace) if workspace else None
 
-        # Context strategy (default to SubAgentStrategy for delegated work)
-        # SubAgentStrategy provides mark_complete/mark_failed tools for reporting to orchestrator
-        self.context_strategy = context_strategy or SubAgentStrategy()
-
-        # Context enhancements (composable plugins)
+        # Context strategy (only used when use_behaviors=False)
+        # Default to SubAgentStrategy for delegated work when strategies are used
+        self.context_strategy = None
         self.enhancements = []
+
+        if not self.use_behaviors:
+            # Legacy strategy mode: Load strategies
+            from context_strategies import SubAgentStrategy
+            self.context_strategy = context_strategy or SubAgentStrategy()
+            print(f"[task_executor] Using legacy strategy mode: {self.context_strategy.get_name()}")
 
         # Initialize context manager
         self.init_context_manager()
@@ -634,10 +644,18 @@ class TaskExecutorAgent(BaseAgent):
                         subtask_rounds = 0
 
                     # Render and print status
-                    # TaskExecutor uses append-until-full by default, so don't show hierarchical displays
+                    # Show hierarchical display only for hierarchical strategies/behaviors
                     try:
-                        from context_strategies import HierarchicalStrategy
-                        show_hierarchical = isinstance(self.context_strategy, HierarchicalStrategy)
+                        show_hierarchical = False
+                        if not self.use_behaviors and self.context_strategy:
+                            # Legacy mode: check strategy type
+                            from context_strategies import HierarchicalStrategy
+                            show_hierarchical = isinstance(self.context_strategy, HierarchicalStrategy)
+                        elif self.use_behaviors:
+                            # Behavior mode: check for HierarchicalContextBehavior
+                            show_hierarchical = any(
+                                b.get_name() == "hierarchical_context" for b in self._behaviors
+                            )
 
                         status_output = self.status_display.render(
                             round_no=round_no,
@@ -665,12 +683,20 @@ class TaskExecutorAgent(BaseAgent):
                         max_total_time=180,        # 3 minutes total = context too large or slow model
                     )
                 except Exception as llm_error:
-                    # Handle timeout errors for SubAgentStrategy
+                    # Handle timeout errors for SubAgentStrategy/SubAgentContextBehavior
                     if isinstance(llm_error, TimeoutError):
-                        from context_strategies import SubAgentStrategy
+                        # Check if using subagent context (strategy or behavior)
+                        is_subagent_mode = False
+                        if not self.use_behaviors and self.context_strategy:
+                            from context_strategies import SubAgentStrategy
+                            is_subagent_mode = isinstance(self.context_strategy, SubAgentStrategy)
+                        elif self.use_behaviors:
+                            is_subagent_mode = any(
+                                b.get_name() == "subagent_context" for b in self._behaviors
+                            )
 
-                        # If using SubAgentStrategy, nudge agent to report completion/failure
-                        if isinstance(self.context_strategy, SubAgentStrategy):
+                        # If using SubAgent mode, nudge agent to report completion/failure
+                        if is_subagent_mode:
                             print(f"[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status")
 
                             # Add a system message nudging completion

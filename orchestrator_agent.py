@@ -14,8 +14,13 @@ import os
 from base_agent import BaseAgent
 from agent_config import config
 from llm_utils import chat_with_inactivity_timeout
-from context_strategies import AppendUntilFullStrategy, TaskManagementEnhancement, ContextStrategy
 from workspace_manager import WorkspaceManager
+
+# Legacy strategy support (only imported when use_behaviors=False)
+try:
+    from context_strategies import ContextStrategy
+except ImportError:
+    ContextStrategy = None  # Strategies not available
 
 
 class OrchestratorAgent(BaseAgent):
@@ -30,8 +35,8 @@ class OrchestratorAgent(BaseAgent):
     def __init__(
         self,
         workspace: Path,
-        context_strategy: ContextStrategy | None = None,
-        use_behaviors: bool = False,
+        context_strategy: "ContextStrategy | None" = None,
+        use_behaviors: bool = True,  # Default to True (behavior system is now preferred)
         config_file: str = "orchestrator_config.yaml",
     ):
         """
@@ -71,13 +76,18 @@ class OrchestratorAgent(BaseAgent):
         # Workspace manager (initialized when needed for task management)
         self.workspace_manager = None
 
-        # Primary context strategy (always AppendUntilFull for orchestrator)
-        self.context_strategy = context_strategy or AppendUntilFullStrategy()
-
-        # Context enhancements (composable plugins)
+        # Context strategy (only used when use_behaviors=False)
+        # Default to AppendUntilFullStrategy for orchestrator when strategies are used
+        self.context_strategy = None
         self.enhancements = []
 
-        print(f"[orchestrator] Context strategy: {self.context_strategy.get_name()}")
+        if not self.use_behaviors:
+            # Legacy strategy mode: Load strategies
+            from context_strategies import AppendUntilFullStrategy
+            self.context_strategy = context_strategy or AppendUntilFullStrategy()
+            print(f"[orchestrator] Using legacy strategy mode: {self.context_strategy.get_name()}")
+        else:
+            print(f"[orchestrator] Using behavior system")
 
         # Initialize simple context manager (for strategy compatibility)
         from context_manager import ContextManager

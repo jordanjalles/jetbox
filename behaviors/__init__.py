@@ -33,6 +33,8 @@ from behaviors.hierarchical_context import HierarchicalContextBehavior
 from behaviors.subagent_context import SubAgentContextBehavior
 from behaviors.architect_context import ArchitectContextBehavior
 from behaviors.loop_detection import LoopDetectionBehavior
+from behaviors.jetbox_notes import JetboxNotesBehavior
+from behaviors.status_display import StatusDisplayBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -45,4 +47,6 @@ __all__ = [
     "SubAgentContextBehavior",
     "ArchitectContextBehavior",
     "LoopDetectionBehavior",
+    "JetboxNotesBehavior",
+    "StatusDisplayBehavior",
 ]

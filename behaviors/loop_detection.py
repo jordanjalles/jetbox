@@ -76,8 +76,15 @@ class LoopDetectionBehavior(AgentBehavior):
         result_hash = hashlib.sha256(result_str.encode('utf-8', errors='ignore')).hexdigest()[:16]
         result_sig = f"{action_sig}::{result_hash}"
 
-        # Determine success
-        success = not ("error" in result or result.get("success") is False)
+        # Determine success - handle both dict and string results
+        if isinstance(result, dict):
+            success = not ("error" in result or result.get("success") is False)
+        elif isinstance(result, str):
+            # String results - check for error indicators
+            success = "error" not in result.lower() and "failed" not in result.lower()
+        else:
+            # Unknown type - assume success
+            success = True
 
         # Record action
         self.action_history.append({

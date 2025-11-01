@@ -15,12 +15,17 @@ from typing import Any
 from pathlib import Path
 
 from base_agent import BaseAgent
-from context_strategies import AppendUntilFullStrategy, TaskManagementEnhancement
 from context_manager import ContextManager
 from workspace_manager import WorkspaceManager
 import architect_tools
 import task_management_tools
 from agent_config import config
+
+# Legacy strategy support (only imported when use_behaviors=False)
+try:
+    from context_strategies import ContextStrategy
+except ImportError:
+    ContextStrategy = None  # Strategies not available
 
 
 ARCHITECT_SYSTEM_PROMPT = """You are an expert Software Architect agent that helps design robust, scalable software systems.
@@ -120,7 +125,7 @@ class ArchitectAgent(BaseAgent):
         workspace: Path,
         project_description: str = "",
         context_strategy = None,
-        use_behaviors: bool = False,
+        use_behaviors: bool = True,  # Default to True (behavior system is now preferred)
         config_file: str = "architect_config.yaml",
     ):
         """
@@ -129,7 +134,7 @@ class ArchitectAgent(BaseAgent):
         Args:
             workspace: Working directory for this agent
             project_description: Initial project description (optional)
-            context_strategy: Custom context strategy (default: AppendUntilFullStrategy)
+            context_strategy: Custom context strategy (default: AppendUntilFullStrategy when use_behaviors=False)
             use_behaviors: If True, load behaviors from config instead of using strategies
             config_file: Path to behavior config YAML (only used if use_behaviors=True)
         """
@@ -143,11 +148,17 @@ class ArchitectAgent(BaseAgent):
         # Phase 4: Behavior system support
         self.use_behaviors = use_behaviors
 
-        # Use AppendUntilFullStrategy (with higher token limit for architecture discussions)
-        self.context_strategy = context_strategy or AppendUntilFullStrategy(max_tokens=131072)
-
-        # Context enhancements (composable plugins)
+        # Context strategy (only used when use_behaviors=False)
+        self.context_strategy = None
         self.enhancements = []
+
+        if not self.use_behaviors:
+            # Legacy strategy mode: Load strategies
+            from context_strategies import AppendUntilFullStrategy
+            self.context_strategy = context_strategy or AppendUntilFullStrategy(max_tokens=131072)
+            print(f"[architect] Using legacy strategy mode: {self.context_strategy.get_name()}")
+        else:
+            print(f"[architect] Using behavior system")
 
         # Initialize context manager
         self.context_manager = ContextManager()
