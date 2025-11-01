@@ -1,0 +1,33 @@
+# Architect Agent Behavior Configuration
+#
+# This file defines which behaviors are enabled for the Architect agent
+# and their configuration parameters.
+#
+# The Architect specializes in architecture design conversations and artifact creation.
+
+behaviors:
+  # Context Management
+  # ArchitectContextBehavior provides conversation-style context management
+  - type: ArchitectContextBehavior
+    params:
+      max_tokens: 32000  # Higher token limit for verbose design discussions
+      compact_threshold: 0.75  # Compact at 75% capacity
+
+  # Tool Behaviors
+  # ArchitectToolsBehavior provides architecture artifact creation
+  - type: ArchitectToolsBehavior
+    params: {}
+
+  # Utility Behaviors
+  # LoopDetectionBehavior detects repeated actions
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 5
+
+  # Note: Architect does NOT use JetboxNotesBehavior
+  # Architecture artifacts are the output, not summaries
+
+  # StatusDisplayBehavior renders progress
+  - type: StatusDisplayBehavior
+    params:
+      show_hierarchy: false  # Architect is more conversational

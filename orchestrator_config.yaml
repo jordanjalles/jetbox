@@ -1,0 +1,48 @@
+# Orchestrator Agent Behavior Configuration
+#
+# This file defines which behaviors are enabled for the Orchestrator agent
+# and their configuration parameters.
+#
+# The Orchestrator manages high-level task delegation and architecture consultation.
+
+behaviors:
+  # Context Management
+  # HierarchicalContextBehavior provides Goal/Task/Subtask hierarchy
+  - type: HierarchicalContextBehavior
+    params:
+      history_keep: 12  # Keep last 12 message exchanges
+      max_depth: 5      # Maximum nesting depth
+
+  # Tool Behaviors
+  # DelegationBehavior provides task delegation to Architect and TaskExecutor
+  - type: DelegationBehavior
+    params: {}
+
+  # ClarificationBehavior provides user interaction tools
+  - type: ClarificationBehavior
+    params: {}
+
+  # WorkspaceToolsBehavior provides workspace management
+  - type: WorkspaceToolsBehavior
+    params: {}
+
+  # Utility Behaviors
+  # LoopDetectionBehavior detects repeated actions
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 5
+
+  # JetboxNotesBehavior provides persistent context
+  - type: JetboxNotesBehavior
+    params:
+      enabled: true
+
+  # StatusDisplayBehavior renders progress
+  - type: StatusDisplayBehavior
+    params:
+      show_hierarchy: true
+
+  # TaskManagementBehavior provides task breakdown and tracking
+  - type: TaskManagementBehavior
+    params:
+      enabled: true
