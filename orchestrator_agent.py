@@ -281,10 +281,12 @@ class OrchestratorAgent(BaseAgent):
         Return Orchestrator-specific system prompt.
 
         Phase 4: If use_behaviors=True, includes behavior instructions.
+        Phase 4.2: Loads system prompt from config if available.
         """
         # Phase 4: If using behaviors, add behavior instructions
         if self.use_behaviors:
-            base_text = """You are an orchestrator agent that helps users plan and execute software projects."""
+            # Phase 4.2: Use config system prompt if available, otherwise fall back to hardcoded
+            base_text = self.config_system_prompt if self.config_system_prompt else """You are an orchestrator agent that helps users plan and execute software projects."""
             behavior_instructions = self.get_behavior_instructions()
             return base_text + "\n\n" + behavior_instructions if behavior_instructions else base_text
 

@@ -135,6 +135,7 @@ class BaseAgent(ABC):
         # Phase 4 additions: Behavior system
         self.behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
         self.tool_registry: dict[str, Any] = {}  # Map tool_name -> behavior that provides it
+        self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
 
     # ===========================
     # Abstract methods (must implement)
@@ -329,7 +330,13 @@ class BaseAgent(ABC):
         """
         Load and register behaviors from YAML config file.
 
+        Also loads system_prompt if present in config.
+        Auto-adds DelegationBehavior if agent has can_delegate_to relationships.
+
         Example config:
+            system_prompt: |
+              You are an agent that does X, Y, Z.
+
             behaviors:
               - type: FileToolsBehavior
                 params:
@@ -351,7 +358,20 @@ class BaseAgent(ABC):
         with open(config_path) as f:
             config = yaml.safe_load(f)
 
-        if not config or "behaviors" not in config:
+        if not config:
+            print(f"[{self.name}] Empty config file")
+            return
+
+        # Load system prompt if present
+        if "system_prompt" in config:
+            self.config_system_prompt = config["system_prompt"]
+            print(f"[{self.name}] Loaded system prompt from config ({len(self.config_system_prompt)} chars)")
+
+        # Auto-add DelegationBehavior if this agent can delegate
+        self._auto_add_delegation_behavior()
+
+        # Load behaviors
+        if "behaviors" not in config:
             print(f"[{self.name}] No behaviors defined in config")
             return
 
@@ -369,6 +389,56 @@ class BaseAgent(ABC):
                 print(f"[{self.name}] Loaded behavior: {behavior_type}")
             except Exception as e:
                 print(f"[{self.name}] Failed to load behavior {behavior_type}: {e}")
+
+    def _auto_add_delegation_behavior(self) -> None:
+        """
+        Auto-add DelegationBehavior if this agent has delegation relationships.
+
+        Reads agents.yaml to determine can_delegate_to list.
+        If this agent can delegate, creates and adds DelegationBehavior.
+        """
+        import yaml
+
+        agents_yaml = Path("agents.yaml")
+        if not agents_yaml.exists():
+            return
+
+        try:
+            with open(agents_yaml) as f:
+                agents_config = yaml.safe_load(f)
+
+            if not agents_config or "agents" not in agents_config:
+                return
+
+            agents = agents_config["agents"]
+
+            # Find this agent's config
+            agent_config = agents.get(self.name)
+            if not agent_config:
+                return
+
+            # Check if agent can delegate
+            can_delegate_to = agent_config.get("can_delegate_to", [])
+            if not can_delegate_to:
+                return
+
+            # Build agent relationships dict for DelegationBehavior
+            # Include all agent info + this agent's delegation list
+            agent_relationships = {
+                "can_delegate_to": can_delegate_to
+            }
+            # Add info about delegatable agents
+            for target_agent in can_delegate_to:
+                agent_relationships[target_agent] = agents.get(target_agent, {})
+
+            # Create and add DelegationBehavior
+            from behaviors.delegation import DelegationBehavior
+            delegation_behavior = DelegationBehavior(agent_relationships)
+            self.add_behavior(delegation_behavior)
+            print(f"[{self.name}] Auto-added DelegationBehavior (can delegate to: {', '.join(can_delegate_to)})")
+
+        except Exception as e:
+            print(f"[{self.name}] Failed to auto-add DelegationBehavior: {e}")
 
     def _import_behavior_class(self, behavior_type: str):
         """

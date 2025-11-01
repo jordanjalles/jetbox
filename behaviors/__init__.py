@@ -31,10 +31,10 @@ from behaviors.architect_tools import ArchitectToolsBehavior
 from behaviors.compact_when_near_full import CompactWhenNearFullBehavior
 from behaviors.hierarchical_context import HierarchicalContextBehavior
 from behaviors.subagent_context import SubAgentContextBehavior
-from behaviors.architect_context import ArchitectContextBehavior
 from behaviors.loop_detection import LoopDetectionBehavior
 from behaviors.jetbox_notes import JetboxNotesBehavior
 from behaviors.status_display import StatusDisplayBehavior
+from behaviors.delegation import DelegationBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -45,8 +45,8 @@ __all__ = [
     "CompactWhenNearFullBehavior",
     "HierarchicalContextBehavior",
     "SubAgentContextBehavior",
-    "ArchitectContextBehavior",
     "LoopDetectionBehavior",
     "JetboxNotesBehavior",
     "StatusDisplayBehavior",
+    "DelegationBehavior",
 ]

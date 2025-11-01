@@ -32,8 +32,13 @@ class JetboxNotesBehavior(AgentBehavior):
     jetbox_notes system with the behavior framework.
     """
 
-    def __init__(self):
-        """Initialize jetbox notes behavior."""
+    def __init__(self, **kwargs):
+        """
+        Initialize jetbox notes behavior.
+
+        Accepts any config parameters for forward compatibility.
+        Common params: enabled (bool)
+        """
         self.workspace_manager = None
         self.llm_call_func = None
         self.notes_content = None
@@ -49,6 +54,8 @@ class JetboxNotesBehavior(AgentBehavior):
     ) -> list[dict[str, Any]]:
         """
         Load existing notes and inject into context.
+
+        Warns if notes exceed 10% of max context.
 
         Args:
             context: Current context
@@ -73,6 +80,19 @@ class JetboxNotesBehavior(AgentBehavior):
 
         # Inject notes into context if they exist
         if self.notes_content and len(context) > 0:
+            # Check if notes are too large (warning threshold: 10% of max context)
+            agent = kwargs.get("agent")
+            if agent:
+                max_tokens = self._get_max_tokens(agent)
+                if max_tokens:
+                    # Estimate tokens (chars / 4 is rough heuristic)
+                    notes_tokens = len(self.notes_content) // 4
+                    threshold_tokens = max_tokens * 0.10
+
+                    if notes_tokens > threshold_tokens:
+                        pct = (notes_tokens / max_tokens) * 100
+                        print(f"⚠️  Jetbox notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
+
             # Insert after system prompt (index 1)
             notes_message = {
                 "role": "user",
@@ -81,6 +101,41 @@ class JetboxNotesBehavior(AgentBehavior):
             context.insert(1, notes_message)
 
         return context
+
+    def _get_max_tokens(self, agent: Any) -> int | None:
+        """
+        Get max_tokens from agent.
+
+        Tries to extract max_tokens from various agent attributes:
+        - CompactWhenNearFullBehavior in agent.behaviors
+        - SubAgentContextBehavior in agent.behaviors
+        - agent.token_threshold (orchestrator)
+        - agent.context_window (orchestrator)
+
+        Args:
+            agent: Agent instance
+
+        Returns:
+            Max tokens or None if not found
+        """
+        # Try to find context behavior with max_tokens
+        for behavior in getattr(agent, "behaviors", []):
+            behavior_name = behavior.get_name()
+            if behavior_name in ["compact_when_near_full", "subagent_context", "hierarchical_context"]:
+                max_tokens = getattr(behavior, "max_tokens", None)
+                if max_tokens:
+                    return max_tokens
+
+        # Try orchestrator attributes
+        if hasattr(agent, "context_window"):
+            return agent.context_window
+
+        # Try token_threshold (orchestrator fallback)
+        if hasattr(agent, "token_threshold"):
+            # token_threshold is 75% of context_window, so estimate full context
+            return int(agent.token_threshold / 0.75)
+
+        return None
 
     def on_goal_start(self, goal: str, **kwargs: Any) -> None:
         """

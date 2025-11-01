@@ -292,8 +292,10 @@ class ArchitectAgent(BaseAgent):
         Return architect system prompt with strategy instructions.
 
         Phase 4: If use_behaviors=True, includes behavior instructions.
+        Phase 4.2: Loads system prompt from config if available.
         """
-        base_prompt = ARCHITECT_SYSTEM_PROMPT
+        # Phase 4.2: Use config system prompt if available, otherwise fall back to hardcoded
+        base_prompt = self.config_system_prompt if self.config_system_prompt else ARCHITECT_SYSTEM_PROMPT
 
         # Phase 4: If using behaviors, add behavior instructions
         if self.use_behaviors:

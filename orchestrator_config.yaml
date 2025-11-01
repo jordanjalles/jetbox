@@ -5,6 +5,10 @@
 #
 # The Orchestrator manages high-level task delegation and architecture consultation.
 
+# System Prompt
+system_prompt: |
+  You are an orchestrator agent that helps users plan and execute software projects.
+
 behaviors:
   # Context Management
   # CompactWhenNearFullBehavior provides append-until-full context management
@@ -19,8 +23,11 @@ behaviors:
     params:
       max_repeats: 5
 
-  # NOTE: The following behaviors are not yet implemented (Phase 2 work):
-  # - DelegationBehavior (provides task delegation to Architect and TaskExecutor)
+  # NOTE: DelegationBehavior is automatically added based on agents.yaml relationships.
+  # The orchestrator can delegate to: architect, task_executor (defined in agents.yaml)
+  # This creates tools: consult_architect, delegate_to_executor
+
+  # NOTE: The following behaviors are not yet implemented:
   # - ClarificationBehavior (provides user interaction tools)
   # - WorkspaceToolsBehavior (provides workspace management)
   # - JetboxNotesBehavior (provides persistent context summaries)

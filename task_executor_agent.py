@@ -183,6 +183,7 @@ class TaskExecutorAgent(BaseAgent):
         Return system prompt with strategy-specific and enhancement instructions injected.
 
         Phase 4: If use_behaviors=True, includes behavior instructions.
+        Phase 4.2: Loads system prompt from config if available.
 
         Combines:
         1. Base system prompt from config (generic coding instructions)
@@ -193,7 +194,8 @@ class TaskExecutorAgent(BaseAgent):
         Returns:
             Complete system prompt for LLM
         """
-        base_prompt = config.llm.system_prompt
+        # Phase 4.2: Use config system prompt if available, otherwise fall back to agent_config.yaml
+        base_prompt = self.config_system_prompt if self.config_system_prompt else config.llm.system_prompt
 
         parts = [base_prompt]
 
