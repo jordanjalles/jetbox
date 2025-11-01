@@ -7,7 +7,7 @@
 # These apply to all agents unless explicitly overridden in agent-specific configs
 behavior_defaults:
   CompactWhenNearFullBehavior:
-    max_tokens: 8000          # Model-based: 8K for qwen2.5-coder:3b/7b
+    max_tokens: 64000         # Model-based: 64K for gpt-oss:20b
     compact_threshold: 0.75   # Compact at 75% capacity
     keep_recent: 20           # Keep last 20 message exchanges
 
@@ -49,7 +49,7 @@ behavior_defaults:
 # ==============================
 llm:
   # Model to use (can be overridden by OLLAMA_MODEL env var)
-  model: "qwen3:14b"
+  model: "gpt-oss:20b"
 
   # Temperature for inference (0.0 = deterministic, 1.0 = creative)
   temperature: 0.2
@@ -66,22 +66,6 @@ llm:
     - For other languages: use appropriate tools and conventions for that ecosystem
     - Be concise and focused on completing the goal
     - Adapt your approach based on the project type and requirements
-
-    Core tools available:
-    - write_file(path, content, append=False, encoding="utf-8", line_end=None, overwrite=True): Write/overwrite files
-    - read_file(path, encoding="utf-8", max_size=1000000): Read files (up to 1MB by default)
-    - list_dir(path): List directory contents
-    - run_bash(command, timeout=60): Run ANY shell command with full bash features
-
-    Common operations:
-    - write_file("file.py", "import sys\n\nprint('hello')")  # Write file
-    - write_file("file.py", "\n# more code", append=True)  # Append to file
-    - write_file("file.bat", "echo hello", line_end="\r\n")  # Windows line endings
-    - read_file("file.py")  # Read entire file
-    - run_bash("pytest tests/ -v")  # Run tests
-    - run_bash("ruff check .")  # Lint code
-    - run_bash("grep -r 'pattern' *.py")  # Search code
-    - run_bash("find . -name '*.py' | wc -l")  # Find files
 
 # ==============================
 # Round Limits
