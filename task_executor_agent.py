@@ -391,6 +391,7 @@ class TaskExecutorAgent(BaseAgent):
                 jetbox_notes.create_timeout_summary(
                     goal=self.context_manager.state.goal,
                     elapsed_seconds=elapsed_seconds,
+                    action_history=self.context_manager.action_history,
                 )
             except Exception as e:
                 print(f"[timeout] Failed to create summary: {e}")

@@ -3,6 +3,17 @@ Jetbox Notes System - Persistent context across task boundaries.
 
 Automatically captures key context at task/goal completion and persists
 it in jetboxnotes.md within the goal workspace.
+
+STRATEGY-AGNOSTIC DESIGN:
+This module is designed to work with ANY context strategy (Hierarchical,
+AppendUntilFull, SubAgent, Architect, etc.) by using generic information:
+- action_history: List of Action objects from context_manager (all strategies)
+- workspace_manager: For accessing workspace and goal description
+- Goal description: Simple string, not hierarchical structure
+
+Summary functions (create_timeout_summary, prompt_for_task_summary, etc.)
+do NOT assume hierarchical task trees exist. They extract information from
+action_history and workspace context instead.
 """
 from __future__ import annotations
 import os
@@ -111,6 +122,9 @@ def prompt_for_task_summary(task_description: str) -> str:
     """
     Prompt agent to summarize completed task.
 
+    STRATEGY-AGNOSTIC: Takes only a task description string, works with any
+    context strategy.
+
     Args:
         task_description: Description of the completed task
 
@@ -157,6 +171,9 @@ def prompt_for_goal_summary(
 ) -> str:
     """
     Prompt agent to summarize goal completion or failure.
+
+    STRATEGY-AGNOSTIC: Takes only string descriptions, works with any
+    context strategy. task_summaries is optional generic context.
 
     Args:
         goal_description: Description of the goal
@@ -239,76 +256,99 @@ def get_notes_summary_for_display() -> str | None:
     return f"\n{'='*70}\nJETBOX NOTES\n{'='*70}\n{content}\n{'='*70}\n"
 
 
-def create_timeout_summary(goal, elapsed_seconds: float) -> None:
+def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history: list = None) -> None:
     """
     Create a jetbox notes summary when goal times out.
 
-    Analyzes what was accomplished before timeout and what remains.
+    Generic implementation that works with any context strategy by using
+    action_history instead of hierarchical task trees.
 
     Args:
-        goal: Goal object from context manager
+        goal: Goal object (optional, uses goal.description if provided)
         elapsed_seconds: Total elapsed time
+        action_history: List of Action objects from context manager (optional)
     """
-    if not _workspace or not _llm_caller:
+    if not _workspace or not _llm_call_func:
         return
 
-    # Gather context about progress
-    completed_tasks = sum(1 for task in goal.tasks if task.status == "completed")
-    total_tasks = len(goal.tasks)
-    completed_subtasks = sum(
-        sum(1 for subtask in task.subtasks if subtask.status == "completed")
-        for task in goal.tasks
-    )
-    total_subtasks = sum(len(task.subtasks) for task in goal.tasks)
+    # Extract goal description
+    goal_description = goal.description if goal else _workspace.goal
 
-    # Find current work
-    current_task = None
-    current_subtask = None
-    for task in goal.tasks:
-        if task.status == "in_progress":
-            current_task = task
-            for subtask in task.subtasks:
-                if subtask.status == "in_progress":
-                    current_subtask = subtask
-                    break
-            break
+    # Build action summary from action_history (strategy-agnostic)
+    if action_history:
+        # Count successful vs failed actions
+        total_actions = len(action_history)
+        successful_actions = sum(1 for a in action_history if a.result == "success")
+        failed_actions = sum(1 for a in action_history if a.result == "error")
 
-    # Build prompt for LLM to create summary
+        # Get recent actions (last 10)
+        recent_actions = action_history[-10:] if len(action_history) > 10 else action_history
+
+        # Group actions by tool type
+        actions_by_tool = {}
+        for action in action_history:
+            tool = action.name
+            if tool not in actions_by_tool:
+                actions_by_tool[tool] = {"success": 0, "error": 0, "total": 0}
+            actions_by_tool[tool]["total"] += 1
+            if action.result == "success":
+                actions_by_tool[tool]["success"] += 1
+            elif action.result == "error":
+                actions_by_tool[tool]["error"] += 1
+
+        # Find last action
+        last_action = action_history[-1] if action_history else None
+
+        # Build progress context
+        progress_lines = [
+            f"- Total actions: {total_actions} (success: {successful_actions}, failed: {failed_actions})",
+            f"- Actions by tool:",
+        ]
+        for tool, counts in actions_by_tool.items():
+            progress_lines.append(f"  • {tool}: {counts['total']} total ({counts['success']} success, {counts['error']} failed)")
+
+        progress_context = "\n".join(progress_lines)
+
+        # Build recent actions context
+        recent_context = "RECENT ACTIONS (last 10):\n"
+        for i, action in enumerate(recent_actions, 1):
+            status = "✓" if action.result == "success" else "✗" if action.result == "error" else "?"
+            args_preview = str(action.args)[:50]
+            recent_context += f"{i}. {status} {action.name}({args_preview}...)\n"
+            if action.error_msg:
+                recent_context += f"   Error: {action.error_msg[:100]}\n"
+
+        last_action_context = f"- Last action: {last_action.name} ({last_action.result})" if last_action else "- No actions recorded"
+    else:
+        # No action history - basic timeout summary
+        progress_context = "- No action history available"
+        recent_context = ""
+        last_action_context = "- No actions recorded"
+
+    # Build prompt for LLM to create summary (strategy-agnostic)
     prompt = f"""The agent timed out after {elapsed_seconds:.1f} seconds working on this goal.
 
-GOAL: {goal.description}
+GOAL: {goal_description}
 
 PROGRESS:
-- Tasks: {completed_tasks}/{total_tasks} completed
-- Subtasks: {completed_subtasks}/{total_subtasks} completed
-- Status: {goal.status}
+{progress_context}
 
-CURRENT WORK:
-- Task: {current_task.description if current_task else "None"}
-- Subtask: {current_subtask.description if current_subtask else "None"}
+LAST ACTION:
+{last_action_context}
 
-TASK TREE:
-"""
-
-    # Add task details
-    for i, task in enumerate(goal.tasks, 1):
-        prompt += f"\n{i}. [{task.status}] {task.description}"
-        for j, subtask in enumerate(task.subtasks, 1):
-            prompt += f"\n   {i}.{j}. [{subtask.status}] {subtask.description} ({subtask.rounds_used} rounds)"
-
-    prompt += """
+{recent_context}
 
 Please write a concise summary (3-5 bullet points) covering:
-1. What was successfully completed before timeout
-2. What task/subtask was being worked on when timeout occurred
-3. What blocking issue or complexity caused the timeout
+1. What was successfully accomplished before timeout (based on actions)
+2. What was being worked on when timeout occurred (last actions)
+3. What blocking issue or complexity caused the timeout (based on errors)
 4. Suggested next steps if retrying
 
 Format: Dense bullets focused on facts."""
 
     # Get LLM summary
     try:
-        response = _llm_caller(
+        response = _llm_call_func(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             timeout=30,
@@ -322,13 +362,25 @@ Format: Dense bullets focused on facts."""
         print(f"[jetbox] Created timeout summary ({len(summary)} chars)")
 
     except Exception as e:
-        # Fallback to basic summary
-        fallback = f"""## TIMEOUT ({elapsed_seconds:.0f}s)
-- Completed {completed_tasks}/{total_tasks} tasks, {completed_subtasks}/{total_subtasks} subtasks
-- Timed out while working on: {current_task.description if current_task else 'unknown'}
-- Subtask: {current_subtask.description if current_subtask else 'unknown'}
-- Status: {goal.status}
-"""
+        # Fallback to basic summary (strategy-agnostic)
+        fallback_lines = [
+            f"## TIMEOUT ({elapsed_seconds:.0f}s)",
+            f"- Goal: {goal_description}",
+        ]
+
+        if action_history:
+            total = len(action_history)
+            success = sum(1 for a in action_history if a.result == "success")
+            fallback_lines.append(f"- Actions: {total} total ({success} successful)")
+            if action_history:
+                last = action_history[-1]
+                fallback_lines.append(f"- Last action: {last.name} ({last.result})")
+        else:
+            fallback_lines.append("- No action history available")
+
+        fallback_lines.append("- Summary generation failed - see action history for details")
+
+        fallback = "\n".join(fallback_lines)
         append_to_jetbox_notes(fallback, "timeout")
         print(f"[jetbox] Created fallback timeout summary (LLM failed: {e})")
 
