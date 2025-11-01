@@ -122,7 +122,7 @@ class ArchitectAgent(BaseAgent):
 
     def __init__(
         self,
-        workspace: Path,
+        workspace: Path | None = None,
         project_description: str = "",
         context_strategy = None,
         use_behaviors: bool = True,  # Default to True (behavior system is now preferred)
@@ -132,12 +132,16 @@ class ArchitectAgent(BaseAgent):
         Initialize architect agent.
 
         Args:
-            workspace: Working directory for this agent
+            workspace: Working directory for this agent (optional, defaults to current directory)
             project_description: Initial project description (optional)
             context_strategy: Custom context strategy (default: AppendUntilFullStrategy when use_behaviors=False)
             use_behaviors: If True, load behaviors from config instead of using strategies
             config_file: Path to behavior config YAML (only used if use_behaviors=True)
         """
+        # Default workspace to current directory if not provided
+        if workspace is None:
+            workspace = Path(".")
+
         super().__init__(
             name="architect",
             role="Software architecture consultant",
@@ -196,24 +200,27 @@ class ArchitectAgent(BaseAgent):
 
         architect_tools.set_workspace(SimpleWorkspace(self.workspace))
 
-        # Check if task breakdown already exists
-        task_file = Path(self.workspace) / "architecture" / "task-breakdown.json"
-        if task_file.exists():
-            # Initialize workspace manager for existing project
-            self.workspace_manager = WorkspaceManager(
-                goal="architect-task-management",
-                workspace_path=self.workspace
-            )
+        # Legacy mode only: Check if task breakdown already exists and add enhancement
+        if not self.use_behaviors:
+            # Check if task breakdown already exists
+            task_file = Path(self.workspace) / "architecture" / "task-breakdown.json"
+            if task_file.exists():
+                # Initialize workspace manager for existing project
+                self.workspace_manager = WorkspaceManager(
+                    goal="architect-task-management",
+                    workspace_path=self.workspace
+                )
 
-            # Add task management enhancement for existing project
-            task_management_tools.set_workspace(self.workspace_manager)
-            task_enhancement = TaskManagementEnhancement(workspace_manager=self.workspace_manager)
-            self.enhancements.append(task_enhancement)
-            print(f"[architect] Added task management enhancement (existing task breakdown found)")
-        else:
-            # No task breakdown yet - will add enhancement after creating it
-            self.workspace_manager = None
-            print(f"[architect] No task breakdown yet (will add enhancement after creation)")
+                # Add task management enhancement for existing project (legacy mode)
+                from context_strategies import TaskManagementEnhancement
+                task_management_tools.set_workspace(self.workspace_manager)
+                task_enhancement = TaskManagementEnhancement(workspace_manager=self.workspace_manager)
+                self.enhancements.append(task_enhancement)
+                print(f"[architect] Added task management enhancement (existing task breakdown found)")
+            else:
+                # No task breakdown yet - will add enhancement after creating it
+                self.workspace_manager = None
+                print(f"[architect] No task breakdown yet (will add enhancement after creation)")
 
     def dispatch_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
         """
@@ -293,16 +300,25 @@ class ArchitectAgent(BaseAgent):
 
         Phase 4: If use_behaviors=True, includes behavior instructions.
         Phase 4.2: Loads system prompt from config if available.
+        Phase 5: Dynamically generates tool documentation from loaded behaviors.
         """
         # Phase 4.2: Use config system prompt if available, otherwise fall back to hardcoded
         base_prompt = self.config_system_prompt if self.config_system_prompt else ARCHITECT_SYSTEM_PROMPT
 
         # Phase 4: If using behaviors, add behavior instructions
         if self.use_behaviors:
+            parts = [base_prompt]
+
             behavior_instructions = self.get_behavior_instructions()
             if behavior_instructions:
-                base_prompt = base_prompt + "\n\n" + behavior_instructions
-            return base_prompt
+                parts.append(behavior_instructions)
+
+            # Phase 5: Add dynamic tool documentation
+            tool_docs = self.generate_tool_documentation()
+            if tool_docs:
+                parts.append(tool_docs)
+
+            return "\n\n".join(parts)
 
         # Legacy path
         # Add strategy-specific instructions if available
@@ -379,7 +395,15 @@ class ArchitectAgent(BaseAgent):
         Only adds if:
         1. Task breakdown file exists in workspace
         2. Enhancement not already added
+        3. Using legacy mode (not behaviors)
         """
+        # Only for legacy mode
+        if self.use_behaviors:
+            return
+
+        # Import TaskManagementEnhancement (legacy)
+        from context_strategies import TaskManagementEnhancement
+
         # Skip if already have task management enhancement
         if any(isinstance(e, TaskManagementEnhancement) for e in self.enhancements):
             return

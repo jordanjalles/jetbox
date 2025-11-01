@@ -133,7 +133,8 @@ class BaseAgent(ABC):
         self.perf_stats = None  # For performance tracking
 
         # Phase 4 additions: Behavior system
-        self.behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
+        self._behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
+        self.behaviors: list[Any] = self._behaviors  # Public alias
         self.tool_registry: dict[str, Any] = {}  # Map tool_name -> behavior that provides it
         self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
         self.config_blurb: str | None = None  # Agent blurb loaded from config (if any)
@@ -378,6 +379,9 @@ class BaseAgent(ABC):
         # Auto-add DelegationBehavior if this agent can delegate
         self._auto_add_delegation_behavior()
 
+        # Auto-add SubAgentContextBehavior if this agent is a subagent
+        self._auto_add_subagent_context_behavior()
+
         # Load behaviors
         if "behaviors" not in config:
             print(f"[{self.name}] No behaviors defined in config")
@@ -521,6 +525,62 @@ class BaseAgent(ABC):
         except Exception as e:
             print(f"[{self.name}] Failed to auto-add DelegationBehavior: {e}")
 
+    def _auto_add_subagent_context_behavior(self) -> None:
+        """
+        Auto-add SubAgentContextBehavior if this agent is a subagent.
+
+        An agent is a "subagent" if it appears in another agent's can_delegate_to list.
+        Subagents need special context management for delegated work.
+
+        Reads agents.yaml to check if this agent is in any other agent's can_delegate_to list.
+        If yes, adds SubAgentContextBehavior (unless already added).
+        """
+        import yaml
+
+        agents_yaml = Path("agents.yaml")
+        if not agents_yaml.exists():
+            return
+
+        try:
+            with open(agents_yaml) as f:
+                agents_config = yaml.safe_load(f)
+
+            if not agents_config or "agents" not in agents_config:
+                return
+
+            agents = agents_config["agents"]
+
+            # Check if this agent is in any other agent's can_delegate_to list
+            is_subagent = False
+            for agent_name, agent_info in agents.items():
+                if agent_name == self.name:
+                    continue  # Skip self
+
+                can_delegate_to = agent_info.get("can_delegate_to", [])
+                if self.name in can_delegate_to:
+                    is_subagent = True
+                    break
+
+            if not is_subagent:
+                return
+
+            # Check if SubAgentContextBehavior already added
+            has_subagent_context = any(
+                b.get_name() == "subagent_context" for b in self._behaviors
+            )
+
+            if has_subagent_context:
+                return  # Already added (either manually or by earlier call)
+
+            # Add SubAgentContextBehavior
+            from behaviors.subagent_context import SubAgentContextBehavior
+            behavior = SubAgentContextBehavior()
+            self.add_behavior(behavior)
+            print(f"[{self.name}] Auto-added SubAgentContextBehavior (agent is subagent)")
+
+        except Exception as e:
+            print(f"[{self.name}] Failed to auto-add SubAgentContextBehavior: {e}")
+
     def _import_behavior_class(self, behavior_type: str):
         """
         Dynamically import behavior class by name.
@@ -590,7 +650,7 @@ class BaseAgent(ABC):
                 )
             self.tool_registry[tool_name] = behavior
 
-        self.behaviors.append(behavior)
+        self._behaviors.append(behavior)
 
     def get_behavior_tools(self) -> list[dict[str, Any]]:
         """
@@ -600,7 +660,7 @@ class BaseAgent(ABC):
             List of tool definitions from all behaviors
         """
         tools = []
-        for behavior in self.behaviors:
+        for behavior in self._behaviors:
             tools.extend(behavior.get_tools())
         return tools
 
@@ -612,11 +672,57 @@ class BaseAgent(ABC):
             Combined instructions from all behaviors
         """
         instructions = []
-        for behavior in self.behaviors:
+        for behavior in self._behaviors:
             inst = behavior.get_instructions()
             if inst:
                 instructions.append(inst)
         return "\n\n".join(instructions)
+
+    def generate_tool_documentation(self) -> str:
+        """
+        Generate tool documentation from loaded behaviors.
+
+        Returns a formatted string listing all available tools with their
+        signatures and descriptions. This is dynamically generated based on
+        which behaviors are loaded.
+
+        Returns:
+            Tool documentation string (empty if no behaviors loaded)
+        """
+        if not self._behaviors:
+            return ""
+
+        tool_docs = []
+        for behavior in self._behaviors:
+            tools = behavior.get_tools()
+            for tool in tools:
+                func = tool.get("function", {})
+                name = func.get("name", "unknown")
+                desc = func.get("description", "")
+                params = func.get("parameters", {}).get("properties", {})
+                required = func.get("parameters", {}).get("required", [])
+
+                # Build parameter signature
+                param_strs = []
+                for param_name, param_spec in params.items():
+                    param_type = param_spec.get("type", "any")
+                    # Mark required params
+                    if param_name in required:
+                        param_strs.append(f"{param_name}: {param_type}")
+                    else:
+                        # Optional params with default if specified
+                        default = param_spec.get("default")
+                        if default is not None:
+                            param_strs.append(f"{param_name}: {param_type} = {default}")
+                        else:
+                            param_strs.append(f"{param_name}?: {param_type}")
+
+                param_sig = ", ".join(param_strs) if param_strs else ""
+                tool_docs.append(f"  - {name}({param_sig}): {desc}")
+
+        if tool_docs:
+            return "\n\nAvailable tools:\n" + "\n".join(tool_docs)
+        return ""
 
     def get_blurb(self) -> str:
         """
@@ -670,7 +776,7 @@ class BaseAgent(ABC):
             Enhanced context after all behavior modifications
         """
         # Let each behavior modify context in registration order
-        for behavior in self.behaviors:
+        for behavior in self._behaviors:
             context = behavior.enhance_context(
                 context,
                 agent=self,
@@ -715,7 +821,7 @@ class BaseAgent(ABC):
             return {"error": f"Tool {tool_name} failed: {e}"}
 
         # Notify all behaviors of tool call (for loop detection, etc.)
-        for beh in self.behaviors:
+        for beh in self._behaviors:
             try:
                 beh.on_tool_call(
                     tool_name=tool_name,
@@ -736,7 +842,7 @@ class BaseAgent(ABC):
             event_name: Event method name (e.g., "on_goal_start")
             **kwargs: Event-specific arguments
         """
-        for behavior in self.behaviors:
+        for behavior in self._behaviors:
             try:
                 event_method = getattr(behavior, event_name, None)
                 if event_method and callable(event_method):

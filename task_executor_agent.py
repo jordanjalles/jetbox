@@ -184,12 +184,14 @@ class TaskExecutorAgent(BaseAgent):
 
         Phase 4: If use_behaviors=True, includes behavior instructions.
         Phase 4.2: Loads system prompt from config if available.
+        Phase 5: Dynamically generates tool documentation from loaded behaviors.
 
         Combines:
         1. Base system prompt from config (generic coding instructions)
         2. Strategy-specific instructions (workflow, tools, guidelines)
         3. Enhancement instructions (jetbox notes, task management, etc.)
         4. Behavior instructions (if use_behaviors=True)
+        5. Dynamic tool documentation (if use_behaviors=True)
 
         Returns:
             Complete system prompt for LLM
@@ -204,6 +206,11 @@ class TaskExecutorAgent(BaseAgent):
             behavior_instructions = self.get_behavior_instructions()
             if behavior_instructions:
                 parts.append(behavior_instructions)
+
+            # Phase 5: Add dynamic tool documentation
+            tool_docs = self.generate_tool_documentation()
+            if tool_docs:
+                parts.append(tool_docs)
         else:
             # Legacy path: strategy + enhancements
             # Get strategy-specific instructions

@@ -34,7 +34,7 @@ class OrchestratorAgent(BaseAgent):
 
     def __init__(
         self,
-        workspace: Path,
+        workspace: Path | None = None,
         context_strategy: "ContextStrategy | None" = None,
         use_behaviors: bool = True,  # Default to True (behavior system is now preferred)
         config_file: str = "orchestrator_config.yaml",
@@ -43,11 +43,15 @@ class OrchestratorAgent(BaseAgent):
         Initialize Orchestrator agent.
 
         Args:
-            workspace: Working directory
+            workspace: Working directory (optional, defaults to current directory)
             context_strategy: Optional context strategy (defaults to AppendUntilFullStrategy)
             use_behaviors: If True, load behaviors from config instead of using strategies
             config_file: Path to behavior config YAML (only used if use_behaviors=True)
         """
+        # Default workspace to current directory if not provided
+        if workspace is None:
+            workspace = Path(".")
+
         super().__init__(
             name="orchestrator",
             role="User interface and task coordinator",
@@ -282,13 +286,25 @@ class OrchestratorAgent(BaseAgent):
 
         Phase 4: If use_behaviors=True, includes behavior instructions.
         Phase 4.2: Loads system prompt from config if available.
+        Phase 5: Dynamically generates tool documentation from loaded behaviors.
         """
         # Phase 4: If using behaviors, add behavior instructions
         if self.use_behaviors:
             # Phase 4.2: Use config system prompt if available, otherwise fall back to hardcoded
             base_text = self.config_system_prompt if self.config_system_prompt else """You are an orchestrator agent that helps users plan and execute software projects."""
+
+            parts = [base_text]
+
             behavior_instructions = self.get_behavior_instructions()
-            return base_text + "\n\n" + behavior_instructions if behavior_instructions else base_text
+            if behavior_instructions:
+                parts.append(behavior_instructions)
+
+            # Phase 5: Add dynamic tool documentation
+            tool_docs = self.generate_tool_documentation()
+            if tool_docs:
+                parts.append(tool_docs)
+
+            return "\n\n".join(parts)
 
         # Legacy path
         base_text = """You are an orchestrator agent that helps users plan and execute software projects.

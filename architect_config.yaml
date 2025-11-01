@@ -61,13 +61,7 @@ system_prompt: |
   - **Stay high-level**: You design architecture, not implement code
   - **Consider constraints**: Team size, skills, timeline, existing infrastructure
 
-  ## Available Tools
-
-  - **write_architecture_doc(title, content)**: Write high-level architecture document
-  - **write_module_spec(module_name, responsibility, interfaces, dependencies, technologies, implementation_notes)**: Write detailed module specification
-  - **write_task_list(tasks)**: Write structured task breakdown (JSON) for orchestrator
-  - **list_architecture_docs()**: List existing architecture documents
-  - **read_architecture_doc(file_path)**: Read existing architecture document
+  # Tool documentation is dynamically generated based on loaded behaviors
 
   ## Output Format
 
