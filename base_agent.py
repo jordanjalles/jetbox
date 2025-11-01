@@ -565,17 +565,13 @@ class BaseAgent(ABC):
 
     def _auto_add_delegation_behavior(self) -> None:
         """
-        Auto-add unified DelegationBehavior based on agent's delegation role.
+        Auto-add DelegationBehavior if this agent can delegate to others.
 
-        DelegationBehavior is bidirectional - handles BOTH:
-        1. Delegating TO others (delegator tools: consult_X, delegate_to_X)
-        2. Being delegated to (delegatee tools: mark_complete, mark_failed)
+        DelegationBehavior is delegator-only - provides tools for delegating TO other agents.
+        For being delegated to, use SubAgentModeBehavior (added to ALL agents).
 
-        Checks agents.yaml to determine:
-        - Can this agent delegate to others? (has can_delegate_to list)
-        - Can this agent be delegated to? (appears in another agent's can_delegate_to list)
-
-        The is_delegatee parameter determines if mark_complete/mark_failed tools are provided.
+        Reads agents.yaml to check if this agent has can_delegate_to list.
+        If yes, adds DelegationBehavior with delegation tools (consult_X, delegate_to_X).
         """
         import yaml
 
@@ -597,22 +593,10 @@ class BaseAgent(ABC):
             if not agent_config:
                 return
 
-            # 1. Check if agent can delegate to others
+            # Check if agent can delegate to others
             can_delegate_to = agent_config.get("can_delegate_to", [])
-
-            # 2. Check if agent can be delegated to (is in another agent's can_delegate_to list)
-            is_delegatee = False
-            for other_agent_name, other_agent_config in agents.items():
-                if other_agent_name == self.name:
-                    continue
-                other_can_delegate_to = other_agent_config.get("can_delegate_to", [])
-                if self.name in other_can_delegate_to:
-                    is_delegatee = True
-                    break
-
-            # If agent neither delegates nor is delegated to, skip
-            if not can_delegate_to and not is_delegatee:
-                return
+            if not can_delegate_to:
+                return  # No delegation capability
 
             # Check if DelegationBehavior already added
             has_delegation = any(b.get_name() == "delegation" for b in self._behaviors)
@@ -648,37 +632,49 @@ class BaseAgent(ABC):
 
                 agent_relationships[target_agent] = agent_info
 
-            # Create and add unified DelegationBehavior
+            # Create and add DelegationBehavior (delegator-only)
             from behaviors.delegation import DelegationBehavior
-            delegation_behavior = DelegationBehavior(
-                agent_relationships=agent_relationships,
-                is_delegatee=is_delegatee
-            )
+            delegation_behavior = DelegationBehavior(agent_relationships=agent_relationships)
             self.add_behavior(delegation_behavior)
-
-            # Log what was added
-            modes = []
-            if can_delegate_to:
-                modes.append(f"delegator (can delegate to: {', '.join(can_delegate_to)})")
-            if is_delegatee:
-                modes.append("delegatee (provides mark_complete/mark_failed)")
-            print(f"[{self.name}] Auto-added DelegationBehavior ({', '.join(modes)})")
+            print(f"[{self.name}] Auto-added DelegationBehavior (can delegate to: {', '.join(can_delegate_to)})")
 
         except Exception as e:
             print(f"[{self.name}] Failed to auto-add DelegationBehavior: {e}")
 
     def _auto_add_subagent_context_behavior(self) -> None:
         """
-        DEPRECATED: SubAgentContextBehavior functionality merged into DelegationBehavior.
+        Auto-add SubAgentModeBehavior to ALL agents.
 
-        This method is kept as a no-op stub for backward compatibility.
-        The unified DelegationBehavior now handles BOTH:
-        - Delegating TO other agents (delegator mode)
-        - Being delegated to (delegatee mode with mark_complete/mark_failed)
+        SubAgentModeBehavior makes agents delegatable - they can receive work via:
+        1. CLI: python agent.py "goal"
+        2. Tool call: parent_agent.delegate_task(agent, goal)
 
-        See _auto_add_delegation_behavior() for the unified implementation.
+        ALL agents get this behavior because ALL agents can be delegated to.
+        This is different from DelegationBehavior which is only for agents that can delegate TO others.
         """
-        pass  # No-op - functionality now in DelegationBehavior
+        # Check if SubAgentModeBehavior or SubAgentContextBehavior already added
+        has_subagent_mode = any(
+            b.get_name() in ["subagent_mode", "subagent_context"] for b in self._behaviors
+        )
+
+        if has_subagent_mode:
+            return  # Already added
+
+        # Add SubAgentModeBehavior to ALL agents
+        try:
+            from behaviors.subagent_mode import SubAgentModeBehavior
+            behavior = SubAgentModeBehavior(is_subagent=True)
+            self.add_behavior(behavior)
+            print(f"[{self.name}] Auto-added SubAgentModeBehavior (agent is delegatable)")
+        except ImportError:
+            # Fall back to old name for backward compatibility
+            try:
+                from behaviors.subagent_context import SubAgentContextBehavior
+                behavior = SubAgentContextBehavior()
+                self.add_behavior(behavior)
+                print(f"[{self.name}] Auto-added SubAgentContextBehavior (agent is delegatable)")
+            except ImportError as e:
+                print(f"[{self.name}] Failed to add SubAgentModeBehavior: {e}")
 
     def _import_behavior_class(self, behavior_type: str):
         """
