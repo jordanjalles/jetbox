@@ -120,6 +120,8 @@ class ArchitectAgent(BaseAgent):
         workspace: Path,
         project_description: str = "",
         context_strategy = None,
+        use_behaviors: bool = False,
+        config_file: str = "architect_config.yaml",
     ):
         """
         Initialize architect agent.
@@ -128,6 +130,8 @@ class ArchitectAgent(BaseAgent):
             workspace: Working directory for this agent
             project_description: Initial project description (optional)
             context_strategy: Custom context strategy (default: AppendUntilFullStrategy)
+            use_behaviors: If True, load behaviors from config instead of using strategies
+            config_file: Path to behavior config YAML (only used if use_behaviors=True)
         """
         super().__init__(
             name="architect",
@@ -135,6 +139,9 @@ class ArchitectAgent(BaseAgent):
             workspace=workspace,
             config=config,
         )
+
+        # Phase 4: Behavior system support
+        self.use_behaviors = use_behaviors
 
         # Use AppendUntilFullStrategy (with higher token limit for architecture discussions)
         self.context_strategy = context_strategy or AppendUntilFullStrategy(max_tokens=131072)
@@ -154,6 +161,11 @@ class ArchitectAgent(BaseAgent):
 
         # Configure architect tools with workspace
         self.configure_workspace(self.workspace)
+
+        # Phase 4: Load behaviors if requested
+        if self.use_behaviors:
+            print(f"[architect] Loading behaviors from {config_file}")
+            self.load_behaviors_from_config(config_file)
 
     def configure_workspace(self, workspace_path) -> None:
         """
@@ -234,6 +246,8 @@ class ArchitectAgent(BaseAgent):
         """
         Return architect-specific tools.
 
+        Phase 4: If use_behaviors=True, returns tools from behaviors.
+
         Tools:
         - write_architecture_doc: Write high-level architecture
         - write_module_spec: Write module specifications
@@ -242,6 +256,11 @@ class ArchitectAgent(BaseAgent):
         - read_architecture_doc: Read existing doc
         + strategy-specific tools (e.g., task management tools)
         """
+        # Phase 4: If using behaviors, return behavior tools
+        if self.use_behaviors:
+            return self.get_behavior_tools()
+
+        # Legacy path
         base_tools = architect_tools.get_architect_tool_definitions()
 
         # Add strategy-specific tools if available
@@ -258,9 +277,21 @@ class ArchitectAgent(BaseAgent):
         return base_tools + strategy_tools + enhancement_tools
 
     def get_system_prompt(self) -> str:
-        """Return architect system prompt with strategy instructions."""
+        """
+        Return architect system prompt with strategy instructions.
+
+        Phase 4: If use_behaviors=True, includes behavior instructions.
+        """
         base_prompt = ARCHITECT_SYSTEM_PROMPT
 
+        # Phase 4: If using behaviors, add behavior instructions
+        if self.use_behaviors:
+            behavior_instructions = self.get_behavior_instructions()
+            if behavior_instructions:
+                base_prompt = base_prompt + "\n\n" + behavior_instructions
+            return base_prompt
+
+        # Legacy path
         # Add strategy-specific instructions if available
         if self.context_strategy:
             strategy_instructions = self.context_strategy.get_strategy_instructions()
@@ -284,11 +315,22 @@ class ArchitectAgent(BaseAgent):
         """
         Build context using configured context strategy + enhancements.
 
+        Phase 4: If use_behaviors=True, uses behavior system.
+
         Auto-adds TaskManagementEnhancement if task breakdown exists in workspace.
 
         Returns:
             Context list ready for LLM
         """
+        # Phase 4: If using behaviors, use behavior system
+        if self.use_behaviors:
+            context = [
+                {"role": "system", "content": self.get_system_prompt()},
+                *self.state.messages
+            ]
+            return self.enhance_context_with_behaviors(context)
+
+        # Legacy path
         # Auto-add task management enhancement if task breakdown exists and not already added
         self._auto_add_task_management()
 

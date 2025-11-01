@@ -28,6 +28,11 @@ from behaviors.file_tools import FileToolsBehavior
 from behaviors.command_tools import CommandToolsBehavior
 from behaviors.server_tools import ServerToolsBehavior
 from behaviors.architect_tools import ArchitectToolsBehavior
+from behaviors.compact_when_near_full import CompactWhenNearFullBehavior
+from behaviors.hierarchical_context import HierarchicalContextBehavior
+from behaviors.subagent_context import SubAgentContextBehavior
+from behaviors.architect_context import ArchitectContextBehavior
+from behaviors.loop_detection import LoopDetectionBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -35,4 +40,9 @@ __all__ = [
     "CommandToolsBehavior",
     "ServerToolsBehavior",
     "ArchitectToolsBehavior",
+    "CompactWhenNearFullBehavior",
+    "HierarchicalContextBehavior",
+    "SubAgentContextBehavior",
+    "ArchitectContextBehavior",
+    "LoopDetectionBehavior",
 ]

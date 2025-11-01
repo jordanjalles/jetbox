@@ -14,6 +14,8 @@ from pathlib import Path
 import json
 import time
 from datetime import datetime
+import re
+import importlib
 
 
 @dataclass
@@ -129,6 +131,10 @@ class BaseAgent(ABC):
         self.context_manager = None  # For hierarchical task tracking (TaskExecutor)
         self.workspace_manager = None  # For workspace isolation
         self.perf_stats = None  # For performance tracking
+
+        # Phase 4 additions: Behavior system
+        self.behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
+        self.tool_registry: dict[str, Any] = {}  # Map tool_name -> behavior that provides it
 
     # ===========================
     # Abstract methods (must implement)
@@ -314,3 +320,237 @@ class BaseAgent(ABC):
         from status_display import PerformanceStats
         if self.perf_stats is None:
             self.perf_stats = PerformanceStats()
+
+    # ===========================
+    # Phase 4 additions: Behavior system methods
+    # ===========================
+
+    def load_behaviors_from_config(self, config_file: str) -> None:
+        """
+        Load and register behaviors from YAML config file.
+
+        Example config:
+            behaviors:
+              - type: FileToolsBehavior
+                params:
+                  max_file_size: 1000000
+              - type: LoopDetectionBehavior
+                params:
+                  max_repeats: 5
+
+        Args:
+            config_file: Path to YAML config file
+        """
+        import yaml
+
+        config_path = Path(config_file)
+        if not config_path.exists():
+            print(f"[{self.name}] Warning: Config file not found: {config_file}")
+            return
+
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        if not config or "behaviors" not in config:
+            print(f"[{self.name}] No behaviors defined in config")
+            return
+
+        print(f"[{self.name}] Loading behaviors from {config_file}")
+
+        for behavior_spec in config.get("behaviors", []):
+            behavior_type = behavior_spec["type"]
+            behavior_params = behavior_spec.get("params", {})
+
+            # Dynamically import and instantiate behavior
+            try:
+                behavior_class = self._import_behavior_class(behavior_type)
+                behavior = behavior_class(**behavior_params)
+                self.add_behavior(behavior)
+                print(f"[{self.name}] Loaded behavior: {behavior_type}")
+            except Exception as e:
+                print(f"[{self.name}] Failed to load behavior {behavior_type}: {e}")
+
+    def _import_behavior_class(self, behavior_type: str):
+        """
+        Dynamically import behavior class by name.
+
+        Args:
+            behavior_type: CamelCase behavior class name (e.g., "FileToolsBehavior")
+
+        Returns:
+            Behavior class
+
+        Raises:
+            ImportError: If behavior module/class not found
+        """
+        # Convert CamelCase to snake_case for module name
+        module_name = self._to_snake_case(behavior_type)
+
+        # Import from behaviors module
+        module = importlib.import_module(f"behaviors.{module_name}")
+        return getattr(module, behavior_type)
+
+    def _to_snake_case(self, name: str) -> str:
+        """
+        Convert CamelCase to snake_case, removing "Behavior" suffix.
+
+        Examples:
+            FileToolsBehavior -> file_tools
+            LoopDetectionBehavior -> loop_detection
+            SubAgentContextBehavior -> subagent_context
+            ArchitectToolsBehavior -> architect_tools
+
+        Args:
+            name: CamelCase name
+
+        Returns:
+            snake_case name without "_behavior" suffix
+        """
+        # Remove "Behavior" suffix if present
+        if name.endswith("Behavior"):
+            name = name[:-8]  # Remove "Behavior" (8 chars)
+
+        # Special cases for known compound words
+        # SubAgent -> subagent (not sub_agent)
+        name = name.replace("SubAgent", "Subagent")
+
+        # Convert to snake_case
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+    def add_behavior(self, behavior: Any) -> None:
+        """
+        Register a behavior with this agent.
+
+        Args:
+            behavior: AgentBehavior instance
+
+        Raises:
+            ValueError: If behavior tool names conflict with existing tools
+        """
+        # Check for tool name conflicts
+        for tool in behavior.get_tools():
+            tool_name = tool["function"]["name"]
+            if tool_name in self.tool_registry:
+                existing_behavior = self.tool_registry[tool_name]
+                raise ValueError(
+                    f"Tool '{tool_name}' already registered by "
+                    f"{existing_behavior.get_name()}"
+                )
+            self.tool_registry[tool_name] = behavior
+
+        self.behaviors.append(behavior)
+
+    def get_behavior_tools(self) -> list[dict[str, Any]]:
+        """
+        Collect tools from all registered behaviors.
+
+        Returns:
+            List of tool definitions from all behaviors
+        """
+        tools = []
+        for behavior in self.behaviors:
+            tools.extend(behavior.get_tools())
+        return tools
+
+    def get_behavior_instructions(self) -> str:
+        """
+        Collect instructions from all registered behaviors.
+
+        Returns:
+            Combined instructions from all behaviors
+        """
+        instructions = []
+        for behavior in self.behaviors:
+            inst = behavior.get_instructions()
+            if inst:
+                instructions.append(inst)
+        return "\n\n".join(instructions)
+
+    def enhance_context_with_behaviors(
+        self,
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Let all behaviors enhance the context.
+
+        Args:
+            context: Current context (system prompt + messages)
+
+        Returns:
+            Enhanced context after all behavior modifications
+        """
+        # Let each behavior modify context in registration order
+        for behavior in self.behaviors:
+            context = behavior.enhance_context(
+                context,
+                agent=self,
+                workspace=self.workspace,
+                round_number=self.state.total_rounds,
+                context_manager=self.context_manager,
+                workspace_manager=self.workspace_manager,
+            )
+
+        return context
+
+    def dispatch_tool_to_behavior(self, tool_call: dict[str, Any]) -> dict[str, Any]:
+        """
+        Dispatch tool call to appropriate behavior.
+
+        Args:
+            tool_call: Tool call dict with function name and arguments
+
+        Returns:
+            Tool result dict
+        """
+        tool_name = tool_call["function"]["name"]
+        args = tool_call["function"]["arguments"]
+
+        # Find behavior that owns this tool
+        behavior = self.tool_registry.get(tool_name)
+        if not behavior:
+            return {"error": f"Unknown tool: {tool_name}"}
+
+        # Dispatch to behavior
+        try:
+            result = behavior.dispatch_tool(
+                tool_name=tool_name,
+                args=args,
+                agent=self,
+                workspace=self.workspace,
+                context_manager=self.context_manager,
+                workspace_manager=self.workspace_manager,
+                ledger_file=getattr(self, 'ledger_file', None)
+            )
+        except Exception as e:
+            return {"error": f"Tool {tool_name} failed: {e}"}
+
+        # Notify all behaviors of tool call (for loop detection, etc.)
+        for beh in self.behaviors:
+            try:
+                beh.on_tool_call(
+                    tool_name=tool_name,
+                    args=args,
+                    result=result,
+                    agent=self
+                )
+            except Exception as e:
+                print(f"[{self.name}] Behavior {beh.get_name()} on_tool_call error: {e}")
+
+        return result
+
+    def trigger_behavior_event(self, event_name: str, **kwargs) -> None:
+        """
+        Trigger an event on all behaviors.
+
+        Args:
+            event_name: Event method name (e.g., "on_goal_start")
+            **kwargs: Event-specific arguments
+        """
+        for behavior in self.behaviors:
+            try:
+                event_method = getattr(behavior, event_name, None)
+                if event_method and callable(event_method):
+                    event_method(agent=self, **kwargs)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} {event_name} error: {e}")

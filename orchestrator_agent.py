@@ -27,13 +27,21 @@ class OrchestratorAgent(BaseAgent):
     Tools: Delegation, clarification, planning
     """
 
-    def __init__(self, workspace: Path, context_strategy: ContextStrategy | None = None):
+    def __init__(
+        self,
+        workspace: Path,
+        context_strategy: ContextStrategy | None = None,
+        use_behaviors: bool = False,
+        config_file: str = "orchestrator_config.yaml",
+    ):
         """
         Initialize Orchestrator agent.
 
         Args:
             workspace: Working directory
             context_strategy: Optional context strategy (defaults to AppendUntilFullStrategy)
+            use_behaviors: If True, load behaviors from config instead of using strategies
+            config_file: Path to behavior config YAML (only used if use_behaviors=True)
         """
         super().__init__(
             name="orchestrator",
@@ -41,6 +49,9 @@ class OrchestratorAgent(BaseAgent):
             workspace=workspace,
             config=config,
         )
+
+        # Phase 4: Behavior system support
+        self.use_behaviors = use_behaviors
 
         # Track delegated tasks
         self.delegated_tasks: list[dict[str, Any]] = []
@@ -74,9 +85,17 @@ class OrchestratorAgent(BaseAgent):
         # Set a default goal (will be updated when user makes a request)
         self.context_manager.load_or_init("User conversation")
 
+        # Phase 4: Load behaviors if requested
+        if self.use_behaviors:
+            print(f"[orchestrator] Loading behaviors from {config_file}")
+            self.load_behaviors_from_config(config_file)
+
     def get_tools(self) -> list[dict[str, Any]]:
         """
         Return tools available to Orchestrator.
+
+        Phase 4: If use_behaviors=True, returns tools from behaviors.
+        Otherwise, uses legacy system.
 
         Tools:
         - delegate_to_executor: Send a task to TaskExecutor
@@ -85,6 +104,11 @@ class OrchestratorAgent(BaseAgent):
         - get_executor_status: Check TaskExecutor progress
         + strategy-specific tools (e.g., task management tools)
         """
+        # Phase 4: If using behaviors, return behavior tools
+        if self.use_behaviors:
+            return self.get_behavior_tools()
+
+        # Legacy path
         base_tools = [
             {
                 "type": "function",
@@ -243,7 +267,18 @@ class OrchestratorAgent(BaseAgent):
         return base_tools + strategy_tools + enhancement_tools
 
     def get_system_prompt(self) -> str:
-        """Return Orchestrator-specific system prompt."""
+        """
+        Return Orchestrator-specific system prompt.
+
+        Phase 4: If use_behaviors=True, includes behavior instructions.
+        """
+        # Phase 4: If using behaviors, add behavior instructions
+        if self.use_behaviors:
+            base_text = """You are an orchestrator agent that helps users plan and execute software projects."""
+            behavior_instructions = self.get_behavior_instructions()
+            return base_text + "\n\n" + behavior_instructions if behavior_instructions else base_text
+
+        # Legacy path
         base_text = """You are an orchestrator agent that helps users plan and execute software projects.
 
 Your workflow:
@@ -422,6 +457,8 @@ Tools available:
         """
         Build context using configured context strategy + enhancements.
 
+        Phase 4: If use_behaviors=True, uses behavior system.
+
         Uses context_strategy.build_context() which handles compaction automatically,
         then injects enhancement context sections.
 
@@ -430,6 +467,15 @@ Tools available:
         Returns:
             [system_prompt, ...enhancements..., ...messages...]
         """
+        # Phase 4: If using behaviors, use behavior system
+        if self.use_behaviors:
+            context = [
+                {"role": "system", "content": self.get_system_prompt()},
+                *self.state.messages
+            ]
+            return self.enhance_context_with_behaviors(context)
+
+        # Legacy path
         # Auto-add task management enhancement if task breakdown exists and not already added
         self._auto_add_task_management()
 

@@ -7,24 +7,11 @@
 
 behaviors:
   # Context Management
-  # HierarchicalContextBehavior provides Goal/Task/Subtask hierarchy
-  - type: HierarchicalContextBehavior
+  # CompactWhenNearFullBehavior provides append-until-full context management
+  - type: CompactWhenNearFullBehavior
     params:
-      history_keep: 12  # Keep last 12 message exchanges
-      max_depth: 5      # Maximum nesting depth
-
-  # Tool Behaviors
-  # DelegationBehavior provides task delegation to Architect and TaskExecutor
-  - type: DelegationBehavior
-    params: {}
-
-  # ClarificationBehavior provides user interaction tools
-  - type: ClarificationBehavior
-    params: {}
-
-  # WorkspaceToolsBehavior provides workspace management
-  - type: WorkspaceToolsBehavior
-    params: {}
+      max_tokens: 8000
+      compact_threshold: 0.75
 
   # Utility Behaviors
   # LoopDetectionBehavior detects repeated actions
@@ -32,17 +19,10 @@ behaviors:
     params:
       max_repeats: 5
 
-  # JetboxNotesBehavior provides persistent context
-  - type: JetboxNotesBehavior
-    params:
-      enabled: true
-
-  # StatusDisplayBehavior renders progress
-  - type: StatusDisplayBehavior
-    params:
-      show_hierarchy: true
-
-  # TaskManagementBehavior provides task breakdown and tracking
-  - type: TaskManagementBehavior
-    params:
-      enabled: true
+  # NOTE: The following behaviors are not yet implemented (Phase 2 work):
+  # - DelegationBehavior (provides task delegation to Architect and TaskExecutor)
+  # - ClarificationBehavior (provides user interaction tools)
+  # - WorkspaceToolsBehavior (provides workspace management)
+  # - JetboxNotesBehavior (provides persistent context summaries)
+  # - StatusDisplayBehavior (renders progress and performance stats)
+  # - TaskManagementBehavior (provides task breakdown and tracking)

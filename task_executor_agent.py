@@ -39,6 +39,8 @@ class TaskExecutorAgent(BaseAgent):
         temperature: float = 0.2,
         context_strategy: ContextStrategy | None = None,
         timeout: int | None = None,
+        use_behaviors: bool = False,
+        config_file: str = "task_executor_config.yaml",
     ):
         """
         Initialize TaskExecutor with full agent.py features.
@@ -53,6 +55,8 @@ class TaskExecutorAgent(BaseAgent):
             temperature: LLM temperature
             context_strategy: Context management strategy (defaults to HierarchicalStrategy)
             timeout: Optional timeout override in seconds (defaults to config value)
+            use_behaviors: If True, load behaviors from config instead of using strategies
+            config_file: Path to behavior config YAML (only used if use_behaviors=True)
         """
         # Determine base workspace for BaseAgent (for .agent_context storage)
         base_workspace = Path(workspace) if workspace else Path(".")
@@ -63,6 +67,9 @@ class TaskExecutorAgent(BaseAgent):
             workspace=base_workspace,
             config=config,
         )
+
+        # Phase 4: Behavior system support
+        self.use_behaviors = use_behaviors
 
         # Model configuration
         self.model = model or os.getenv("OLLAMA_MODEL", "gpt-oss:20b")
@@ -97,6 +104,11 @@ class TaskExecutorAgent(BaseAgent):
         self.goal_start_time = None
         self.timeout_override = timeout  # Optional override
 
+        # Phase 4: Load behaviors if requested
+        if self.use_behaviors:
+            print(f"[task_executor] Loading behaviors from {config_file}")
+            self.load_behaviors_from_config(config_file)
+
         # Set initial goal if provided
         if goal:
             self.set_goal(goal)
@@ -104,6 +116,9 @@ class TaskExecutorAgent(BaseAgent):
     def get_tools(self) -> list[dict[str, Any]]:
         """
         Return tools available to TaskExecutor.
+
+        Phase 4: If use_behaviors=True, returns tools from behaviors.
+        Otherwise, uses legacy strategy/enhancement system.
 
         Merges base tools from tools.get_tool_definitions() with
         strategy-specific tools from the context strategy and
@@ -125,6 +140,11 @@ class TaskExecutorAgent(BaseAgent):
         Returns:
             Combined list of all available tools
         """
+        # Phase 4: If using behaviors, return behavior tools
+        if self.use_behaviors:
+            return self.get_behavior_tools()
+
+        # Legacy path: strategy + enhancements
         # Get base tools (file ops, bash, server management)
         base_tools = tools.get_tool_definitions()
 
@@ -152,33 +172,44 @@ class TaskExecutorAgent(BaseAgent):
         """
         Return system prompt with strategy-specific and enhancement instructions injected.
 
+        Phase 4: If use_behaviors=True, includes behavior instructions.
+
         Combines:
         1. Base system prompt from config (generic coding instructions)
         2. Strategy-specific instructions (workflow, tools, guidelines)
         3. Enhancement instructions (jetbox notes, task management, etc.)
+        4. Behavior instructions (if use_behaviors=True)
 
         Returns:
             Complete system prompt for LLM
         """
         base_prompt = config.llm.system_prompt
 
-        # Get strategy-specific instructions
-        strategy_instructions = ""
-        if self.context_strategy:
-            strategy_instructions = self.context_strategy.get_strategy_instructions()
-
-        # Get enhancement instructions
-        enhancement_instructions = []
-        for enhancement in self.enhancements:
-            inst = enhancement.get_enhancement_instructions()
-            if inst:
-                enhancement_instructions.append(inst)
-
-        # Combine base + strategy + enhancements
         parts = [base_prompt]
-        if strategy_instructions:
-            parts.append(strategy_instructions)
-        parts.extend(enhancement_instructions)
+
+        # Phase 4: Add behavior instructions if using behaviors
+        if self.use_behaviors:
+            behavior_instructions = self.get_behavior_instructions()
+            if behavior_instructions:
+                parts.append(behavior_instructions)
+        else:
+            # Legacy path: strategy + enhancements
+            # Get strategy-specific instructions
+            strategy_instructions = ""
+            if self.context_strategy:
+                strategy_instructions = self.context_strategy.get_strategy_instructions()
+
+            # Get enhancement instructions
+            enhancement_instructions = []
+            for enhancement in self.enhancements:
+                inst = enhancement.get_enhancement_instructions()
+                if inst:
+                    enhancement_instructions.append(inst)
+
+            # Combine base + strategy + enhancements
+            if strategy_instructions:
+                parts.append(strategy_instructions)
+            parts.extend(enhancement_instructions)
 
         return "\n".join(parts)
 
@@ -190,9 +221,17 @@ class TaskExecutorAgent(BaseAgent):
         """
         Dispatch tool calls with context_manager injection.
 
+        Phase 4: If use_behaviors=True, dispatches to behaviors.
+        Otherwise, uses legacy tool dispatch.
+
         Overrides BaseAgent.dispatch_tool to inject context_manager
         for tools that need it (mark_subtask_complete, decompose_task).
         """
+        # Phase 4: If using behaviors, dispatch to behavior system
+        if self.use_behaviors:
+            return self.dispatch_tool_to_behavior(tool_call)
+
+        # Legacy path: manual tool dispatch
         import tools
 
         # Get tool name and args
@@ -264,12 +303,29 @@ class TaskExecutorAgent(BaseAgent):
         """
         Build context using configured strategy + enhancements.
 
+        Phase 4: If use_behaviors=True, uses behavior system.
+        Otherwise, uses legacy strategy/enhancement system.
+
         Uses context_strategy.build_context() which handles compaction automatically,
         then injects enhancement context sections.
 
         Returns:
             Context list ready for LLM: [system_prompt, ...enhancements..., ...messages...]
         """
+        # Phase 4: If using behaviors, delegate to behavior system
+        if self.use_behaviors:
+            # Build base context
+            context = [
+                {"role": "system", "content": self.get_system_prompt()},
+                *self.state.messages
+            ]
+
+            # Let behaviors enhance context
+            context = self.enhance_context_with_behaviors(context)
+
+            return context
+
+        # Legacy path: strategy + enhancements
         # Use configured context strategy (default: append-until-full)
         context = self.context_strategy.build_context(
             context_manager=self.context_manager,
@@ -334,24 +390,35 @@ class TaskExecutorAgent(BaseAgent):
             print(f"[task_executor] Creating new workspace for goal")
             self.init_workspace_manager(goal_slug, workspace_path=None)
 
-        # Configure tools with workspace
-        tools.set_workspace(self.workspace_manager)
-        tools.set_ledger(self.workspace_manager.workspace_dir / "agent_ledger.log")
+        # Phase 4: If using behaviors, trigger on_goal_start event
+        if self.use_behaviors:
+            self.trigger_behavior_event(
+                "on_goal_start",
+                goal=goal,
+                workspace=self.workspace,
+                context_manager=self.context_manager,
+                workspace_manager=self.workspace_manager
+            )
+        else:
+            # Legacy path: manual configuration
+            # Configure tools with workspace
+            tools.set_workspace(self.workspace_manager)
+            tools.set_ledger(self.workspace_manager.workspace_dir / "agent_ledger.log")
 
-        # Initialize jetbox notes system (always set workspace)
-        jetbox_notes.set_workspace(self.workspace_manager)
-        jetbox_notes.set_llm_caller(self._llm_caller_for_jetbox)
+            # Initialize jetbox notes system (always set workspace)
+            jetbox_notes.set_workspace(self.workspace_manager)
+            jetbox_notes.set_llm_caller(self._llm_caller_for_jetbox)
 
-        # Add JetboxNotesEnhancement to enhancements list
-        # This will inject notes into context if they exist
-        jetbox_enhancement = JetboxNotesEnhancement(workspace_manager=self.workspace_manager)
-        self.enhancements.append(jetbox_enhancement)
-        print(f"[task_executor] Added JetboxNotesEnhancement")
+            # Add JetboxNotesEnhancement to enhancements list
+            # This will inject notes into context if they exist
+            jetbox_enhancement = JetboxNotesEnhancement(workspace_manager=self.workspace_manager)
+            self.enhancements.append(jetbox_enhancement)
+            print(f"[task_executor] Added JetboxNotesEnhancement")
 
-        # Load existing notes for display (optional)
-        existing_notes = jetbox_notes.load_jetbox_notes()
-        if existing_notes:
-            print(f"[jetbox] Loaded notes: {len(existing_notes)} chars")
+            # Load existing notes for display (optional)
+            existing_notes = jetbox_notes.load_jetbox_notes()
+            if existing_notes:
+                print(f"[jetbox] Loaded notes: {len(existing_notes)} chars")
 
         # Initialize status display (reset stats for new goal)
         self.status_display = StatusDisplay(ctx=self.context_manager, reset_stats=True)
