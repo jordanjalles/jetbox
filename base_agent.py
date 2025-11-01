@@ -334,17 +334,19 @@ class BaseAgent(ABC):
         Also loads system_prompt if present in config.
         Auto-adds DelegationBehavior if agent has can_delegate_to relationships.
 
+        Behavior parameters are merged from global defaults (agent_config.yaml)
+        and agent-specific overrides (this config file).
+
         Example config:
             system_prompt: |
               You are an agent that does X, Y, Z.
 
             behaviors:
               - type: FileToolsBehavior
-                params:
-                  max_file_size: 1000000
+                # No params - uses global defaults
               - type: LoopDetectionBehavior
                 params:
-                  max_repeats: 5
+                  max_repeats: 10  # Override global default
 
         Args:
             config_file: Path to YAML config file
@@ -383,18 +385,69 @@ class BaseAgent(ABC):
 
         print(f"[{self.name}] Loading behaviors from {config_file}")
 
+        # Load global behavior defaults
+        global_defaults = self._load_global_behavior_defaults()
+
         for behavior_spec in config.get("behaviors", []):
             behavior_type = behavior_spec["type"]
-            behavior_params = behavior_spec.get("params", {})
+
+            # Get global defaults for this behavior type
+            default_params = global_defaults.get(behavior_type, {})
+            # If default_params is None (empty YAML entry), convert to empty dict
+            if default_params is None:
+                default_params = {}
+
+            # Get agent-specific overrides
+            agent_params = behavior_spec.get("params", {})
+            # If agent_params is None, convert to empty dict
+            if agent_params is None:
+                agent_params = {}
+
+            # Merge: agent params override global defaults
+            behavior_params = {**default_params, **agent_params}
 
             # Dynamically import and instantiate behavior
             try:
                 behavior_class = self._import_behavior_class(behavior_type)
                 behavior = behavior_class(**behavior_params)
                 self.add_behavior(behavior)
-                print(f"[{self.name}] Loaded behavior: {behavior_type}")
+
+                # Log parameter source
+                if agent_params:
+                    print(f"[{self.name}] Loaded behavior: {behavior_type} (agent-specific params: {agent_params})")
+                elif default_params:
+                    print(f"[{self.name}] Loaded behavior: {behavior_type} (using global defaults)")
+                else:
+                    print(f"[{self.name}] Loaded behavior: {behavior_type} (no parameters)")
             except Exception as e:
                 print(f"[{self.name}] Failed to load behavior {behavior_type}: {e}")
+
+    def _load_global_behavior_defaults(self) -> dict[str, dict[str, Any]]:
+        """
+        Load global behavior parameter defaults from agent_config.yaml.
+
+        Returns:
+            Dict mapping behavior type name to parameter dict
+            Example: {"LoopDetectionBehavior": {"max_repeats": 5}, ...}
+        """
+        import yaml
+
+        config_path = Path(__file__).parent / "agent_config.yaml"
+
+        if not config_path.exists():
+            return {}
+
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+
+            if not config:
+                return {}
+
+            return config.get("behavior_defaults", {})
+        except Exception as e:
+            print(f"[{self.name}] Warning: Failed to load global behavior defaults: {e}")
+            return {}
 
     def _auto_add_delegation_behavior(self) -> None:
         """

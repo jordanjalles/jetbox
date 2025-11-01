@@ -43,7 +43,14 @@ python test_status_display.py
 ### Configuration
 
 **Agent Behavior Configuration:**
-The agent's failure handling, task decomposition, and retry behavior is configured in `agent_config.yaml`. See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for details.
+The agent's failure handling, task decomposition, and retry behavior is configured in `agent_config.yaml`.
+
+**Behavior Parameters:**
+- Defined globally in `agent_config.yaml` under `behavior_defaults`
+- Agent configs can override if needed (currently no overrides)
+- To adjust max_tokens, loop limits, etc. - edit global defaults
+
+See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for complete documentation.
 
 Key settings:
 - **No give-up option**: Agent always decomposes or zooms out when stuck

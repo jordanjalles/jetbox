@@ -2,6 +2,49 @@
 # This file controls the hierarchical task decomposition and failure handling behavior
 
 # ==============================
+# Global Behavior Parameter Defaults
+# ==============================
+# These apply to all agents unless explicitly overridden in agent-specific configs
+behavior_defaults:
+  CompactWhenNearFullBehavior:
+    max_tokens: 8000          # Model-based: 8K for qwen2.5-coder:3b/7b
+    compact_threshold: 0.75   # Compact at 75% capacity
+    keep_recent: 20           # Keep last 20 message exchanges
+
+  LoopDetectionBehavior:
+    max_repeats: 5            # Warn after 5 identical actions
+
+  CommandToolsBehavior:
+    whitelist:                # Safe commands for coding tasks
+      - python
+      - pytest
+      - ruff
+      - pip
+
+  HierarchicalContextBehavior:
+    max_depth: 5              # Maximum task nesting
+    max_siblings: 8           # Max subtasks per level
+    keep_recent: 12           # Message exchanges to keep
+
+  SubAgentContextBehavior:
+    # No parameters needed - uses global settings
+
+  FileToolsBehavior:
+    # No parameters needed
+
+  ServerToolsBehavior:
+    # No parameters needed
+
+  ArchitectToolsBehavior:
+    # No parameters needed
+
+  WorkspaceTaskNotesBehavior:
+    # No parameters needed
+
+  DelegationBehavior:
+    # Parameters come from agents.yaml relationships
+
+# ==============================
 # LLM Settings
 # ==============================
 llm:

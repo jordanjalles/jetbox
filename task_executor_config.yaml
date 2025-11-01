@@ -71,42 +71,26 @@ behaviors:
   # Context Management
   # SubAgentContextBehavior provides delegated work context management
   - type: SubAgentContextBehavior
-    params: {}
 
   # CompactWhenNearFullBehavior handles context compaction
   - type: CompactWhenNearFullBehavior
-    params:
-      max_tokens: 8000  # Model-based, not agent-based
-      compact_threshold: 0.75
-      keep_recent: 20
 
   # Tool Behaviors
   # FileToolsBehavior provides file read/write/list operations
   - type: FileToolsBehavior
-    params: {}
 
   # CommandToolsBehavior provides bash command execution
   - type: CommandToolsBehavior
-    params:
-      whitelist:
-        - python
-        - pytest
-        - ruff
-        - pip
 
   # ServerToolsBehavior provides server start/stop/check operations
   - type: ServerToolsBehavior
-    params: {}
 
   # Utility Behaviors
   # LoopDetectionBehavior detects repeated actions (infinite loops)
   - type: LoopDetectionBehavior
-    params:
-      max_repeats: 5  # Warn after 5 identical actions
 
   # WorkspaceTaskNotesBehavior provides persistent context summaries
   - type: WorkspaceTaskNotesBehavior
-    params: {}
 
   # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
   # Status display is being redesigned for the behavior system.

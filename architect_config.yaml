@@ -118,20 +118,14 @@ behaviors:
   # Context Management
   # CompactWhenNearFullBehavior provides context management for all agents
   - type: CompactWhenNearFullBehavior
-    params:
-      max_tokens: 8000  # Model-based, not agent-based
-      compact_threshold: 0.75  # Compact at 75% capacity
 
   # Tool Behaviors
   # ArchitectToolsBehavior provides architecture artifact creation
   - type: ArchitectToolsBehavior
-    params: {}
 
   # Utility Behaviors
   # LoopDetectionBehavior detects repeated actions
   - type: LoopDetectionBehavior
-    params:
-      max_repeats: 5
 
   # Note: Architect does NOT use WorkspaceTaskNotesBehavior
   # Architecture artifacts are the output, not summaries
