@@ -40,6 +40,7 @@ class DelegationBehavior(AgentBehavior):
         """
         self.agent_relationships = agent_relationships
         self.delegation_tools = []
+        self.delegated_tasks: list[dict[str, Any]] = []  # Track delegated tasks
         self._build_delegation_tools()
 
     def get_name(self) -> str:
@@ -155,6 +156,26 @@ class DelegationBehavior(AgentBehavior):
             # Generic delegation - tool found but handler not implemented
             return {"error": f"Delegation tool '{tool_name}' found but handler not implemented"}
 
+    def track_delegation(
+        self,
+        target_agent: str,
+        task_description: str,
+        result: dict[str, Any]
+    ) -> None:
+        """
+        Track a delegation for reporting.
+
+        Args:
+            target_agent: Name of agent task was delegated to
+            task_description: Description of delegated task
+            result: Delegation result
+        """
+        self.delegated_tasks.append({
+            "agent": target_agent,
+            "task": task_description,
+            "result": result,
+        })
+
     def _consult_architect(self, args: dict[str, Any], agent: Any) -> dict[str, Any]:
         """
         Consult architect agent for project design.
@@ -194,7 +215,7 @@ Please design the architecture for this project and create:
         # 3. Extract architecture docs and task list
         # 4. Return structured result
 
-        return {
+        result = {
             "status": "success",
             "message": "Architect consultation would happen here",
             "workspace_path": str(workspace),
@@ -209,6 +230,11 @@ Please design the architecture for this project and create:
                 }
             ]
         }
+
+        # Track delegation
+        self.track_delegation("architect", args['project_description'], result)
+
+        return result
 
     def _delegate_to_executor(self, args: dict[str, Any], agent: Any) -> dict[str, Any]:
         """
@@ -249,12 +275,17 @@ Please design the architecture for this project and create:
         # 3. Extract results
         # 4. Return structured result
 
-        return {
+        result = {
             "status": "success",
             "message": "Task execution would happen here",
             "files_created": ["example.py"],
             "workspace_path": str(executor.workspace) if executor.workspace else ".agent_workspace/new"
         }
+
+        # Track delegation
+        self.track_delegation("task_executor", args["task_description"], result)
+
+        return result
 
     def enhance_context(
         self,

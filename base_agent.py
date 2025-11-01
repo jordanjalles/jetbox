@@ -1027,3 +1027,147 @@ class BaseAgent(ABC):
         print("="*70)
 
         return summary
+
+    # ===========================
+    # Generic run() method (works for ALL agents)
+    # ===========================
+
+    def run(self, max_rounds: int | None = None) -> dict[str, Any]:
+        """
+        Generic agent run loop that works for all agent types.
+
+        This method provides a standard execution loop that:
+        1. Triggers behavior events (on_goal_start, on_round_start, etc.)
+        2. Calls LLM in a loop
+        3. Dispatches tool calls via dispatch_tool()
+        4. Checks for completion (mark_complete, goal_complete, etc.)
+        5. Handles timeouts and circuit breakers
+        6. Returns structured results
+
+        Override this method in subclasses if you need custom run logic.
+        Most agents should be able to use this default implementation.
+
+        Args:
+            max_rounds: Maximum rounds before giving up (defaults to config value)
+
+        Returns:
+            Result dict with status, message, etc.
+        """
+        # Get max rounds from config or parameter
+        if max_rounds is None:
+            max_rounds = getattr(self.config.rounds, 'max_per_subtask', 128) if self.config else 128
+
+        # Get model and temperature from config or defaults
+        model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
+        temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
+
+        # Trigger on_goal_start event
+        if self.context_manager and self.context_manager.state.goal:
+            goal = self.context_manager.state.goal.description
+            self.trigger_behavior_event("on_goal_start", goal=goal)
+
+        print(f"[{self.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
+
+        try:
+            for round_no in range(1, max_rounds + 1):
+                # Trigger on_round_start
+                self.trigger_behavior_event("on_round_start", round=round_no)
+
+                # Build context and call LLM
+                print(f"\n[{self.name}] Round {round_no}/{max_rounds}")
+                response = self.call_llm(model=model, temperature=temperature)
+
+                # Check for circuit breaker (consecutive timeouts)
+                if response.get("_circuit_breaker"):
+                    print(f"[{self.name}] Circuit breaker triggered - saving partial progress")
+                    partial_result = self._save_partial_progress()
+                    return partial_result
+
+                # Check for timeout (will retry)
+                if response.get("_timeout"):
+                    print(f"[{self.name}] LLM timeout - retrying next round")
+                    continue
+
+                # Add assistant message to history
+                if "message" in response:
+                    msg = response["message"]
+                    self.add_message(msg)
+
+                    # Execute tool calls
+                    if "tool_calls" in msg and msg["tool_calls"]:
+                        tool_calls = msg["tool_calls"]
+                        print(f"[{self.name}] Executing {len(tool_calls)} tool call(s)")
+
+                        for tool_call in tool_calls:
+                            tool_name = tool_call["function"]["name"]
+                            print(f"[{self.name}] -> {tool_name}")
+
+                            # Dispatch tool
+                            result = self.dispatch_tool(tool_call)
+
+                            # Add tool result to messages
+                            import json
+                            tool_result_str = json.dumps(result)
+                            tool_message = {
+                                "role": "tool",
+                                "content": tool_result_str,
+                            }
+                            self.add_message(tool_message)
+
+                            # Check for goal completion
+                            # Look for completion signals in result
+                            if isinstance(result, dict):
+                                # Check for mark_complete/mark_failed
+                                if result.get("success") is True and "summary" in result:
+                                    print(f"[{self.name}] Goal marked complete")
+                                    self.trigger_behavior_event("on_goal_complete", result=result)
+                                    return {
+                                        "status": "success",
+                                        "summary": result.get("summary"),
+                                        "workspace": str(self.workspace) if self.workspace else None,
+                                    }
+                                elif result.get("success") is False and "reason" in result:
+                                    print(f"[{self.name}] Goal marked failed")
+                                    self.trigger_behavior_event("on_goal_failed", result=result)
+                                    return {
+                                        "status": "failure",
+                                        "reason": result.get("reason"),
+                                        "workspace": str(self.workspace) if self.workspace else None,
+                                    }
+
+                                # Check for goal_complete status (legacy tools)
+                                actual_result = result.get("result", result)
+                                if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
+                                    print(f"[{self.name}] Goal completed (legacy signal)")
+                                    self.trigger_behavior_event("on_goal_complete", result=actual_result)
+                                    return {
+                                        "status": "success",
+                                        "message": actual_result.get("message", "Goal completed"),
+                                        "workspace": str(self.workspace) if self.workspace else None,
+                                    }
+
+                # Trigger on_round_end
+                self.trigger_behavior_event("on_round_end", round=round_no)
+
+                # Increment round counter
+                self.increment_round()
+
+            # Max rounds reached
+            print(f"[{self.name}] Max rounds ({max_rounds}) reached without completion")
+            goal_desc = self.context_manager.state.goal.description if self.context_manager and self.context_manager.state.goal else "unknown"
+            return {
+                "status": "failure",
+                "reason": f"Max rounds ({max_rounds}) exceeded",
+                "goal": goal_desc,
+                "workspace": str(self.workspace) if self.workspace else None,
+            }
+
+        except Exception as e:
+            print(f"[{self.name}] Exception during run: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "reason": str(e),
+                "workspace": str(self.workspace) if self.workspace else None,
+            }

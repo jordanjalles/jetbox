@@ -44,7 +44,7 @@ class SubAgentContextBehavior(AgentBehavior):
 
         No configuration needed - this behavior only injects context and provides tools.
         """
-        pass
+        self.goal = None  # Store goal for context injection
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -218,3 +218,58 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
 
 The controlling agent is waiting for your completion signal.
 """
+
+    def on_goal_set(self, agent: Any, goal: str, **kwargs: Any) -> None:
+        """
+        Handle goal setting event.
+
+        This method initializes all subsystems needed for goal execution:
+        - Context manager with goal
+        - Workspace manager (new or existing)
+        - Performance tracking
+        - Tool configuration
+
+        Args:
+            agent: Agent instance
+            goal: Goal description
+            **kwargs: Additional context (workspace, context_manager, workspace_manager, etc.)
+        """
+        # Store goal for context injection
+        self.goal = goal
+
+        # Initialize context manager with goal
+        if not agent.context_manager:
+            from context_manager import ContextManager
+            agent.context_manager = ContextManager()
+        agent.context_manager.load_or_init(goal)
+
+        # Initialize workspace manager
+        # workspace parameter: None = create new, Path = reuse existing
+        workspace_param = kwargs.get('workspace')
+        goal_slug = goal.lower()[:50].replace(" ", "-").replace("/", "-")
+
+        if workspace_param:
+            # Reuse mode: use existing workspace directory
+            print(f"[subagent_context] Reusing workspace: {workspace_param}")
+            agent.init_workspace_manager(goal_slug, workspace_path=workspace_param)
+        else:
+            # Create new mode: create isolated workspace
+            print(f"[subagent_context] Creating new workspace for goal")
+            agent.init_workspace_manager(goal_slug, workspace_path=None)
+
+        # Initialize performance tracking
+        agent.init_perf_stats()
+
+        # Configure tools with workspace (for FileToolsBehavior, CommandToolsBehavior)
+        # This is handled by behaviors themselves - no need to do it here
+
+        # Initialize status display if not already present
+        if not hasattr(agent, 'status_display') or agent.status_display is None:
+            from status_display import StatusDisplay
+            agent.status_display = StatusDisplay(ctx=agent.context_manager, reset_stats=True)
+
+        # Start wall-clock timer for goal
+        import time
+        agent.goal_start_time = time.time()
+
+        print(f"[subagent_context] Goal set: {goal}")
