@@ -812,8 +812,8 @@ behaviors:
 | Phase 2: Tool Behaviors | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | `96e915a` |
 | Phase 3: Context Behaviors | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | `9d4bcd9` |
 | Phase 4: Update Agents | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | `4a146ef` |
-| Phase 5: Deprecations | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | (pending) |
-| Phase 6: Testing | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | (pending) |
+| Phase 5: Deprecations | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | `9435dd9` |
+| Phase 6: Testing | ✅ COMPLETE | 2025-01-01 | 2025-01-01 | `cf6c4b7` |
 
 **Legend**: ✅ Complete | 🔄 In Progress | 🔲 Not Started | ⚠️ Blocked
 
