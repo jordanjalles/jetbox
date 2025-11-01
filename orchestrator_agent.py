@@ -108,19 +108,15 @@ class OrchestratorAgent(BaseAgent):
         """
         Return tools available to Orchestrator.
 
-        Phase 4: If use_behaviors=True, returns tools from behaviors.
-        Otherwise, uses legacy system.
+        Phase 4: If use_behaviors=True, uses base class default (behavior tools).
+        Otherwise, uses legacy orchestrator-specific tools.
 
-        Tools:
-        - delegate_to_executor: Send a task to TaskExecutor
-        - clarify_with_user: Ask user for clarification
-        - create_task_plan: Break down user request into tasks
-        - get_executor_status: Check TaskExecutor progress
-        + strategy-specific tools (e.g., task management tools)
+        Returns:
+            List of tool definitions
         """
-        # Phase 4: If using behaviors, return behavior tools
+        # Phase 4: If using behaviors, use base class default
         if self.use_behaviors:
-            return self.get_behavior_tools()
+            return super().get_tools()
 
         # Legacy path
         base_tools = [
@@ -284,27 +280,20 @@ class OrchestratorAgent(BaseAgent):
         """
         Return Orchestrator-specific system prompt.
 
-        Phase 4: If use_behaviors=True, includes behavior instructions.
-        Phase 4.2: Loads system prompt from config if available.
-        Phase 5: Dynamically generates tool documentation from loaded behaviors.
+        Phase 4: If use_behaviors=True, uses base class default (config + behavior instructions + tool docs).
+        Otherwise, uses legacy hardcoded prompt with strategy instructions.
+
+        Returns:
+            System prompt string
         """
-        # Phase 4: If using behaviors, add behavior instructions
+        # Phase 4: If using behaviors, use base class default
         if self.use_behaviors:
-            # Phase 4.2: Use config system prompt if available, otherwise fall back to hardcoded
-            base_text = self.config_system_prompt if self.config_system_prompt else """You are an orchestrator agent that helps users plan and execute software projects."""
-
-            parts = [base_text]
-
-            behavior_instructions = self.get_behavior_instructions()
-            if behavior_instructions:
-                parts.append(behavior_instructions)
-
-            # Phase 5: Add dynamic tool documentation
-            tool_docs = self.generate_tool_documentation()
-            if tool_docs:
-                parts.append(tool_docs)
-
-            return "\n\n".join(parts)
+            # Base class handles: config prompt + behavior instructions + tool docs
+            base_result = super().get_system_prompt()
+            # If base class returned empty (no config prompt), use hardcoded fallback
+            if not base_result:
+                return """You are an orchestrator agent that helps users plan and execute software projects."""
+            return base_result
 
         # Legacy path
         base_text = """You are an orchestrator agent that helps users plan and execute software projects.
@@ -485,23 +474,15 @@ Tools available:
         """
         Build context using configured context strategy + enhancements.
 
-        Phase 4: If use_behaviors=True, uses behavior system.
-
-        Uses context_strategy.build_context() which handles compaction automatically,
-        then injects enhancement context sections.
-
-        Auto-adds TaskManagementEnhancement if task breakdown exists in workspace.
+        Phase 4: If use_behaviors=True, uses base class default (system prompt + messages + behavior enhancements).
+        Otherwise, uses legacy strategy/enhancement system with auto-task-management detection.
 
         Returns:
-            [system_prompt, ...enhancements..., ...messages...]
+            Context list ready for LLM
         """
-        # Phase 4: If using behaviors, use behavior system
+        # Phase 4: If using behaviors, use base class default
         if self.use_behaviors:
-            context = [
-                {"role": "system", "content": self.get_system_prompt()},
-                *self.state.messages
-            ]
-            return self.enhance_context_with_behaviors(context)
+            return super().build_context()
 
         # Legacy path
         # Auto-add task management enhancement if task breakdown exists and not already added

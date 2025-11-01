@@ -1,8 +1,5 @@
 """
 TaskExecutor agent - focused on executing specific coding tasks.
-
-Uses hierarchical context management (Goal → Task → Subtask → Action).
-Keeps last N message exchanges to stay focused on current work.
 """
 from __future__ import annotations
 from typing import Any
@@ -127,32 +124,20 @@ class TaskExecutorAgent(BaseAgent):
         """
         Return tools available to TaskExecutor.
 
-        Phase 4: If use_behaviors=True, returns tools from behaviors.
+        Phase 4: If use_behaviors=True, uses base class default (behavior tools).
         Otherwise, uses legacy strategy/enhancement system.
 
-        Merges base tools from tools.get_tool_definitions() with
-        strategy-specific tools from the context strategy and
-        enhancement tools.
-
-        Base tools include:
-        - File operations: write_file, read_file, list_dir, grep_file
-        - Command execution: run_bash (any shell command)
-        - Server management: start_server, stop_server, check_server, list_servers
-
-        Strategy-specific tools (added by context strategy):
-        - Hierarchical: mark_subtask_complete, decompose_task
-        - Other strategies: custom tools as needed
-
-        Enhancement tools (added by enhancements):
-        - JetboxNotes: no tools (auto-generated)
-        - TaskManagement: task CRUD operations
+        Legacy mode merges:
+        - Base tools from tools.get_tool_definitions()
+        - Strategy-specific tools (hierarchical: mark_subtask_complete, decompose_task)
+        - Enhancement tools (jetbox notes, task management)
 
         Returns:
             Combined list of all available tools
         """
-        # Phase 4: If using behaviors, return behavior tools
+        # Phase 4: If using behaviors, use base class default
         if self.use_behaviors:
-            return self.get_behavior_tools()
+            return super().get_tools()
 
         # Legacy path: strategy + enhancements
         # Get base tools (file ops, bash, server management)
@@ -182,53 +167,48 @@ class TaskExecutorAgent(BaseAgent):
         """
         Return system prompt with strategy-specific and enhancement instructions injected.
 
-        Phase 4: If use_behaviors=True, includes behavior instructions.
-        Phase 4.2: Loads system prompt from config if available.
-        Phase 5: Dynamically generates tool documentation from loaded behaviors.
+        Phase 4: If use_behaviors=True, uses base class default (config + behavior instructions + tool docs).
+        Otherwise, uses legacy strategy/enhancement system.
 
-        Combines:
-        1. Base system prompt from config (generic coding instructions)
-        2. Strategy-specific instructions (workflow, tools, guidelines)
-        3. Enhancement instructions (jetbox notes, task management, etc.)
-        4. Behavior instructions (if use_behaviors=True)
-        5. Dynamic tool documentation (if use_behaviors=True)
+        Legacy mode combines:
+        1. Base system prompt from config
+        2. Strategy-specific instructions (hierarchical workflow)
+        3. Enhancement instructions (jetbox notes, task management)
 
         Returns:
             Complete system prompt for LLM
         """
+        # Phase 4: If using behaviors, use base class default
+        if self.use_behaviors:
+            # Base class handles: config prompt + behavior instructions + tool docs
+            base_result = super().get_system_prompt()
+            # If base class returned empty (no config prompt), use agent_config fallback
+            if not base_result:
+                return config.llm.system_prompt
+            return base_result
+
+        # Legacy path: strategy + enhancements
         # Phase 4.2: Use config system prompt if available, otherwise fall back to agent_config.yaml
         base_prompt = self.config_system_prompt if self.config_system_prompt else config.llm.system_prompt
 
         parts = [base_prompt]
 
-        # Phase 4: Add behavior instructions if using behaviors
-        if self.use_behaviors:
-            behavior_instructions = self.get_behavior_instructions()
-            if behavior_instructions:
-                parts.append(behavior_instructions)
+        # Get strategy-specific instructions
+        strategy_instructions = ""
+        if self.context_strategy:
+            strategy_instructions = self.context_strategy.get_strategy_instructions()
 
-            # Phase 5: Add dynamic tool documentation
-            tool_docs = self.generate_tool_documentation()
-            if tool_docs:
-                parts.append(tool_docs)
-        else:
-            # Legacy path: strategy + enhancements
-            # Get strategy-specific instructions
-            strategy_instructions = ""
-            if self.context_strategy:
-                strategy_instructions = self.context_strategy.get_strategy_instructions()
+        # Get enhancement instructions
+        enhancement_instructions = []
+        for enhancement in self.enhancements:
+            inst = enhancement.get_enhancement_instructions()
+            if inst:
+                enhancement_instructions.append(inst)
 
-            # Get enhancement instructions
-            enhancement_instructions = []
-            for enhancement in self.enhancements:
-                inst = enhancement.get_enhancement_instructions()
-                if inst:
-                    enhancement_instructions.append(inst)
-
-            # Combine base + strategy + enhancements
-            if strategy_instructions:
-                parts.append(strategy_instructions)
-            parts.extend(enhancement_instructions)
+        # Combine base + strategy + enhancements
+        if strategy_instructions:
+            parts.append(strategy_instructions)
+        parts.extend(enhancement_instructions)
 
         return "\n".join(parts)
 
@@ -240,15 +220,15 @@ class TaskExecutorAgent(BaseAgent):
         """
         Dispatch tool calls with context_manager injection.
 
-        Phase 4: If use_behaviors=True, dispatches to behaviors.
-        Otherwise, uses legacy tool dispatch.
+        Phase 4: If use_behaviors=True, uses base class default (dispatch to behaviors).
+        Otherwise, uses legacy tool dispatch with context_manager injection and loop detection.
 
-        Overrides BaseAgent.dispatch_tool to inject context_manager
-        for tools that need it (mark_subtask_complete, decompose_task).
+        Returns:
+            Tool result dict
         """
-        # Phase 4: If using behaviors, dispatch to behavior system
+        # Phase 4: If using behaviors, use base class default
         if self.use_behaviors:
-            return self.dispatch_tool_to_behavior(tool_call)
+            return super().dispatch_tool(tool_call)
 
         # Legacy path: manual tool dispatch
         import tools
@@ -322,27 +302,17 @@ class TaskExecutorAgent(BaseAgent):
         """
         Build context using configured strategy + enhancements.
 
-        Phase 4: If use_behaviors=True, uses behavior system.
+        Phase 4: If use_behaviors=True, uses base class default (system prompt + messages + behavior enhancements).
         Otherwise, uses legacy strategy/enhancement system.
 
-        Uses context_strategy.build_context() which handles compaction automatically,
-        then injects enhancement context sections.
+        Legacy mode uses context_strategy.build_context() with enhancement injection.
 
         Returns:
-            Context list ready for LLM: [system_prompt, ...enhancements..., ...messages...]
+            Context list ready for LLM
         """
-        # Phase 4: If using behaviors, delegate to behavior system
+        # Phase 4: If using behaviors, use base class default
         if self.use_behaviors:
-            # Build base context
-            context = [
-                {"role": "system", "content": self.get_system_prompt()},
-                *self.state.messages
-            ]
-
-            # Let behaviors enhance context
-            context = self.enhance_context_with_behaviors(context)
-
-            return context
+            return super().build_context()
 
         # Legacy path: strategy + enhancements
         # Use configured context strategy (default: append-until-full)

@@ -159,26 +159,6 @@ class BaseAgent(ABC):
     # ===========================
 
     @abstractmethod
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Return tool definitions for this agent.
-
-        Returns:
-            List of tool definitions in Ollama format
-        """
-        pass
-
-    @abstractmethod
-    def get_system_prompt(self) -> str:
-        """
-        Return system prompt for this agent.
-
-        Returns:
-            System prompt string
-        """
-        pass
-
-    @abstractmethod
     def get_context_strategy(self) -> str:
         """
         Return context management strategy name.
@@ -192,15 +172,84 @@ class BaseAgent(ABC):
         """
         pass
 
-    @abstractmethod
+    # ===========================
+    # Methods with default implementations
+    # (Agents can override for custom behavior)
+    # ===========================
+
+    def get_tools(self) -> list[dict[str, Any]]:
+        """
+        Return tool definitions for this agent.
+
+        Default implementation: Returns behavior tools if use_behaviors=True.
+        Override this method if you need custom tool handling or legacy strategy support.
+
+        Returns:
+            List of tool definitions in Ollama format
+        """
+        if hasattr(self, 'use_behaviors') and self.use_behaviors:
+            return self.get_behavior_tools()
+        # If no behaviors, return empty list (agent should override)
+        return []
+
+    def get_system_prompt(self) -> str:
+        """
+        Return system prompt for this agent.
+
+        Default implementation: Returns config prompt + behavior instructions + tool docs.
+        Override this method to provide custom system prompt or legacy strategy support.
+
+        Returns:
+            System prompt string
+        """
+        if hasattr(self, 'use_behaviors') and self.use_behaviors:
+            # Use config prompt if available, otherwise empty base
+            base_prompt = self.config_system_prompt if self.config_system_prompt else ""
+
+            parts = [base_prompt] if base_prompt else []
+
+            # Add behavior instructions
+            behavior_instructions = self.get_behavior_instructions()
+            if behavior_instructions:
+                parts.append(behavior_instructions)
+
+            # Add dynamic tool documentation
+            tool_docs = self.generate_tool_documentation()
+            if tool_docs:
+                parts.append(tool_docs)
+
+            return "\n\n".join(parts)
+
+        # If no behaviors, return empty (agent should override)
+        return ""
+
     def build_context(self) -> list[dict[str, Any]]:
         """
         Build context for LLM call using this agent's strategy.
 
+        Default implementation: Basic context with system prompt + messages + behavior enhancements.
+        Override this method if you need custom context building or legacy strategy support.
+
         Returns:
             List of messages to send to LLM
         """
-        pass
+        if hasattr(self, 'use_behaviors') and self.use_behaviors:
+            # Build basic context
+            context = [
+                {"role": "system", "content": self.get_system_prompt()},
+                *self.state.messages
+            ]
+
+            # Let behaviors enhance context
+            context = self.enhance_context_with_behaviors(context)
+
+            return context
+
+        # If no behaviors, return basic context (agent should override for legacy support)
+        return [
+            {"role": "system", "content": self.get_system_prompt()},
+            *self.state.messages
+        ]
 
     # ===========================
     # Shared functionality
@@ -291,16 +340,21 @@ class BaseAgent(ABC):
         """
         Dispatch a tool call to the appropriate handler.
 
+        Default implementation: Dispatches to behavior system if use_behaviors=True.
+        Override this method if you need custom tool dispatch or legacy tool handling.
+
         Args:
             tool_call: Tool call dict with function name and arguments
 
         Returns:
             Tool result dict
         """
-        # This will be implemented by importing dispatch from agent.py
-        # or by having each agent implement their own dispatch
-        from agent import dispatch
-        return dispatch(tool_call)
+        if hasattr(self, 'use_behaviors') and self.use_behaviors:
+            return self.dispatch_tool_to_behavior(tool_call)
+
+        # If no behaviors, raise error (agent should override for legacy support)
+        tool_name = tool_call["function"]["name"]
+        return {"error": f"Tool dispatch not implemented for {tool_name} (agent should override dispatch_tool)"}
 
     def persist_state(self) -> None:
         """Save agent state to disk."""
