@@ -148,20 +148,28 @@ def get_next_task(skip_dependencies: bool = False) -> dict[str, Any]:
 def mark_task_status(
     task_id: str,
     status: str,
-    notes: str = ""
+    notes: str = "",
+    result: str = ""
 ) -> dict[str, Any]:
     """
     Update task status (pending, in_progress, completed, failed).
+
+    Automatically manages timestamps and attempts:
+    - Transitioning to "in_progress": Sets started_at, increments attempts
+    - Transitioning to "completed" or "failed": Sets completed_at, stores result
 
     Args:
         task_id: Task identifier (e.g., "T1", "T2")
         status: New status - one of: "pending", "in_progress", "completed", "failed"
         notes: Optional notes about the status change
+        result: Optional result summary (used when marking completed/failed)
 
     Returns:
         {
             "status": "success",
-            "message": "Task T1 marked as completed"
+            "message": "Task T1 marked as completed",
+            "task_id": "T1",
+            "new_status": "completed"
         }
     """
     if status not in ["pending", "in_progress", "completed", "failed"]:
@@ -187,10 +195,25 @@ def mark_task_status(
         task_found = False
         for task in data.get("tasks", []):
             if task["id"] == task_id:
-                old_status = task.get("status", "pending")
                 task["status"] = status
                 task["status_updated_at"] = datetime.now().isoformat()
 
+                # Handle status-specific updates
+                if status == "in_progress":
+                    # Set started_at on first transition to in_progress
+                    if not task.get("started_at"):
+                        task["started_at"] = datetime.now().isoformat()
+                    # Increment attempts
+                    task["attempts"] = task.get("attempts", 0) + 1
+
+                elif status in ["completed", "failed"]:
+                    # Set completed_at
+                    task["completed_at"] = datetime.now().isoformat()
+                    # Store result if provided
+                    if result:
+                        task["result"] = result
+
+                # Add notes if provided
                 if notes:
                     if "notes" not in task:
                         task["notes"] = []
@@ -329,7 +352,7 @@ def get_task_management_tool_definitions() -> list[dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "mark_task_status",
-                "description": "Mark a task's status (pending, in_progress, completed, failed). Use this to track progress through the task breakdown.",
+                "description": "Mark a task's status (pending, in_progress, completed, failed). Automatically manages timestamps: sets started_at on in_progress, completed_at on completion. Use this to track progress through the task breakdown.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -345,6 +368,10 @@ def get_task_management_tool_definitions() -> list[dict[str, Any]]:
                         "notes": {
                             "type": "string",
                             "description": "Optional notes about the status change"
+                        },
+                        "result": {
+                            "type": "string",
+                            "description": "Optional result summary when marking completed or failed (e.g., 'Created auth module with JWT support', 'Failed: missing database connection')"
                         }
                     },
                     "required": ["task_id", "status"]

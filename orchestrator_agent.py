@@ -425,9 +425,14 @@ Tools available:
         Uses context_strategy.build_context() which handles compaction automatically,
         then injects enhancement context sections.
 
+        Auto-adds TaskManagementEnhancement if task breakdown exists in workspace.
+
         Returns:
             [system_prompt, ...enhancements..., ...messages...]
         """
+        # Auto-add task management enhancement if task breakdown exists and not already added
+        self._auto_add_task_management()
+
         # Use configured context strategy to build base context
         context = self.context_strategy.build_context(
             context_manager=self.context_manager,
@@ -449,6 +454,44 @@ Tools available:
                 enhancement_index += 1
 
         return context
+
+    def _auto_add_task_management(self) -> None:
+        """
+        Auto-add TaskManagementEnhancement if task breakdown exists.
+
+        This allows orchestrator to see task status during delegation workflow
+        without requiring explicit add_task_management() call.
+
+        Only adds if:
+        1. Task breakdown file exists in workspace
+        2. Enhancement not already added
+        """
+        # Skip if already have task management enhancement
+        if any(isinstance(e, TaskManagementEnhancement) for e in self.enhancements):
+            return
+
+        # Check for task breakdown in workspace
+        task_file = Path(self.workspace) / "architecture" / "task-breakdown.json"
+        if not task_file.exists():
+            return
+
+        # Task breakdown exists - add enhancement
+        print(f"[orchestrator] Auto-adding TaskManagementEnhancement (found {task_file})")
+
+        # Create workspace manager if needed
+        if not self.workspace_manager:
+            self.workspace_manager = WorkspaceManager(
+                goal="orchestrator-task-management",
+                workspace_path=self.workspace
+            )
+
+        # Add enhancement
+        task_enhancement = TaskManagementEnhancement(workspace_manager=self.workspace_manager)
+        self.enhancements.append(task_enhancement)
+
+        # Configure task management tools with workspace
+        import task_management_tools
+        task_management_tools.set_workspace(self.workspace_manager)
 
     def _get_model_context_window(self) -> int:
         """

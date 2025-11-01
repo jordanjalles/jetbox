@@ -6,7 +6,6 @@ in the workspace: architecture overviews, module specifications, and task breakd
 """
 from __future__ import annotations
 from typing import Any
-from pathlib import Path
 import json
 from datetime import datetime
 import re
@@ -196,6 +195,22 @@ def write_task_list(
     # Create architecture directory
     arch_dir = _workspace_manager.workspace_dir / "architecture"
     arch_dir.mkdir(exist_ok=True)
+
+    # Initialize status tracking fields for each task
+    for task in tasks:
+        # Only initialize if not already present (allows for updating existing breakdowns)
+        if "status" not in task:
+            task["status"] = "pending"
+        if "started_at" not in task:
+            task["started_at"] = None
+        if "completed_at" not in task:
+            task["completed_at"] = None
+        if "result" not in task:
+            task["result"] = None
+        if "attempts" not in task:
+            task["attempts"] = 0
+        if "notes" not in task:
+            task["notes"] = []
 
     # Build task breakdown structure
     breakdown = {

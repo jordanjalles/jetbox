@@ -284,9 +284,14 @@ class ArchitectAgent(BaseAgent):
         """
         Build context using configured context strategy + enhancements.
 
+        Auto-adds TaskManagementEnhancement if task breakdown exists in workspace.
+
         Returns:
             Context list ready for LLM
         """
+        # Auto-add task management enhancement if task breakdown exists and not already added
+        self._auto_add_task_management()
+
         # Build base context
         context = self.context_strategy.build_context(
             context_manager=self.context_manager,
@@ -308,6 +313,41 @@ class ArchitectAgent(BaseAgent):
                 enhancement_index += 1
 
         return context
+
+    def _auto_add_task_management(self) -> None:
+        """
+        Auto-add TaskManagementEnhancement if task breakdown exists.
+
+        This allows architect to see task status after creating task breakdown,
+        without requiring explicit configure_workspace() call.
+
+        Only adds if:
+        1. Task breakdown file exists in workspace
+        2. Enhancement not already added
+        """
+        # Skip if already have task management enhancement
+        if any(isinstance(e, TaskManagementEnhancement) for e in self.enhancements):
+            return
+
+        # Check for task breakdown in workspace
+        task_file = Path(self.workspace) / "architecture" / "task-breakdown.json"
+        if not task_file.exists():
+            return
+
+        # Task breakdown exists - add enhancement
+        print(f"[architect] Auto-adding TaskManagementEnhancement (found {task_file})")
+
+        # Create workspace manager if needed
+        if not self.workspace_manager:
+            self.workspace_manager = WorkspaceManager(
+                goal="architect-task-management",
+                workspace_path=self.workspace
+            )
+
+        # Add enhancement
+        task_management_tools.set_workspace(self.workspace_manager)
+        task_enhancement = TaskManagementEnhancement(workspace_manager=self.workspace_manager)
+        self.enhancements.append(task_enhancement)
 
     def dispatch_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
         """
