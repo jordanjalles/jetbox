@@ -1,42 +1,87 @@
 """
 Shared tool implementations for Jetbox agents.
 
-All file-based tools (write_file, read_file, list_dir) are workspace-aware:
-they use WorkspaceManager to resolve paths and enforce isolation.
+DEPRECATED: This module is deprecated in favor of the composable behaviors system.
+All tools have been extracted to behaviors/ directory:
+- FileToolsBehavior: write_file, read_file, list_dir
+- CommandToolsBehavior: run_bash
+- ServerToolsBehavior: start_server, stop_server, check_server, list_servers
 
-write_file and read_file now accept **kwargs to gracefully handle parameter invention:
-- Supported parameters: append, encoding, overwrite, max_size
-- Unsupported parameters: ignored with warning (no crashes)
-- This prevents agent failures when LLM invents reasonable-sounding parameters
+This file now acts as a compatibility wrapper that delegates to the behaviors.
+Existing code will continue to work, but new code should use behaviors directly.
 
-All tools return structured results (strings or dicts) suitable for LLM consumption.
+Migration example:
+    OLD:
+        import tools
+        tools.set_workspace(workspace_manager)
+        tools.write_file("test.txt", "content")
+
+    NEW:
+        from behaviors import FileToolsBehavior
+        file_tools = FileToolsBehavior(workspace_manager=workspace_manager)
+        file_tools.dispatch_tool("write_file", {"path": "test.txt", "content": "content"})
 """
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-import time
+import warnings
 from pathlib import Path
 from typing import Any
 
-# REMOVED: SAFE_BIN whitelist - replaced with run_bash for full flexibility
+# Import behaviors for delegation
+from behaviors import FileToolsBehavior, CommandToolsBehavior, ServerToolsBehavior
 
-# Global references set by agent at runtime
+# Global references set by agent at runtime (for backward compatibility)
 _workspace = None  # WorkspaceManager instance
 _ledger_file = None  # Path to ledger file for audit trail
 
+# Global behavior instances (created when set_workspace/set_ledger called)
+_file_tools: FileToolsBehavior | None = None
+_command_tools: CommandToolsBehavior | None = None
+_server_tools: ServerToolsBehavior | None = None
+
 
 def set_workspace(workspace_manager) -> None:
-    """Set the workspace manager for path resolution."""
-    global _workspace
+    """
+    Set the workspace manager for path resolution.
+
+    DEPRECATED: This function is maintained for backward compatibility.
+    New code should instantiate behaviors directly.
+    """
+    global _workspace, _file_tools, _command_tools, _server_tools
     _workspace = workspace_manager
+
+    # Create behavior instances with workspace
+    _file_tools = FileToolsBehavior(
+        workspace_manager=workspace_manager,
+        ledger_file=_ledger_file
+    )
+    _command_tools = CommandToolsBehavior(
+        workspace_manager=workspace_manager,
+        ledger_file=_ledger_file
+    )
+    _server_tools = ServerToolsBehavior(
+        workspace_manager=workspace_manager,
+        ledger_file=_ledger_file
+    )
 
 
 def set_ledger(ledger_path: Path) -> None:
-    """Set the ledger file path for audit logging."""
-    global _ledger_file
+    """
+    Set the ledger file path for audit logging.
+
+    DEPRECATED: This function is maintained for backward compatibility.
+    New code should instantiate behaviors directly.
+    """
+    global _ledger_file, _file_tools, _command_tools, _server_tools
     _ledger_file = ledger_path
+
+    # Update behavior instances if they exist
+    if _file_tools:
+        _file_tools.ledger_file = ledger_path
+    if _command_tools:
+        _command_tools.ledger_file = ledger_path
+    if _server_tools:
+        _server_tools.ledger_file = ledger_path
 
 
 def _ledger_append(kind: str, detail: str) -> None:
@@ -54,12 +99,14 @@ def _ledger_append(kind: str, detail: str) -> None:
 
 
 # ----------------------------
-# File Operation Tools
+# File Operation Tools (Compatibility Wrappers)
 # ----------------------------
 
 def list_dir(path: str | None = ".", **kwargs) -> list[str]:
     """
     List files in directory (non-recursive, workspace-aware).
+
+    DEPRECATED: Delegates to FileToolsBehavior. Use behaviors directly in new code.
 
     Args:
         path: Directory path (relative to workspace if set)
@@ -67,25 +114,20 @@ def list_dir(path: str | None = ".", **kwargs) -> list[str]:
     Returns:
         Sorted list of filenames, or error message list
     """
-    global _workspace
+    global _file_tools
 
-    # Resolve path through workspace if available
-    if _workspace:
-        resolved_path = _workspace.resolve_path(path or ".")
-    else:
-        resolved_path = Path(path or ".")
+    # Create behavior if not initialized
+    if not _file_tools:
+        _file_tools = FileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
 
-    try:
-        return sorted(os.listdir(resolved_path))
-    except FileNotFoundError as e:
-        return [f"__error__: {e}"]
+    return _file_tools.dispatch_tool("list_dir", {"path": path or ".", **kwargs})
 
 
 def read_file(path: str, encoding: str = "utf-8", max_size: int = 1_000_000, **kwargs) -> str:
     """
     Read a text file (workspace-aware).
 
-    For large files, use run_bash with head/tail/sed instead.
+    DEPRECATED: Delegates to FileToolsBehavior. Use behaviors directly in new code.
 
     Args:
         path: File path (relative to workspace if set)
@@ -96,26 +138,18 @@ def read_file(path: str, encoding: str = "utf-8", max_size: int = 1_000_000, **k
     Returns:
         File contents (up to max_size, truncated if larger)
     """
-    global _workspace
+    global _file_tools
 
-    # Warn about unsupported parameters
-    if kwargs:
-        ignored = ", ".join(kwargs.keys())
-        print(f"[tools] read_file ignoring unsupported parameters: {ignored}")
+    # Create behavior if not initialized
+    if not _file_tools:
+        _file_tools = FileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
 
-    # Resolve path through workspace if available
-    if _workspace:
-        resolved_path = _workspace.resolve_path(path)
-    else:
-        resolved_path = Path(path)
-
-    with open(resolved_path, encoding=encoding, errors="replace") as f:
-        content = f.read(max_size)
-
-        file_size = resolved_path.stat().st_size
-        if file_size > max_size:
-            return content + f"\n\n[TRUNCATED: File is {file_size} bytes, showing first {max_size}. Use run_bash('head -n 100 {path}') or similar for specific sections]"
-        return content
+    return _file_tools.dispatch_tool("read_file", {
+        "path": path,
+        "encoding": encoding,
+        "max_size": max_size,
+        **kwargs
+    })
 
 
 def write_file(
@@ -131,6 +165,8 @@ def write_file(
     """
     Write/overwrite a text file (workspace-aware).
 
+    DEPRECATED: Delegates to FileToolsBehavior. Use behaviors directly in new code.
+
     Args:
         path: File path (relative to workspace if set)
         content: File contents to write
@@ -144,124 +180,36 @@ def write_file(
     Returns:
         Success message with path and size
     """
-    global _workspace
+    global _file_tools
 
-    # Warn about unsupported parameters (e.g., timeout)
-    if kwargs:
-        ignored = ", ".join(kwargs.keys())
-        print(f"[tools] write_file ignoring unsupported parameters: {ignored}")
+    # Create behavior if not initialized
+    if not _file_tools:
+        _file_tools = FileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
 
-    # Normalize line endings if requested
-    if line_end is not None:
-        # First normalize to \n, then replace with desired ending
-        normalized = content.replace('\r\n', '\n').replace('\r', '\n')
-        if line_end != '\n':
-            content = normalized.replace('\n', line_end)
-        else:
-            content = normalized
-
-    # Resolve path through workspace if available
-    if _workspace:
-        resolved_path = _workspace.resolve_path(path)
-
-        # Safety check in edit mode: prevent modifying agent code
-        if _workspace.is_edit_mode:
-            forbidden_files = {
-                'agent.py', 'context_manager.py', 'workspace_manager.py',
-                'status_display.py', 'completion_detector.py', 'agent_config.py',
-                'tools.py', 'llm_utils.py'  # Added new modules
-            }
-            if resolved_path.name in forbidden_files:
-                error_msg = f"[SAFETY] Cannot modify agent code in edit mode: {resolved_path.name}"
-                _ledger_append("ERROR", error_msg)
-                return error_msg
-
-        _workspace.track_file(path)  # Track file creation
-        display_path = _workspace.relative_path(resolved_path)
-    else:
-        resolved_path = Path(path)
-        display_path = path
-
-    # Check overwrite flag
-    if not overwrite and resolved_path.exists():
-        error_msg = f"[ERROR] File exists and overwrite=False: {display_path}"
-        _ledger_append("ERROR", error_msg)
-        return error_msg
-
-    if create_dirs:
-        os.makedirs(os.path.dirname(resolved_path) or ".", exist_ok=True)
-
-    # Choose write mode based on append flag
-    # Use newline='' to prevent Python from translating line endings
-    mode = "a" if append else "w"
-    newline = '' if line_end is not None else None
-    with open(resolved_path, mode, encoding=encoding, newline=newline) as f:
-        f.write(content)
-
-    action = "Appended" if append else "Wrote"
-    _ledger_append("WRITE" if not append else "APPEND", str(resolved_path))
-    return f"{action} {len(content)} chars to {display_path}"
+    return _file_tools.dispatch_tool("write_file", {
+        "path": path,
+        "content": content,
+        "append": append,
+        "encoding": encoding,
+        "create_dirs": create_dirs,
+        "overwrite": overwrite,
+        "line_end": line_end,
+        **kwargs
+    })
 
 
 def run_bash(command: str, timeout: int = 60) -> dict[str, Any]:
     """
     Run any bash command in the workspace.
 
+    DEPRECATED: Delegates to CommandToolsBehavior.
+
     Full shell access with pipes, redirection, and command chaining.
-    Use this for flexible file operations, testing, linting, etc.
-
-    Args:
-        command: Full bash command string (e.g., "grep -r 'pattern' *.py | wc -l")
-        timeout: Timeout in seconds (default 60)
-
-    Returns:
-        Dict with returncode, stdout, stderr
-
-    Examples:
-        run_bash("python script.py")
-        run_bash("pytest tests/ -v")
-        run_bash("grep -A 3 'class' file.py")
-        run_bash("find . -name '*.py' | xargs wc -l")
-        run_bash("cat file1.txt file2.txt > combined.txt")
     """
-    global _workspace
-
-    # Determine working directory
-    cwd = str(_workspace.workspace_dir) if _workspace else None
-
-    # Set up environment with PYTHONPATH for workspace
-    env = os.environ.copy()
-    if _workspace and cwd:
-        env["PYTHONPATH"] = cwd
-
-    try:
-        p = subprocess.run(
-            command,
-            shell=True,  # Enable full shell features
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=cwd,
-            env=env
-        )
-        out = {
-            "returncode": p.returncode,
-            "stdout": p.stdout[-50_000:],  # Truncate to last 50KB
-            "stderr": p.stderr[-50_000:],
-        }
-        _ledger_append("BASH", f"{command[:100]} -> rc={p.returncode}")
-        if p.returncode != 0:
-            _ledger_append("ERROR", f"run_bash rc={p.returncode}: {p.stderr[:200]}")
-        return out
-    except subprocess.TimeoutExpired:
-        err = f"Command timed out after {timeout}s"
-        _ledger_append("ERROR", f"run_bash timeout: {command[:100]}")
-        return {"error": err, "returncode": -1, "stdout": "", "stderr": err}
-    except Exception as e:
-        err_msg = str(e)
-        _ledger_append("ERROR", f"run_bash exception: {err_msg}")
-        return {"error": err_msg, "returncode": -1, "stdout": "", "stderr": err_msg}
-
+    global _command_tools
+    if not _command_tools:
+        _command_tools = CommandToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
+    return _command_tools.dispatch_tool("run_bash", {"command": command, "timeout": timeout})
 
 # ----------------------------
 # Server Management Tools
@@ -270,6 +218,8 @@ def run_bash(command: str, timeout: int = 60) -> dict[str, Any]:
 def start_server(cmd: list[str], name: str = None) -> dict[str, Any]:
     """
     Request orchestrator to start a server in the background.
+    
+    DEPRECATED: Delegates to ServerToolsBehavior.
 
     Args:
         cmd: Command to run (e.g., ['python', '-m', 'http.server', '8000'])
@@ -278,143 +228,36 @@ def start_server(cmd: list[str], name: str = None) -> dict[str, Any]:
     Returns:
         Server info dict or error dict
     """
-    global _workspace
-
-    # Validate command
-    if not cmd:
-        return {"error": "Command cannot be empty"}
-
-    # Generate server ID
-    server_id = name or f"server_{int(time.time())}"
-
-    # Set up paths
-    cwd = str(_workspace.workspace_dir) if _workspace else os.getcwd()
-    log_file = os.path.join(cwd, f"{server_id}.log")
-
-    # Write request
-    request_file = Path(".agent_context/server_requests.jsonl")
-    request_file.parent.mkdir(parents=True, exist_ok=True)
-
-    request = {
-        "action": "start",
-        "server_id": server_id,
-        "cmd": cmd,
-        "cwd": cwd,
-        "log_file": log_file,
-    }
-
-    with open(request_file, 'a') as f:
-        f.write(json.dumps(request) + '\n')
-
-    # Poll for response (wait up to 5 seconds)
-    response = _wait_for_server_response(timeout=5.0)
-
-    if response:
-        _ledger_append("SERVER", f"start {server_id} -> {response.get('success', False)}")
-        return response
-    else:
-        return {"error": "Timeout waiting for orchestrator to start server"}
+    global _server_tools
+    if not _server_tools:
+        _server_tools = ServerToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
+    return _server_tools.dispatch_tool("start_server", {"cmd": cmd, "name": name})
 
 
 def stop_server(server_id: str) -> dict[str, Any]:
-    """
-    Request orchestrator to stop a server.
-
-    Args:
-        server_id: Server identifier
-
-    Returns:
-        Success/error dict
-    """
-    request = {"action": "stop", "server_id": server_id}
-
-    request_file = Path(".agent_context/server_requests.jsonl")
-    with open(request_file, 'a') as f:
-        f.write(json.dumps(request) + '\n')
-
-    response = _wait_for_server_response(timeout=5.0)
-
-    if response:
-        _ledger_append("SERVER", f"stop {server_id} -> {response.get('success', False)}")
-
-    return response or {"error": "Timeout waiting for response"}
+    """Request orchestrator to stop a server. DEPRECATED: Delegates to ServerToolsBehavior."""
+    global _server_tools
+    if not _server_tools:
+        _server_tools = ServerToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
+    return _server_tools.dispatch_tool("stop_server", {"server_id": server_id})
 
 
 def check_server(server_id: str, tail_lines: int = 20) -> dict[str, Any]:
-    """
-    Check server status and get recent logs.
-
-    Args:
-        server_id: Server identifier
-        tail_lines: Number of recent log lines to return (default 20)
-
-    Returns:
-        Server status dict with logs
-    """
-    request = {"action": "check", "server_id": server_id, "tail_lines": tail_lines}
-
-    request_file = Path(".agent_context/server_requests.jsonl")
-    with open(request_file, 'a') as f:
-        f.write(json.dumps(request) + '\n')
-
-    response = _wait_for_server_response(timeout=5.0)
-    return response or {"error": "Timeout waiting for response"}
+    """Check server status. DEPRECATED: Delegates to ServerToolsBehavior."""
+    global _server_tools
+    if not _server_tools:
+        _server_tools = ServerToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
+    return _server_tools.dispatch_tool("check_server", {"server_id": server_id, "tail_lines": tail_lines})
 
 
 def list_servers() -> dict[str, Any]:
-    """
-    List all running servers.
-
-    Returns:
-        Dict with list of servers or error
-    """
-    request = {"action": "list"}
-
-    request_file = Path(".agent_context/server_requests.jsonl")
-    with open(request_file, 'a') as f:
-        f.write(json.dumps(request) + '\n')
-
-    response = _wait_for_server_response(timeout=5.0)
-    return response or {"error": "Timeout waiting for response"}
+    """List servers. DEPRECATED: Delegates to ServerToolsBehavior."""
+    global _server_tools
+    if not _server_tools:
+        _server_tools = ServerToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
+    return _server_tools.dispatch_tool("list_servers", {})
 
 
-def _wait_for_server_response(timeout: float = 5.0) -> dict[str, Any] | None:
-    """
-    Wait for orchestrator response to server request.
-
-    Polls response file for new line matching our request.
-
-    Args:
-        timeout: Max seconds to wait (default 5.0)
-
-    Returns:
-        Response dict or None on timeout
-    """
-    response_file = Path(".agent_context/server_responses.jsonl")
-
-    # Count existing lines to know where to start reading
-    existing_lines = 0
-    if response_file.exists():
-        with open(response_file, 'r') as f:
-            existing_lines = len(f.readlines())
-
-    start_time = time.time()
-
-    while time.time() - start_time < timeout:
-        if response_file.exists():
-            with open(response_file, 'r') as f:
-                lines = f.readlines()
-
-            # Check for new lines
-            if len(lines) > existing_lines:
-                # Return the newest response
-                response_line = lines[-1].strip()
-                if response_line:
-                    return json.loads(response_line)
-
-        time.sleep(0.1)
-
-    return None
 
 
 # ----------------------------
@@ -499,6 +342,91 @@ def mark_subtask_complete(
     else:
         # Failed - stay on current subtask
         return {"status": "failed", "reason": reason}
+
+def mark_goal_complete(summary: str = "", context_manager=None) -> dict[str, Any]:
+    """
+    Mark the entire goal as complete (for non-hierarchical strategies).
+
+    This is used by simple strategies like append-until-full that don't
+    decompose into tasks/subtasks. The agent just does the work and
+    signals completion when done.
+
+    Args:
+        summary: Brief summary of what was accomplished
+        context_manager: ContextManager instance (optional, not used but kept for consistency)
+
+    Returns:
+        Status dict indicating goal completion
+    """
+    _ledger_append("GOAL", f"completed: {summary}")
+
+    print(f"\n{'='*70}")
+    print(f"✓ GOAL COMPLETE: {summary}")
+    print(f"{'='*70}\n")
+
+    return {"status": "goal_complete", "message": "Goal completed!", "summary": summary}
+
+def mark_complete(summary: str = "", context_manager=None) -> dict[str, Any]:
+    """
+    Mark delegated task as complete (for SubAgentStrategy).
+
+    This is used by sub-agents working on delegated tasks to signal
+    successful completion back to the controlling agent.
+
+    Args:
+        summary: Brief summary of what was accomplished (2-4 sentences)
+        context_manager: ContextManager instance (optional, for consistency)
+
+    Returns:
+        Status dict indicating task completion with summary for controlling agent
+    """
+    _ledger_append("DELEGATED_TASK", f"completed: {summary}")
+
+    print(f"\n{'='*70}")
+    print(f"✓ DELEGATED TASK COMPLETE")
+    print(f"{'='*70}")
+    print(f"Summary: {summary}")
+    print(f"{'='*70}\n")
+
+    # Return goal_complete status to trigger agent exit
+    # Include summary for controlling agent
+    return {
+        "status": "goal_complete",
+        "message": "Delegated task completed successfully",
+        "summary": summary,
+        "success": True
+    }
+
+def mark_failed(reason: str = "", context_manager=None) -> dict[str, Any]:
+    """
+    Mark delegated task as failed (for SubAgentStrategy).
+
+    This is used by sub-agents working on delegated tasks to signal
+    failure back to the controlling agent.
+
+    Args:
+        reason: Explanation of why the task could not be completed
+        context_manager: ContextManager instance (optional, for consistency)
+
+    Returns:
+        Status dict indicating task failure with reason for controlling agent
+    """
+    _ledger_append("DELEGATED_TASK", f"failed: {reason}")
+
+    print(f"\n{'='*70}")
+    print(f"✗ DELEGATED TASK FAILED")
+    print(f"{'='*70}")
+    print(f"Reason: {reason}")
+    print(f"{'='*70}\n")
+
+    # Return goal_complete status to trigger agent exit
+    # Include failure flag and reason for controlling agent
+    return {
+        "status": "goal_complete",
+        "message": "Delegated task failed",
+        "reason": reason,
+        "success": False
+    }
 
 def decompose_task(subtasks: list[str], context_manager=None) -> dict[str, Any]:
     """
