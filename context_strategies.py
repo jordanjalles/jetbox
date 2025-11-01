@@ -1,11 +1,38 @@
 """
 Context building strategies for Jetbox agents.
 
+⚠️  DEPRECATED: This module is deprecated in favor of the composable behavior system.
+
+    The context_strategies.py module will be removed in version 2.0.
+    Please migrate to the new behavior system using config-driven loading.
+
+    See MIGRATION_GUIDE.md for complete migration instructions.
+
+    Old System:
+    - HierarchicalStrategy, AppendUntilFullStrategy, SubAgentStrategy
+    - Hardcoded in agent __init__
+
+    New System:
+    - Composable behaviors loaded from YAML config
+    - behaviors/hierarchical_context.py, behaviors/compact_when_near_full.py, etc.
+    - Config-driven, flexible, testable
+
 Provides different context management strategies:
 - Hierarchical: For task-focused agents (TaskExecutor, standalone agent)
 - Append-until-full: For conversational agents (Orchestrator)
 """
 from __future__ import annotations
+
+import warnings
+
+# Module-level deprecation notice
+warnings.warn(
+    "context_strategies module is deprecated and will be removed in version 2.0. "
+    "Use the composable behavior system instead. "
+    "See MIGRATION_GUIDE.md for migration instructions.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 from abc import ABC, abstractmethod
 from typing import Any, TYPE_CHECKING
@@ -325,6 +352,23 @@ class ContextStrategy(ABC):
 
 class HierarchicalStrategy(ContextStrategy):
     """
+    ⚠️  DEPRECATED: Use HierarchicalContextBehavior instead.
+
+    This class is maintained for backward compatibility only.
+    It will be removed in version 2.0.
+
+    Migration:
+        # OLD (deprecated)
+        from context_strategies import HierarchicalStrategy
+        strategy = HierarchicalStrategy(history_keep=12)
+
+        # NEW (recommended)
+        In task_executor_config.yaml:
+        behaviors:
+          - type: HierarchicalContextBehavior
+            params:
+              history_keep: 12
+
     Hierarchical context strategy.
 
     Keeps only recent N message exchanges and clears on subtask transitions.
@@ -349,6 +393,13 @@ class HierarchicalStrategy(ContextStrategy):
             history_keep: Number of message exchanges to keep in history
             use_jetbox_notes: Whether to use jetbox notes for context persistence (default: True)
         """
+        warnings.warn(
+            "HierarchicalStrategy is deprecated. "
+            "Use HierarchicalContextBehavior with config-driven loading. "
+            "See MIGRATION_GUIDE.md for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         super().__init__()  # Initialize loop detection
         self.history_keep = history_keep
         self.use_jetbox_notes = use_jetbox_notes
@@ -652,6 +703,23 @@ Concise summary (max 200 words):"""
 
 class AppendUntilFullStrategy(ContextStrategy):
     """
+    ⚠️  DEPRECATED: Use CompactWhenNearFullBehavior instead.
+
+    This class is maintained for backward compatibility only.
+    It will be removed in version 2.0.
+
+    Migration:
+        # OLD (deprecated)
+        from context_strategies import AppendUntilFullStrategy
+        strategy = AppendUntilFullStrategy(max_tokens=8000)
+
+        # NEW (recommended)
+        In orchestrator_config.yaml:
+        behaviors:
+          - type: CompactWhenNearFullBehavior
+            params:
+              max_tokens: 8000
+
     Append-until-full context strategy.
 
     Appends all messages until approaching token limit, then compacts.
@@ -675,6 +743,13 @@ class AppendUntilFullStrategy(ContextStrategy):
             recent_keep: Number of recent messages to keep intact during compaction
             use_jetbox_notes: Whether to use jetbox notes (default: False for conversational agents)
         """
+        warnings.warn(
+            "AppendUntilFullStrategy is deprecated. "
+            "Use CompactWhenNearFullBehavior with config-driven loading. "
+            "See MIGRATION_GUIDE.md for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         super().__init__()  # Initialize loop detection
         self.max_tokens = max_tokens
         self.recent_keep = recent_keep
@@ -892,6 +967,23 @@ When all work is complete and tests pass, call mark_goal_complete().
 
 class SubAgentStrategy(ContextStrategy):
     """
+    ⚠️  DEPRECATED: Use SubAgentContextBehavior instead.
+
+    This class is maintained for backward compatibility only.
+    It will be removed in version 2.0.
+
+    Migration:
+        # OLD (deprecated)
+        from context_strategies import SubAgentStrategy
+        strategy = SubAgentStrategy(max_tokens=128000)
+
+        # NEW (recommended)
+        In task_executor_config.yaml:
+        behaviors:
+          - type: SubAgentContextBehavior
+            params:
+              max_tokens: 128000
+
     Sub-agent context strategy for delegated work.
 
     Designed for agents that are invoked by a controlling agent (orchestrator)
@@ -920,6 +1012,13 @@ class SubAgentStrategy(ContextStrategy):
             recent_keep: Number of recent messages to keep intact during compaction
             use_jetbox_notes: Whether to use jetbox notes (default: True for context continuity)
         """
+        warnings.warn(
+            "SubAgentStrategy is deprecated. "
+            "Use SubAgentContextBehavior with config-driven loading. "
+            "See MIGRATION_GUIDE.md for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         super().__init__()  # Initialize loop detection
         self.max_tokens = max_tokens
         self.recent_keep = recent_keep
@@ -1171,6 +1270,23 @@ The controlling agent is waiting for your completion signal.
 
 class ArchitectStrategy(ContextStrategy):
     """
+    ⚠️  DEPRECATED: Use ArchitectContextBehavior instead.
+
+    This class is maintained for backward compatibility only.
+    It will be removed in version 2.0.
+
+    Migration:
+        # OLD (deprecated)
+        from context_strategies import ArchitectStrategy
+        strategy = ArchitectStrategy(max_tokens=32000)
+
+        # NEW (recommended)
+        In architect_config.yaml:
+        behaviors:
+          - type: ArchitectContextBehavior
+            params:
+              max_tokens: 32000
+
     Architect context strategy.
 
     Optimized for architecture design conversations where artifacts
@@ -1193,6 +1309,13 @@ class ArchitectStrategy(ContextStrategy):
             recent_keep: Number of recent messages to keep intact during compaction
             use_jetbox_notes: Whether to use jetbox notes (default: False, artifacts are output)
         """
+        warnings.warn(
+            "ArchitectStrategy is deprecated. "
+            "Use ArchitectContextBehavior with config-driven loading. "
+            "See MIGRATION_GUIDE.md for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         super().__init__()  # Initialize loop detection
         self.max_tokens = max_tokens
         self.recent_keep = recent_keep
@@ -1413,6 +1536,22 @@ def build_simple_hierarchical_context(
 
 class JetboxNotesEnhancement(ContextEnhancement):
     """
+    ⚠️  DEPRECATED: Use JetboxNotesBehavior instead.
+
+    This class is maintained for backward compatibility only.
+    It will be removed in version 2.0.
+
+    Migration:
+        # OLD (deprecated)
+        from context_strategies import JetboxNotesEnhancement
+        enhancement = JetboxNotesEnhancement(workspace_manager)
+
+        # NEW (recommended)
+        In agent config YAML:
+        behaviors:
+          - type: JetboxNotesBehavior
+            params: {}
+
     Jetbox Notes enhancement.
 
     Injects jetbox notes summary into context for task continuity.
@@ -1432,6 +1571,13 @@ class JetboxNotesEnhancement(ContextEnhancement):
         Args:
             workspace_manager: Workspace manager for accessing notes file
         """
+        warnings.warn(
+            "JetboxNotesEnhancement is deprecated. "
+            "Use JetboxNotesBehavior with config-driven loading. "
+            "See MIGRATION_GUIDE.md for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.workspace_manager = workspace_manager
 
     def get_context_injection(
@@ -1506,6 +1652,22 @@ Notes are saved to jetboxnotes.md in your workspace directory.
 
 class TaskManagementEnhancement(ContextEnhancement):
     """
+    ⚠️  DEPRECATED: Use TaskManagementBehavior instead.
+
+    This class is maintained for backward compatibility only.
+    It will be removed in version 2.0.
+
+    Migration:
+        # OLD (deprecated)
+        from context_strategies import TaskManagementEnhancement
+        enhancement = TaskManagementEnhancement(workspace_manager)
+
+        # NEW (recommended)
+        In agent config YAML:
+        behaviors:
+          - type: TaskManagementBehavior
+            params: {}
+
     Task Management enhancement.
 
     Injects task status and provides CRUD operations on task breakdown.
@@ -1525,6 +1687,13 @@ class TaskManagementEnhancement(ContextEnhancement):
         Args:
             workspace_manager: Workspace manager for accessing task breakdown
         """
+        warnings.warn(
+            "TaskManagementEnhancement is deprecated. "
+            "Use TaskManagementBehavior with config-driven loading. "
+            "See MIGRATION_GUIDE.md for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.workspace_manager = workspace_manager
 
         # Configure task management tools with workspace

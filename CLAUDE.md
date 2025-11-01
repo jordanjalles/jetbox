@@ -61,6 +61,100 @@ export OLLAMA_MODEL="gpt-oss:20b"
 
 ## Architecture
 
+### Agent Behavior System (NEW)
+
+Jetbox uses a **composable behavior system** where all agent capabilities are provided by pluggable behaviors that can be mixed and matched via configuration files.
+
+**What is a Behavior?**
+
+A behavior is a self-contained module that:
+- **Injects context** into LLM prompts
+- **Provides tools** for the agent to use
+- **Handles events** from the agent lifecycle
+- **Adds instructions** to the system prompt
+
+**Benefits**:
+- **Composable**: Mix and match any behaviors
+- **Config-driven**: Change agent behavior without code changes
+- **Testable**: Each behavior has isolated unit tests
+- **Extensible**: Create custom behaviors easily
+- **Maintainable**: Clear separation of concerns
+
+**Example: TaskExecutor with Behaviors**:
+
+```python
+agent = TaskExecutorAgent(
+    workspace=".",
+    goal="Create a calculator",
+    use_behaviors=True,  # Enable behavior system
+    config_file="task_executor_config.yaml"
+)
+```
+
+**Config file (task_executor_config.yaml)**:
+
+```yaml
+behaviors:
+  # Context management
+  - type: SubAgentContextBehavior
+    params:
+      max_tokens: 128000
+
+  # Tool behaviors
+  - type: FileToolsBehavior
+    params: {}
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "pytest", "ruff", "pip"]
+  - type: ServerToolsBehavior
+    params: {}
+
+  # Utility behaviors
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 5
+```
+
+**Available Behaviors**:
+
+**Context Management**:
+- `HierarchicalContextBehavior` - Goal/Task/Subtask hierarchy
+- `CompactWhenNearFullBehavior` - Append until full, then compact
+- `SubAgentContextBehavior` - For delegated work
+- `ArchitectContextBehavior` - For architecture design
+
+**Tools**:
+- `FileToolsBehavior` - write_file, read_file, list_dir
+- `CommandToolsBehavior` - run_bash
+- `ServerToolsBehavior` - Server management
+- `DelegationBehavior` - Orchestrator delegation tools
+- `ArchitectToolsBehavior` - Architecture artifacts
+
+**Utilities**:
+- `LoopDetectionBehavior` - Detect infinite loops
+- `JetboxNotesBehavior` - Persistent context (planned)
+- `TaskManagementBehavior` - Task tracking (planned)
+
+See **[docs/behaviors/README.md](docs/behaviors/README.md)** for complete documentation.
+
+### Legacy Mode (Backward Compatible)
+
+The old context strategy system still works for backward compatibility:
+
+```python
+agent = TaskExecutorAgent(
+    workspace=".",
+    goal="Create a calculator",
+    use_behaviors=False  # Use legacy mode (default for now)
+)
+```
+
+**Deprecated (will be removed in v2.0)**:
+- `context_strategies.py` - Use behaviors instead
+- Hardcoded tool definitions - Use behavior tools
+
+See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
+
 ### Agent Design Philosophy
 
 **Local-first and crash-resilient**: The agent expects to crash or be stopped at any time. All designs prioritize idempotency and fast rehydration from plaintext logs. No databases are used - everything is human-inspectable files.
@@ -132,6 +226,19 @@ export OLLAMA_MODEL="gpt-oss:20b"
 - `agent_v2.log` - Human-readable runtime log
 
 ### Context Management Strategy
+
+**With Behavior System**:
+
+Context management is now handled by composable behaviors:
+
+- **HierarchicalContextBehavior**: Keeps last N message exchanges, clears on subtask transitions
+- **CompactWhenNearFullBehavior**: Appends all messages until 75% full, then LLM-summarizes old messages
+- **SubAgentContextBehavior**: For delegated work, appends all messages with higher token limit (128K)
+- **ArchitectContextBehavior**: For architecture discussions, optimized for verbose conversations
+
+Configure via YAML (see config files in root directory).
+
+**Legacy Mode (Deprecated)**:
 
 The agent aggressively compacts context to avoid repetition and stay focused:
 1. **Probe real state first** - Never hallucinate file existence or test status
