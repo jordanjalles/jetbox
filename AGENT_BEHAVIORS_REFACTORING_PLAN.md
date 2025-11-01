@@ -233,6 +233,25 @@ class BaseAgent(ABC):
         self.behaviors: list[AgentBehavior] = []
         self.tool_registry: dict[str, AgentBehavior] = {}
 
+    def load_behaviors_from_config(self, config_file: str) -> None:
+        """Load and register behaviors from config file."""
+        import yaml
+        from pathlib import Path
+
+        config_path = Path(config_file)
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        for behavior_spec in config.get("behaviors", []):
+            behavior_type = behavior_spec["type"]
+            behavior_params = behavior_spec.get("params", {})
+
+            # Dynamically import and instantiate behavior
+            behavior_class = self._import_behavior_class(behavior_type)
+            behavior = behavior_class(**behavior_params)
+
+            self.add_behavior(behavior)
+
     def add_behavior(self, behavior: AgentBehavior) -> None:
         """Register a behavior with this agent."""
         # Check for tool name conflicts
@@ -246,7 +265,14 @@ class BaseAgent(ABC):
             self.tool_registry[tool_name] = behavior
 
         self.behaviors.append(behavior)
-        behavior.on_goal_start(goal=..., agent=self, workspace=self.workspace)
+
+    def _import_behavior_class(self, behavior_type: str):
+        """Dynamically import behavior class by name."""
+        # Import from behaviors module
+        import importlib
+        module_name = f"behaviors.{self._to_snake_case(behavior_type)}"
+        module = importlib.import_module(module_name)
+        return getattr(module, behavior_type)
 
     def get_tools(self) -> list[dict[str, Any]]:
         """Collect tools from all behaviors."""
@@ -399,22 +425,32 @@ class BaseAgent(ABC):
 **Files to create**:
 - `behaviors/base.py` - AgentBehavior base class
 - `behaviors/__init__.py` - Export AgentBehavior
+- `task_executor_config.yaml` - TaskExecutor behavior config
+- `orchestrator_config.yaml` - Orchestrator behavior config
+- `architect_config.yaml` - Architect behavior config
 - `tests/test_agent_behavior_base.py` - Unit tests
+- `tests/test_behavior_config_loading.py` - Config loading tests
 
 **Tasks**:
 - [ ] Define AgentBehavior abstract base class with all methods
 - [ ] Define event signatures (on_goal_start, on_tool_call, etc.)
 - [ ] Add comprehensive docstrings and type hints
+- [ ] Implement BaseAgent.load_behaviors_from_config()
+- [ ] Implement BaseAgent._import_behavior_class() for dynamic loading
+- [ ] Create config YAML templates for each agent type
 - [ ] Write unit tests for AgentBehavior interface
-- [ ] Test that behaviors can be instantiated and registered
+- [ ] Write unit tests for config loading
+- [ ] Test that behaviors can be instantiated from config
 
 **Validation**:
 - [ ] Can create a minimal behavior that does nothing
-- [ ] Can register behavior with an agent (stub)
+- [ ] Can register behavior with an agent manually
+- [ ] Can load behaviors from YAML config file
 - [ ] Event methods are called at the right times (stub)
+- [ ] Config validation works (missing params, unknown behaviors)
 - [ ] All tests pass
 
-**Git Checkpoint**: `git commit -m "Phase 1: Add AgentBehavior base class and event system"`
+**Git Checkpoint**: `git commit -m "Phase 1: Add AgentBehavior base class, event system, and config loading"`
 
 ---
 
@@ -516,24 +552,47 @@ class BaseAgent(ABC):
 **Example TaskExecutorAgent**:
 ```python
 class TaskExecutorAgent(BaseAgent):
-    def __init__(self, workspace, goal, **kwargs):
-        super().__init__(name="task_executor", workspace=workspace)
+    def __init__(self, workspace, goal, config_file="task_executor_config.yaml", **kwargs):
+        super().__init__(
+            name="task_executor",
+            workspace=workspace,
+            config_file=config_file
+        )
 
-        # Add context management behavior
-        self.add_behavior(SubAgentContextBehavior())
-
-        # Add tool behaviors
-        self.add_behavior(FileToolsBehavior())
-        self.add_behavior(CommandToolsBehavior())
-        self.add_behavior(ServerToolsBehavior())
-
-        # Add utility behaviors
-        self.add_behavior(LoopDetectionBehavior())
-        self.add_behavior(JetboxNotesBehavior())
-        self.add_behavior(StatusDisplayBehavior())
+        # Behaviors are loaded from config file automatically
+        # See task_executor_config.yaml for behavior configuration
 
         if goal:
             self.set_goal(goal)
+```
+
+**Example task_executor_config.yaml**:
+```yaml
+behaviors:
+  # Context management
+  - type: SubAgentContextBehavior
+    params:
+      max_tokens: 128000
+
+  # Tool behaviors
+  - type: FileToolsBehavior
+    params: {}
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "pytest", "ruff", "pip"]
+  - type: ServerToolsBehavior
+    params: {}
+
+  # Utility behaviors
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 5
+  - type: JetboxNotesBehavior
+    params:
+      enabled: true
+  - type: StatusDisplayBehavior
+    params:
+      show_hierarchy: true
 ```
 
 **Validation**:
