@@ -182,12 +182,13 @@ class SubAgentModeBehavior(AgentBehavior):
 
             # Mark goal as complete in context manager if available
             if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
-                context_manager.state.goal.mark_complete(success=True)
+                context_manager.state.goal.status = "success"
 
             return {
                 "success": True,
                 "result": f"Task marked complete: {summary}",
-                "summary": summary
+                "summary": summary,
+                "status": "goal_complete"
             }
 
         elif tool_name == "mark_failed":
@@ -195,12 +196,13 @@ class SubAgentModeBehavior(AgentBehavior):
 
             # Mark goal as failed in context manager if available
             if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
-                context_manager.state.goal.mark_complete(success=False)
+                context_manager.state.goal.status = "failed"
 
             return {
                 "success": False,
                 "result": f"Task marked failed: {reason}",
-                "reason": reason
+                "reason": reason,
+                "status": "goal_failed"
             }
 
         return super().dispatch_tool(tool_name, args, **kwargs)

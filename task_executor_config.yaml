@@ -5,6 +5,9 @@
 #
 # Behaviors are loaded in order and compose to provide the agent's capabilities.
 
+# Agent role (human-readable description)
+role: "Code task executor"
+
 # Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
 # If not specified, uses blurb from agents.yaml
 blurb: |

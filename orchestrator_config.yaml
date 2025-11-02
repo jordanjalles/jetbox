@@ -5,6 +5,9 @@
 #
 # The Orchestrator manages high-level task delegation and architecture consultation.
 
+# Agent role (human-readable description)
+role: "User interface and task coordinator"
+
 # Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
 # If not specified, uses blurb from agents.yaml
 blurb: |

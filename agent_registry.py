@@ -2,19 +2,20 @@
 Agent registry - manages agent instances and delegation relationships.
 
 Loads agent configuration from agents.yaml and provides:
-- Agent instantiation
+- Agent instantiation (dynamic, no hardcoded agent classes)
 - Delegation routing
 - Agent lifecycle management
+
+This registry is fully generic - it never refers to specific agent classes.
+All agent instantiation is driven by agents.yaml configuration.
 """
 from __future__ import annotations
 from typing import Any
 from pathlib import Path
 import yaml
+import importlib
 
 from base_agent import BaseAgent
-from orchestrator_agent import OrchestratorAgent
-from task_executor_agent import TaskExecutorAgent
-from architect_agent import ArchitectAgent
 
 
 class AgentRegistry:
@@ -71,7 +72,10 @@ class AgentRegistry:
 
     def get_agent(self, name: str) -> BaseAgent:
         """
-        Get or create agent by name.
+        Get or create agent by name using dynamic instantiation.
+
+        Dynamically imports and instantiates agent classes based on config.
+        No hardcoded agent class references.
 
         Args:
             name: Agent name (e.g., "orchestrator", "task_executor")
@@ -81,6 +85,7 @@ class AgentRegistry:
 
         Raises:
             ValueError: If agent not found in config
+            ImportError: If agent module/class cannot be imported
         """
         # Return existing instance if already created
         if name in self.agents:
@@ -90,23 +95,55 @@ class AgentRegistry:
         if name not in self.config.get("agents", {}):
             raise ValueError(f"Agent '{name}' not found in config")
 
-        # Instantiate agent
+        # Get agent configuration
         agent_config = self.config["agents"][name]
-        agent_class = agent_config["class"]
+        agent_class_name = agent_config["class"]
 
-        # Create agent based on class name
-        if agent_class == "OrchestratorAgent":
-            agent = OrchestratorAgent(workspace=self.workspace)
-        elif agent_class == "TaskExecutorAgent":
-            agent = TaskExecutorAgent(workspace=self.workspace)
-        elif agent_class == "ArchitectAgent":
-            agent = ArchitectAgent(workspace=self.workspace)
-        else:
-            raise ValueError(f"Unknown agent class: {agent_class}")
+        # Determine module name from class name
+        # Convention: OrchestratorAgent → orchestrator_agent
+        # Convert CamelCase to snake_case and append .py convention
+        module_name = self._class_to_module(agent_class_name)
+
+        # Dynamically import agent class
+        try:
+            agent_module = importlib.import_module(module_name)
+            agent_class = getattr(agent_module, agent_class_name)
+        except (ImportError, AttributeError) as e:
+            raise ImportError(
+                f"Failed to import {agent_class_name} from {module_name}: {e}"
+            ) from e
+
+        # Instantiate agent (all agents follow same __init__ signature)
+        agent = agent_class(workspace=self.workspace)
 
         # Store and return
         self.agents[name] = agent
         return agent
+
+    def _class_to_module(self, class_name: str) -> str:
+        """
+        Convert class name to module name.
+
+        Convention: OrchestratorAgent → orchestrator_agent
+
+        Args:
+            class_name: CamelCase class name
+
+        Returns:
+            snake_case module name
+        """
+        import re
+
+        # Insert underscores before capitals (except first char)
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', class_name)
+        s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1)
+
+        # Convert to lowercase and remove trailing suffixes
+        module_name = s2.lower()
+
+        # Special case: if ends with "_agent", that's the module name
+        # Otherwise might need adjustment
+        return module_name
 
     def can_delegate(self, from_agent: str, to_agent: str) -> bool:
         """
@@ -156,34 +193,30 @@ class AgentRegistry:
         # Get target agent
         target = self.get_agent(to_agent)
 
-        # For TaskExecutor, set the goal
-        if isinstance(target, TaskExecutorAgent):
-            # If workspace specified, update TaskExecutor's workspace
-            if workspace:
-                workspace_path = Path(workspace)
-                if workspace_path.exists():
-                    target.workspace = workspace_path
-                    # Also update workspace manager if it exists
-                    if hasattr(target, 'workspace_manager') and target.workspace_manager:
-                        target.workspace_manager.workspace_dir = workspace_path
-                else:
-                    return {
-                        "success": False,
-                        "message": f"Specified workspace does not exist: {workspace}",
-                        "agent": to_agent,
-                    }
+        # Handle workspace override if specified
+        workspace_path = None
+        if workspace:
+            workspace_path = Path(workspace)
+            if not workspace_path.exists():
+                return {
+                    "success": False,
+                    "message": f"Specified workspace does not exist: {workspace}",
+                    "agent": to_agent,
+                }
 
-            target.set_goal(task_description)
-            return {
-                "success": True,
-                "message": f"Task delegated to {to_agent}",
-                "agent": to_agent,
-                "workspace": str(target.workspace),
-            }
+        # Trigger on_goal_set event (all agents support this via SubAgentModeBehavior)
+        # This is generic - works for any agent type
+        target.trigger_behavior_event(
+            "on_goal_set",
+            goal=task_description,
+            workspace=workspace_path,
+        )
 
         return {
-            "success": False,
-            "message": f"Don't know how to delegate to {to_agent}",
+            "success": True,
+            "message": f"Task delegated to {to_agent}",
+            "agent": to_agent,
+            "workspace": str(target.workspace),
         }
 
     def get_agent_status(self, name: str) -> dict[str, Any]:
@@ -204,19 +237,18 @@ class AgentRegistry:
 
         agent = self.agents[name]
 
-        # TaskExecutor has get_current_status
-        if isinstance(agent, TaskExecutorAgent):
+        # Try agent-specific status methods (generic - no isinstance checks)
+        if hasattr(agent, 'get_current_status') and callable(agent.get_current_status):
             return agent.get_current_status()
 
-        # Orchestrator has get_conversation_summary
-        if isinstance(agent, OrchestratorAgent):
+        if hasattr(agent, 'get_conversation_summary') and callable(agent.get_conversation_summary):
             return agent.get_conversation_summary()
 
-        # Generic status
+        # Generic status fallback
         return {
             "status": "active",
             "agent": name,
-            "rounds": agent.state.total_rounds,
+            "rounds": agent.state.total_rounds if hasattr(agent, 'state') else 0,
         }
 
     def list_agents(self) -> list[str]:

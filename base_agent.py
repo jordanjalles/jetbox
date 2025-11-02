@@ -90,23 +90,34 @@ class BaseAgent(ABC):
     def __init__(
         self,
         name: str,
-        role: str,
         workspace: Path,
-        config: Any = None,
+        config_file: str,
     ):
         """
         Initialize base agent.
 
         Args:
             name: Agent identifier (e.g., "orchestrator", "task_executor")
-            role: Human-readable role description
             workspace: Working directory for this agent
-            config: Agent configuration (from agent_config.py)
+            config_file: Path to agent-specific config YAML (e.g., "task_executor_config.yaml")
         """
+        import yaml
+        from agent_config import config as global_config
+
         self.name = name
-        self.role = role
         self.workspace = Path(workspace)
-        self.config = config
+        self.config = global_config  # Global config for behavior defaults
+
+        # Load agent-specific config file
+        config_path = Path(config_file)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Agent config file not found: {config_file}")
+
+        with open(config_path) as f:
+            agent_config = yaml.safe_load(f) or {}
+
+        # Extract role from agent config
+        self.role = agent_config.get("role", f"{name} agent")
 
         # Create workspace if needed
         self.workspace.mkdir(parents=True, exist_ok=True)
@@ -114,7 +125,7 @@ class BaseAgent(ABC):
         # Initialize state
         self.state = AgentState(
             name=name,
-            role=role,
+            role=self.role,
             messages=[],
             start_time=time.time(),
             total_rounds=0,
@@ -144,33 +155,41 @@ class BaseAgent(ABC):
         self.total_timeouts = 0
 
         # Load timeout settings from config
-        if config and hasattr(config, 'llm') and hasattr(config.llm, 'timeout') and config.llm.timeout:
-            self.inactivity_timeout = config.llm.timeout.inactivity_timeout
-            self.max_call_time = config.llm.timeout.max_call_time
-            self.max_consecutive_timeouts = config.llm.timeout.max_consecutive_timeouts
+        if self.config and hasattr(self.config, 'llm') and hasattr(self.config.llm, 'timeout') and self.config.llm.timeout:
+            self.inactivity_timeout = self.config.llm.timeout.inactivity_timeout
+            self.max_call_time = self.config.llm.timeout.max_call_time
+            self.max_consecutive_timeouts = self.config.llm.timeout.max_consecutive_timeouts
         else:
             # Fallback defaults
             self.inactivity_timeout = 30
             self.max_call_time = 180
             self.max_consecutive_timeouts = 3
 
+        # Load behaviors from agent config
+        # This must happen at the end of __init__ after all attributes are set
+        self._load_behaviors_from_config_dict(agent_config)
+
     # ===========================
     # Abstract methods (must implement)
     # ===========================
 
-    @abstractmethod
     def get_context_strategy(self) -> str:
         """
         Return context management strategy name.
+
+        DEPRECATED: Context strategies should be defined via behaviors in YAML config.
+        This method is kept for backward compatibility only.
 
         Options:
             "hierarchical" - Keep last N exchanges (TaskExecutor)
             "append_until_full" - Append until token limit, then compact (Orchestrator)
 
         Returns:
-            Strategy name
+            Strategy name (default: "append_until_full")
         """
-        pass
+        # Default to append_until_full for backward compatibility
+        # New agents should define context strategy via behaviors in config YAML
+        return "append_until_full"
 
     # ===========================
     # Methods with default implementations
@@ -181,75 +200,62 @@ class BaseAgent(ABC):
         """
         Return tool definitions for this agent.
 
-        Default implementation: Returns behavior tools if use_behaviors=True.
-        Override this method if you need custom tool handling or legacy strategy support.
+        Default implementation: Returns behavior tools (always enabled in new architecture).
+        Override this method if you need custom tool handling.
 
         Returns:
             List of tool definitions in Ollama format
         """
-        if hasattr(self, 'use_behaviors') and self.use_behaviors:
-            return self.get_behavior_tools()
-        # If no behaviors, return empty list (agent should override)
-        return []
+        # New architecture: always use behavior tools
+        return self.get_behavior_tools()
 
     def get_system_prompt(self) -> str:
         """
         Return system prompt for this agent.
 
         Default implementation: Returns config prompt + behavior instructions + tool docs.
-        Override this method to provide custom system prompt or legacy strategy support.
+        Override this method to provide custom system prompt.
 
         Returns:
             System prompt string
         """
-        if hasattr(self, 'use_behaviors') and self.use_behaviors:
-            # Use config prompt if available, otherwise empty base
-            base_prompt = self.config_system_prompt if self.config_system_prompt else ""
+        # New architecture: always use behavior system
+        # Use config prompt if available, otherwise empty base
+        base_prompt = self.config_system_prompt if self.config_system_prompt else ""
 
-            parts = [base_prompt] if base_prompt else []
+        parts = [base_prompt] if base_prompt else []
 
-            # Add behavior instructions
-            behavior_instructions = self.get_behavior_instructions()
-            if behavior_instructions:
-                parts.append(behavior_instructions)
+        # Add behavior instructions
+        behavior_instructions = self.get_behavior_instructions()
+        if behavior_instructions:
+            parts.append(behavior_instructions)
 
-            # Add dynamic tool documentation
-            tool_docs = self.generate_tool_documentation()
-            if tool_docs:
-                parts.append(tool_docs)
+        # Add dynamic tool documentation
+        tool_docs = self.generate_tool_documentation()
+        if tool_docs:
+            parts.append(tool_docs)
 
-            return "\n\n".join(parts)
-
-        # If no behaviors, return empty (agent should override)
-        return ""
+        return "\n\n".join(parts)
 
     def build_context(self) -> list[dict[str, Any]]:
         """
-        Build context for LLM call using this agent's strategy.
+        Build context for LLM call using behavior system.
 
-        Default implementation: Basic context with system prompt + messages + behavior enhancements.
-        Override this method if you need custom context building or legacy strategy support.
+        Builds basic context with system prompt + messages, then lets behaviors enhance it.
 
         Returns:
             List of messages to send to LLM
         """
-        if hasattr(self, 'use_behaviors') and self.use_behaviors:
-            # Build basic context
-            context = [
-                {"role": "system", "content": self.get_system_prompt()},
-                *self.state.messages
-            ]
-
-            # Let behaviors enhance context
-            context = self.enhance_context_with_behaviors(context)
-
-            return context
-
-        # If no behaviors, return basic context (agent should override for legacy support)
-        return [
+        # Build basic context
+        context = [
             {"role": "system", "content": self.get_system_prompt()},
             *self.state.messages
         ]
+
+        # Let behaviors enhance context
+        context = self.enhance_context_with_behaviors(context)
+
+        return context
 
     # ===========================
     # Shared functionality
@@ -340,8 +346,8 @@ class BaseAgent(ABC):
         """
         Dispatch a tool call to the appropriate handler.
 
-        Default implementation: Dispatches to behavior system if use_behaviors=True.
-        Override this method if you need custom tool dispatch or legacy tool handling.
+        Default implementation: Always dispatches to behavior system (new architecture).
+        Override this method if you need custom tool dispatch.
 
         Args:
             tool_call: Tool call dict with function name and arguments
@@ -349,12 +355,8 @@ class BaseAgent(ABC):
         Returns:
             Tool result dict
         """
-        if hasattr(self, 'use_behaviors') and self.use_behaviors:
-            return self.dispatch_tool_to_behavior(tool_call)
-
-        # If no behaviors, raise error (agent should override for legacy support)
-        tool_name = tool_call["function"]["name"]
-        return {"error": f"Tool dispatch not implemented for {tool_name} (agent should override dispatch_tool)"}
+        # New architecture: always use behavior dispatch
+        return self.dispatch_tool_to_behavior(tool_call)
 
     def persist_state(self) -> None:
         """Save agent state to disk."""
@@ -442,22 +444,8 @@ class BaseAgent(ABC):
         """
         Load and register behaviors from YAML config file.
 
-        Also loads system_prompt if present in config.
-        Auto-adds DelegationBehavior if agent has can_delegate_to relationships.
-
-        Behavior parameters are merged from global defaults (agent_config.yaml)
-        and agent-specific overrides (this config file).
-
-        Example config:
-            system_prompt: |
-              You are an agent that does X, Y, Z.
-
-            behaviors:
-              - type: FileToolsBehavior
-                # No params - uses global defaults
-              - type: LoopDetectionBehavior
-                params:
-                  max_repeats: 10  # Override global default
+        DEPRECATED: This method is kept for backward compatibility.
+        New code should pass config_file to __init__ instead.
 
         Args:
             config_file: Path to YAML config file
@@ -474,6 +462,24 @@ class BaseAgent(ABC):
 
         if not config:
             print(f"[{self.name}] Empty config file")
+            return
+
+        self._load_behaviors_from_config_dict(config)
+
+    def _load_behaviors_from_config_dict(self, config: dict[str, Any]) -> None:
+        """
+        Internal method to load behaviors from config dict.
+
+        Also loads system_prompt and blurb if present.
+        Auto-adds DelegationBehavior and SubAgentModeBehavior based on agents.yaml.
+
+        Behavior parameters are merged from global defaults (agent_config.yaml)
+        and agent-specific overrides (this config dict).
+
+        Args:
+            config: Config dict loaded from YAML
+        """
+        if not config:
             return
 
         # Load system prompt if present
@@ -497,7 +503,7 @@ class BaseAgent(ABC):
             print(f"[{self.name}] No behaviors defined in config")
             return
 
-        print(f"[{self.name}] Loading behaviors from {config_file}")
+        print(f"[{self.name}] Loading behaviors from config")
 
         # Load global behavior defaults
         global_defaults = self._load_global_behavior_defaults()
@@ -736,6 +742,9 @@ class BaseAgent(ABC):
         Raises:
             ValueError: If behavior tool names conflict with existing tools
         """
+        # Attach behavior to agent (sets self.agent on behavior)
+        behavior.agent = self
+
         # Check for tool name conflicts
         for tool in behavior.get_tools():
             tool_name = tool["function"]["name"]

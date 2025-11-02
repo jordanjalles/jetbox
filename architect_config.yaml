@@ -5,6 +5,9 @@
 #
 # The Architect specializes in architecture design conversations and artifact creation.
 
+# Agent role (human-readable description)
+role: "Software architecture consultant"
+
 # Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
 # If not specified, uses blurb from agents.yaml
 blurb: |

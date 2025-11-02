@@ -58,8 +58,6 @@ def run_level1_test(task_name, goal, max_rounds, expected_files):
             agent = TaskExecutorAgent(
                 workspace=workspace,
                 goal=goal,
-                use_behaviors=True,
-                max_rounds=max_rounds
             )
 
             # Log agent setup
@@ -73,7 +71,7 @@ def run_level1_test(task_name, goal, max_rounds, expected_files):
             log_file.write(f"\nRunning agent...\n")
             log_file.flush()
 
-            result = agent.run()
+            result = agent.run(max_rounds=max_rounds)
 
             end_time = time.time()
             duration = end_time - start_time
@@ -145,7 +143,7 @@ def run_level2_test(task_name, user_request, max_rounds):
             log_file.write(f"\nCreating OrchestratorAgent...\n")
             log_file.flush()
 
-            orchestrator = OrchestratorAgent(workspace=Path(".agent_workspace/test_orchestrator"), use_behaviors=True)
+            orchestrator = OrchestratorAgent(workspace=Path(".agent_workspace/test_orchestrator"))
 
             # Log setup
             log_file.write(f"\nOrchestrator Setup:\n")
@@ -218,19 +216,17 @@ def run_level3_test(task_name, user_request):
             log_file.write(f"\nInstantiating all agents...\n")
             log_file.flush()
 
-            orchestrator = OrchestratorAgent(workspace=Path(".agent_workspace/test_orchestrator_l3"), use_behaviors=True)
+            orchestrator = OrchestratorAgent(workspace=Path(".agent_workspace/test_orchestrator_l3"))
             log_file.write(f"  ✓ Orchestrator created\n")
 
             architect = ArchitectAgent(
                 workspace=Path(".agent_workspace/test_architect"),
-                use_behaviors=True
             )
             log_file.write(f"  ✓ Architect created\n")
 
             task_executor = TaskExecutorAgent(
                 workspace=Path(".agent_workspace/test_executor"),
                 goal="test",
-                use_behaviors=True
             )
             log_file.write(f"  ✓ TaskExecutor created\n")
             log_file.flush()

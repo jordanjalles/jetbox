@@ -63,9 +63,22 @@ class ChatbotBehavior(AgentBehavior):
         """
         Provide goal extraction tool for chat mode.
 
+        Only provides set_goal tool if agent doesn't already have a goal.
+        This prevents confusion when agent is invoked with a goal parameter.
+
         Returns:
             Tool definitions for set_goal (used to transition from chat to execution)
         """
+        # Check if agent already has a goal set
+        # If yes, don't provide set_goal tool (agent is in execution mode, not chat mode)
+        if hasattr(self, 'agent') and self.agent:
+            # Check via context_manager if available
+            if hasattr(self.agent, 'context_manager') and self.agent.context_manager:
+                if self.agent.context_manager.state.goal:
+                    # Goal already set - don't provide chatbot tools
+                    return []
+
+        # No goal set - provide set_goal tool for chat mode
         return [
             {
                 "type": "function",
@@ -188,9 +201,22 @@ Guidelines:
         """
         Return chat mode workflow instructions.
 
+        Only provides instructions if agent doesn't already have a goal.
+        This prevents confusing instructions when agent is in execution mode.
+
         Returns:
-            Instructions for interactive chat mode
+            Instructions for interactive chat mode (or empty string if goal set)
         """
+        # Check if agent already has a goal set
+        # If yes, don't provide chat mode instructions (agent is in execution mode)
+        if hasattr(self, 'agent') and self.agent:
+            # Check via context_manager if available
+            if hasattr(self.agent, 'context_manager') and self.agent.context_manager:
+                if self.agent.context_manager.state.goal:
+                    # Goal already set - don't provide chat instructions
+                    return ""
+
+        # No goal set - provide chat mode instructions
         return """
 CHAT MODE:
 When the agent is invoked without a goal, you enter chat mode to gather requirements.
