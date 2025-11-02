@@ -306,20 +306,29 @@ class DelegationBehavior(AgentBehavior):
                 goal=goal_description
             )
 
-            # NOTE: Actual execution happens in orchestrator_main.py via subprocess
-            # This is just the setup phase - we return info for orchestrator to execute
+            # EXECUTE THE AGENT SYNCHRONOUSLY
+            print(f"[delegation] Executing {target_agent_name} with max_rounds=50...")
+            execution_result = target_agent.run(max_rounds=50)
+
+            # Build result from actual execution
+            status = execution_result.get('status', 'unknown')
+            success = (status == 'success')
 
             result = {
-                "success": True,
-                "message": f"Delegation to {target_agent_name} prepared",
+                "success": success,
+                "message": f"Delegation to {target_agent_name}: {status}",
+                "status": status,
                 "target_agent": target_agent_name,
                 "goal": goal_description,
                 "workspace": str(target_agent.workspace) if hasattr(target_agent, 'workspace') and target_agent.workspace else None,
                 "agent_class": agent_class_name,
+                "execution_result": execution_result,
             }
 
             # Track delegation
             self.track_delegation(target_agent_name, goal_description, result)
+
+            print(f"[delegation] {target_agent_name} completed with status: {status}")
 
             return result
 

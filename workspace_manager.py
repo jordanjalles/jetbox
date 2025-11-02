@@ -38,10 +38,10 @@ class WorkspaceManager:
             if not self.workspace_dir.exists():
                 raise ValueError(f"Edit mode workspace path does not exist: {workspace_path}")
 
-        # Isolate mode: create new isolated workspace under .agent_workspace
+        # Isolate mode: create new isolated workspace under .agent_workspaces
         else:
             self.is_edit_mode = False
-            self.base_dir = base_dir or Path(".agent_workspace")
+            self.base_dir = base_dir or Path(".agent_workspaces")
             self.workspace_name = slugify(goal)
             self.workspace_dir = self.base_dir / self.workspace_name
             self.workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -52,7 +52,7 @@ class WorkspaceManager:
         path = Path(path)
         if path.is_absolute():
             return path
-        if str(path).startswith('.agent_workspace/'):
+        if str(path).startswith('.agent_workspaces/'):
             return Path(path)
         return self.workspace_dir / path
 
