@@ -277,7 +277,9 @@ class DelegationBehavior(AgentBehavior):
                 "error": f"No goal/task description found in args: {list(args.keys())}"
             }
 
-        # Determine workspace
+        # PROPER WORKSPACE COORDINATION
+        # If calling agent has a workspace, subagent should work in SAME workspace
+        # This ensures orchestrator and subagents coordinate on file locations
         workspace = None
         if "workspace_mode" in args:
             workspace_mode = args["workspace_mode"]
@@ -293,6 +295,10 @@ class DelegationBehavior(AgentBehavior):
         elif "workspace_path" in args:
             # Direct workspace path provided
             workspace = Path(args["workspace_path"])
+        elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
+            # WORKSPACE COORDINATION: Use calling agent's workspace
+            workspace = calling_agent.workspace
+            print(f"[delegation] Reusing calling agent's workspace: {workspace}")
         else:
             # No workspace specified - create new workspace
             workspace = None
@@ -310,25 +316,78 @@ class DelegationBehavior(AgentBehavior):
             print(f"[delegation] Executing {target_agent_name} with max_rounds=50...")
             execution_result = target_agent.run(max_rounds=50)
 
-            # Build result from actual execution
+            # Extract execution status
             status = execution_result.get('status', 'unknown')
             success = (status == 'success')
 
+            # Get subagent workspace
+            subagent_workspace = target_agent.workspace if hasattr(target_agent, 'workspace') else None
+
+            # CAPTURE SUBAGENT SUMMARY FROM JETBOX NOTES
+            summary = None
+            if subagent_workspace and subagent_workspace.exists():
+                notes_file = subagent_workspace / "jetboxnotes.md"
+                if notes_file.exists():
+                    try:
+                        with open(notes_file) as f:
+                            summary = f.read().strip()
+                    except Exception:
+                        pass
+
+            if not summary:
+                summary = f"Task execution {status}. No detailed summary available."
+
+            # LIST FILES CREATED BY SUBAGENT
+            files_created = []
+            if subagent_workspace and subagent_workspace.exists():
+                try:
+                    for item in subagent_workspace.iterdir():
+                        if item.is_file() and not item.name.startswith('.'):
+                            files_created.append(item.name)
+                except Exception:
+                    pass
+
+            # BUILD CLEAR, ACTIONABLE RESULT MESSAGE
+            if success:
+                message = f"""Task delegated to {target_agent_name} completed successfully.
+
+SUMMARY:
+{summary}
+
+WORKSPACE: {subagent_workspace}
+FILES CREATED: {', '.join(files_created) if files_created else 'none'}
+
+The delegated task is complete. You can now proceed with next steps or mark your goal complete if all work is done."""
+            else:
+                message = f"""Task delegated to {target_agent_name} did not complete successfully (status: {status}).
+
+SUMMARY:
+{summary}
+
+WORKSPACE: {subagent_workspace}
+FILES CREATED: {', '.join(files_created) if files_created else 'none'}
+
+The delegated task did not complete. Consider:
+- Breaking down into simpler subtasks
+- Providing more specific requirements
+- Delegating again with adjusted parameters"""
+
             result = {
                 "success": success,
-                "message": f"Delegation to {target_agent_name}: {status}",
                 "status": status,
+                "message": message,  # Clear, actionable summary for LLM
                 "target_agent": target_agent_name,
                 "goal": goal_description,
-                "workspace": str(target_agent.workspace) if hasattr(target_agent, 'workspace') and target_agent.workspace else None,
-                "agent_class": agent_class_name,
-                "execution_result": execution_result,
+                "workspace": str(subagent_workspace),
+                "files_created": files_created,
+                "summary": summary,
             }
 
             # Track delegation
             self.track_delegation(target_agent_name, goal_description, result)
 
             print(f"[delegation] {target_agent_name} completed with status: {status}")
+            print(f"[delegation] Files created: {len(files_created)}")
 
             return result
 
