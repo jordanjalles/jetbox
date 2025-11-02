@@ -1,0 +1,1229 @@
+{
+  "summary": {
+    "timestamp": "2025-11-02T02:14:52.468837",
+    "total_duration_minutes": 29.535550165176392,
+    "total_runs": 45,
+    "successful_runs": 17,
+    "success_rate": 0.37777777777777777,
+    "total_problems": 15
+  },
+  "level_statistics": {
+    "L3": {
+      "problems": 3,
+      "runs": 9,
+      "success_rate": 0.8888888888888888,
+      "avg_duration": 16.13877839512295,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0
+    },
+    "L4": {
+      "problems": 3,
+      "runs": 9,
+      "success_rate": 0.7777777777777778,
+      "avg_duration": 44.44127072228326,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0
+    },
+    "L5": {
+      "problems": 3,
+      "runs": 9,
+      "success_rate": 0.1111111111111111,
+      "avg_duration": 58.43592704666985,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0
+    },
+    "L6": {
+      "problems": 3,
+      "runs": 9,
+      "success_rate": 0.1111111111111111,
+      "avg_duration": 43.728743367724945,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0
+    },
+    "L7": {
+      "problems": 3,
+      "runs": 9,
+      "success_rate": 0.0,
+      "avg_duration": 34.158290439181854,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0
+    }
+  },
+  "problems": [
+    {
+      "level": "L3",
+      "name": "Math Package",
+      "description": "Create mathx package with add/subtract/multiply/divide in separate files, with tests",
+      "success_rate": 1.0,
+      "avg_duration": 19.071414629618328,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 20.012219429016113,
+          "rounds_used": 0,
+          "files_created": 6,
+          "files_expected": 6,
+          "performance": {
+            "total_time": 19.84341025352478,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 19.84341025352478,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 19.8s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "success",
+          "duration": 21.11425757408142,
+          "rounds_used": 0,
+          "files_created": 6,
+          "files_expected": 6,
+          "performance": {
+            "total_time": 21.07013511657715,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 21.07013511657715,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 21.1s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "success",
+          "duration": 16.087766885757446,
+          "rounds_used": 0,
+          "files_created": 6,
+          "files_expected": 6,
+          "performance": {
+            "total_time": 16.049788236618042,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 16.049788236618042,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 16.0s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L3",
+      "name": "String Utils",
+      "description": "Create strutils package with capitalize/reverse/count_words in separate files, with tests",
+      "success_rate": 1.0,
+      "avg_duration": 12.802992343902588,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 14.787578344345093,
+          "rounds_used": 0,
+          "files_created": 5,
+          "files_expected": 5,
+          "performance": {
+            "total_time": 14.749483585357666,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 14.749483585357666,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 14.7s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "success",
+          "duration": 11.49190378189087,
+          "rounds_used": 0,
+          "files_created": 5,
+          "files_expected": 5,
+          "performance": {
+            "total_time": 11.456836223602295,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 11.456836223602295,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 11.5s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "success",
+          "duration": 12.129494905471802,
+          "rounds_used": 0,
+          "files_created": 5,
+          "files_expected": 5,
+          "performance": {
+            "total_time": 12.094202041625977,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 12.094202041625977,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 12.1s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L3",
+      "name": "File Utils",
+      "description": "Create fileutils package with read/write/append/delete in separate files, with tests",
+      "success_rate": 0.6666666666666666,
+      "avg_duration": 16.541928211847942,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 17.4539737701416,
+          "rounds_used": 0,
+          "files_created": 6,
+          "files_expected": 6,
+          "performance": {
+            "total_time": 17.41450071334839,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 17.41450071334839,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 17.4s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "success",
+          "duration": 12.619717597961426,
+          "rounds_used": 0,
+          "files_created": 6,
+          "files_expected": 6,
+          "performance": {
+            "total_time": 12.582513809204102,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 12.582513809204102,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 12.6s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 19.552093267440796,
+          "rounds_used": 0,
+          "files_created": 3,
+          "files_expected": 6,
+          "performance": {
+            "total_time": 19.51476263999939,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 19.51476263999939,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 19.5s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L4",
+      "name": "HTTP Wrapper",
+      "description": "Create http_wrapper with retry logic and timeout. Include tests.",
+      "success_rate": 0.6666666666666666,
+      "avg_duration": 66.34134777386983,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 27.217418432235718,
+          "rounds_used": 0,
+          "files_created": 1,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 27.184242248535156,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 27.184242248535156,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 27.2s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 100.02667212486267,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 99.99594831466675,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 99.99594831466675,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 100.0s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "success",
+          "duration": 71.77995276451111,
+          "rounds_used": 0,
+          "files_created": 1,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 71.74853777885437,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 71.74853777885437,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 71.7s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L4",
+      "name": "JSON Validator",
+      "description": "Create json_validator for schema validation. Include tests with sample schemas.",
+      "success_rate": 1.0,
+      "avg_duration": 19.13082464536031,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 18.310004949569702,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 18.27718687057495,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 18.27718687057495,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 18.3s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "success",
+          "duration": 21.530965566635132,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 21.500948190689087,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 21.500948190689087,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 21.5s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "success",
+          "duration": 17.5515034198761,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 17.523083448410034,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 17.523083448410034,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 17.5s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L4",
+      "name": "CSV Parser",
+      "description": "Create csv_parser with header detection and type inference. Include tests.",
+      "success_rate": 0.6666666666666666,
+      "avg_duration": 47.85163974761963,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 18.862290859222412,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 18.724929571151733,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 18.724929571151733,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 18.7s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 102.31723952293396,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 102.28747081756592,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 102.28747081756592,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 102.3s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "success",
+          "duration": 22.375388860702515,
+          "rounds_used": 0,
+          "files_created": 2,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 22.34395956993103,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 22.34395956993103,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 22.3s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L5",
+      "name": "Web API",
+      "description": "Create REST API with Flask: user CRUD endpoints, with tests",
+      "success_rate": 0.3333333333333333,
+      "avg_duration": 37.733575661977135,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 12.49926209449768,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 12.469125509262085,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 12.469125509262085,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 12.5s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 16.51905131340027,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 16.381991863250732,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 16.381991863250732,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 16.4s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "success",
+          "duration": 84.18241357803345,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 84.15228652954102,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 84.15228652954102,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 84.2s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L5",
+      "name": "CLI Tool",
+      "description": "Create CLI with argparse: file converter (JSON<->CSV), with tests",
+      "success_rate": 0.0,
+      "avg_duration": 82.794429063797,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 52.70801615715027,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 52.6057870388031,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 52.6057870388031,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 52.6s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 85.49730849266052,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 85.4674985408783,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 85.4674985408783,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 85.5s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 110.1779625415802,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 110.14719533920288,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 110.14719533920288,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 110.1s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L5",
+      "name": "Data Pipeline",
+      "description": "Create data pipeline: read CSV, transform, write JSON, with tests",
+      "success_rate": 0.0,
+      "avg_duration": 54.779776414235435,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 82.8450882434845,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 82.81077265739441,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 82.81077265739441,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 82.8s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 69.37510132789612,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 69.34355139732361,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 69.34355139732361,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 69.3s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 12.119139671325684,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 3,
+          "performance": {
+            "total_time": 12.08532428741455,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 12.08532428741455,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 12.1s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L6",
+      "name": "Microservice",
+      "description": "Design and implement user microservice with database, API, tests",
+      "success_rate": 0.0,
+      "avg_duration": 19.897385199864704,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 14.550381898880005,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 14.51498556137085,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 14.51498556137085,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 14.5s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 31.405360221862793,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 31.3672935962677,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 31.3672935962677,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 31.4s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 13.736413478851318,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 13.702918529510498,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 13.702918529510498,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 13.7s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L6",
+      "name": "Plugin System",
+      "description": "Design and implement plugin system with dynamic loading, hooks, tests",
+      "success_rate": 0.0,
+      "avg_duration": 13.965388298034668,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 13.528744220733643,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 13.488723039627075,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 13.488723039627075,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 13.5s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 14.860114097595215,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 14.82610297203064,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 14.82610297203064,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 14.8s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 13.507306575775146,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 13.377527236938477,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 13.377527236938477,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 13.4s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L6",
+      "name": "Event Bus",
+      "description": "Design and implement event bus with pub/sub, filtering, tests",
+      "success_rate": 0.3333333333333333,
+      "avg_duration": 97.32345660527547,
+      "avg_llm_time": 0,
+      "avg_tool_time": 0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "success",
+          "duration": 90.82725501060486,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 90.7966136932373,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 90.7966136932373,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 90.8s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 70.55043244361877,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 70.51771283149719,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 70.51771283149719,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 70.5s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 130.59268236160278,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 130.4547312259674,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 130.4547312259674,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 130.5s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L7",
+      "name": "Full Stack App",
+      "description": "Design and build task tracker: backend API + frontend + database + tests",
+      "success_rate": 0.0,
+      "avg_duration": 18.0243927637736,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 18.897377490997314,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 18.762388467788696,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 18.762388467788696,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 18.8s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 17.913694858551025,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 17.775068283081055,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 17.775068283081055,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 17.8s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 17.26210594177246,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 17.22533345222473,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 17.22533345222473,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 17.2s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L7",
+      "name": "Distributed System",
+      "description": "Design and implement distributed KV store with replication, tests",
+      "success_rate": 0.0,
+      "avg_duration": 50.22805658976237,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 17.542158603668213,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 17.509533166885376,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 17.509533166885376,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 17.5s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 19.661171197891235,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 19.625251531600952,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 19.625251531600952,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 19.6s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 113.48083996772766,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 113.44983768463135,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 113.44983768463135,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 113.4s"
+          ]
+        }
+      ]
+    },
+    {
+      "level": "L7",
+      "name": "Message Queue",
+      "description": "Design and build message queue with persistence, acknowledgments, tests",
+      "success_rate": 0.0,
+      "avg_duration": 34.222421964009605,
+      "avg_llm_time": 0.0,
+      "avg_tool_time": 0.0,
+      "avg_overhead": 100.0,
+      "runs": [
+        {
+          "run_number": 1,
+          "status": "failure",
+          "duration": 18.769014358520508,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 18.73665738105774,
+            "llm_thinking_time": 0.0,
+            "tool_execution_time": 0.0,
+            "idle_time": 18.73665738105774,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 18.7s"
+          ]
+        },
+        {
+          "run_number": 2,
+          "status": "failure",
+          "duration": 26.676018476486206,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 26.641151428222656,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 26.641151428222656,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 26.6s"
+          ]
+        },
+        {
+          "run_number": 3,
+          "status": "failure",
+          "duration": 57.222233057022095,
+          "rounds_used": 0,
+          "files_created": 0,
+          "files_expected": 4,
+          "performance": {
+            "total_time": 57.08574628829956,
+            "llm_thinking_time": 0,
+            "tool_execution_time": 0,
+            "idle_time": 57.08574628829956,
+            "llm_percentage": 0.0,
+            "tool_percentage": 0.0,
+            "overhead_percentage": 100.0
+          },
+          "errors": [],
+          "warnings": [
+            "High overhead: 100.0%",
+            "Long idle time: 57.1s"
+          ]
+        }
+      ]
+    }
+  ]
+}

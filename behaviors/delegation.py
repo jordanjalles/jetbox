@@ -303,8 +303,7 @@ class DelegationBehavior(AgentBehavior):
 
             target_agent = agent_class(
                 workspace=workspace,
-                goal=goal_description,
-                use_behaviors=True
+                goal=goal_description
             )
 
             # NOTE: Actual execution happens in orchestrator_main.py via subprocess
