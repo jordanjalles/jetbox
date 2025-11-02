@@ -244,7 +244,7 @@ See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
 - Prompt-engineered for factual, concise summaries (temp 0.2)
 - **See [docs/jetbox_notes/](docs/jetbox_notes/) for complete documentation**
 
-**Tool whitelist** (agent.py:32): Only `python`, `pytest`, `ruff`, and `pip` commands are allowed for Windows safety. All other commands are rejected.
+**Tool whitelist**: Command execution is controlled by `jetbox_commands_whitelist` file in the root directory. Only commands listed in this file are allowed for safety. Default whitelist includes: `python`, `pytest`, `ruff`, `pip`, `git`, and common Unix utilities.
 
 **Status artifacts**:
 - `.agent_context/state.json` - Hierarchical task state (Goal/Task/Subtask/Action)
@@ -286,11 +286,10 @@ All tools in `agent.py` are tolerant of edge cases:
 
 ## Key Configuration
 
-**Runtime constants (agent.py:27-39):**
+**Runtime constants:**
 - `MODEL` - Ollama model tag (default: "gpt-oss:20b", override with `OLLAMA_MODEL` env var)
 - `TEMP` - Temperature for model (0.2 for focused outputs)
-- `HISTORY_KEEP` - Number of recent message exchanges to retain (5)
-- `SAFE_BIN` - Whitelisted commands: `{"python", "pytest", "ruff", "pip"}`
+- Command whitelist - Defined in `jetbox_commands_whitelist` file
 
 **Configurable behavior (agent_config.yaml):**
 - `rounds.max_per_subtask` - Rounds before escalation (default: 6)
@@ -426,7 +425,7 @@ When working in this codebase:
 2. **Prefer compact context** - Summarize and deduplicate rather than including full histories
 3. **Design for interruption** - Any operation should be resumable from logs
 4. **Use backward chaining** - Start from desired end state (tests pass) and work backward to current state
-5. **Whitelist over blacklist** - Commands are allowed via explicit whitelist only
+5. **Whitelist over blacklist** - Commands are allowed via explicit whitelist in `jetbox_commands_whitelist` file
 6. **Log everything to ledger** - WRITE/CMD/ERROR/TRIED actions go to `agent_ledger.log` for audit trail
 
 ## Package Structure

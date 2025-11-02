@@ -15,11 +15,8 @@ behavior_defaults:
     max_repeats: 5            # Warn after 5 identical actions
 
   CommandToolsBehavior:
-    whitelist:                # Safe commands for coding tasks
-      - python
-      - pytest
-      - ruff
-      - pip
+    # Command whitelist is configured in root-level file: jetbox_commands_whitelist
+    # You can override it here with a whitelist parameter if needed
 
   HierarchicalContextBehavior:
     max_depth: 5              # Maximum task nesting

@@ -32,6 +32,7 @@ class CommandToolsBehavior(AgentBehavior):
         self,
         workspace_manager=None,
         ledger_file: Path | None = None,
+        whitelist: list[str] | None = None,
         **kwargs
     ):
         """
@@ -40,10 +41,39 @@ class CommandToolsBehavior(AgentBehavior):
         Args:
             workspace_manager: WorkspaceManager instance for workspace directory
             ledger_file: Path to ledger file for audit logging
+            whitelist: List of allowed commands (overrides jetbox_commands_whitelist file)
             **kwargs: Additional parameters (ignored)
         """
         self.workspace_manager = workspace_manager
         self.ledger_file = ledger_file
+
+        # Load whitelist from jetbox_commands_whitelist file or use parameter
+        self.whitelist = whitelist or self._load_whitelist_from_file()
+
+    def _load_whitelist_from_file(self) -> set[str] | None:
+        """
+        Load command whitelist from jetbox_commands_whitelist file.
+
+        Returns:
+            Set of allowed commands, or None if no whitelist enforced
+        """
+        whitelist_file = Path("jetbox_commands_whitelist")
+
+        if not whitelist_file.exists():
+            return None
+
+        try:
+            lines = whitelist_file.read_text(encoding="utf-8").splitlines()
+            # Filter out comments and empty lines
+            commands = {
+                line.strip()
+                for line in lines
+                if line.strip() and not line.strip().startswith("#")
+            }
+            return commands if commands else None
+        except Exception as e:
+            print(f"[command_tools] Warning: Could not load whitelist from {whitelist_file}: {e}")
+            return None
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -148,6 +178,24 @@ class CommandToolsBehavior(AgentBehavior):
             run_bash("find . -name '*.py' | xargs wc -l")
             run_bash("cat file1.txt file2.txt > combined.txt")
         """
+        # Check whitelist if configured
+        if self.whitelist:
+            # Extract first token (command name)
+            first_token = command.strip().split()[0] if command.strip() else ""
+
+            if first_token not in self.whitelist:
+                error_msg = (
+                    f"Command not allowed: '{first_token}'. "
+                    f"Only these commands are whitelisted: {sorted(self.whitelist)}"
+                )
+                self._ledger_append("ERROR", f"Blocked command: {command[:100]}", ledger_file)
+                return {
+                    "error": error_msg,
+                    "returncode": -1,
+                    "stdout": "",
+                    "stderr": error_msg
+                }
+
         # Determine working directory
         cwd = str(workspace_manager.workspace_dir) if workspace_manager else None
 

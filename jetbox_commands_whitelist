@@ -1,0 +1,33 @@
+# Jetbox Commands Whitelist
+#
+# This file controls which commands can be executed via the run_bash tool.
+# Only commands listed here are allowed for safety.
+#
+# Format: One command per line (command name only, not full path)
+# Comments start with #
+
+# Python tools
+python
+pytest
+pip
+
+# Linting and formatting
+ruff
+black
+mypy
+
+# Version control
+git
+
+# File operations (common Unix utilities)
+ls
+cat
+grep
+find
+wc
+head
+tail
+
+# Package management
+npm
+node
