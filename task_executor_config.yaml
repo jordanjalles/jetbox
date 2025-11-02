@@ -29,9 +29,9 @@ delegation_tool:
       required: true
     workspace_mode:
       type: string
-      description: "Workspace mode: 'new' for new projects, 'existing' for updates"
+      description: "Workspace mode: 'new' for isolated workspace, 'existing' for specific path. If not specified, reuses calling agent's workspace."
       enum: ["new", "existing"]
-      required: true
+      required: false
     workspace_path:
       type: string
       description: "Path to existing workspace (required if workspace_mode='existing')"
