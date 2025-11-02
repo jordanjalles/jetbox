@@ -1,8 +1,8 @@
 """
-Jetbox Notes System - Persistent context across task boundaries.
+Workspace Task Notes System - Persistent context across task boundaries.
 
 Automatically captures key context at task/goal completion and persists
-it in jetboxnotes.md within the goal workspace.
+it in workspace_task_notes.md within the goal workspace.
 
 STRATEGY-AGNOSTIC DESIGN:
 This module is designed to work with ANY context strategy (Hierarchical,
@@ -39,15 +39,15 @@ def set_llm_caller(llm_func) -> None:
 
 
 def _get_notes_file() -> Path | None:
-    """Get the jetbox notes file path."""
+    """Get the workspace task notes file path."""
     if not _workspace:
         return None
-    return _workspace.workspace_dir / "jetboxnotes.md"
+    return _workspace.workspace_dir / "workspace_task_notes.md"
 
 
 def append_to_jetbox_notes(content: str, section: str = "task") -> bool:
     """
-    Append content to jetboxnotes.md in workspace.
+    Append content to workspace_task_notes.md in workspace.
 
     Args:
         content: Text to append (markdown formatted)
@@ -63,7 +63,7 @@ def append_to_jetbox_notes(content: str, section: str = "task") -> bool:
     try:
         # Create file with header if doesn't exist
         if not notes_file.exists():
-            notes_file.write_text("# Jetbox Notes\n\n", encoding="utf-8")
+            notes_file.write_text("# Workspace Task Notes\n\n", encoding="utf-8")
 
         # Timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -82,17 +82,17 @@ def append_to_jetbox_notes(content: str, section: str = "task") -> bool:
         with notes_file.open("a", encoding="utf-8") as f:
             f.write(entry)
 
-        print(f"[jetbox_notes] Appended {section} summary to jetboxnotes.md")
+        print(f"[workspace_task_notes] Appended {section} summary to workspace_task_notes.md")
         return True
 
     except Exception as e:
-        print(f"[jetbox_notes] Error appending to notes: {e}")
+        print(f"[workspace_task_notes] Error appending to notes: {e}")
         return False
 
 
 def load_jetbox_notes(max_chars: int = 2000) -> str | None:
     """
-    Load jetbox notes from workspace file.
+    Load workspace task notes from workspace file.
 
     Args:
         max_chars: Maximum characters to return (tail of file if larger)
@@ -114,7 +114,7 @@ def load_jetbox_notes(max_chars: int = 2000) -> str | None:
         return content
 
     except Exception as e:
-        print(f"[jetbox_notes] Error loading notes: {e}")
+        print(f"[workspace_task_notes] Error loading notes: {e}")
         return None
 
 
@@ -159,7 +159,7 @@ Format: Use bullet points starting with "-"."""
         return content.strip()
 
     except Exception as e:
-        print(f"[jetbox_notes] Error generating task summary: {e}")
+        print(f"[workspace_task_notes] Error generating task summary: {e}")
         return f"- Completed: {task_description}\n- (Summary generation timed out)"
 
 
@@ -237,7 +237,7 @@ Format: Use bullet points starting with "-"."""
         return content.strip()
 
     except Exception as e:
-        print(f"[jetbox_notes] Error generating goal summary: {e}")
+        print(f"[workspace_task_notes] Error generating goal summary: {e}")
         status = "completed" if success else "failed"
         return f"- Goal {status}: {goal_description}\n- (Summary generation timed out)"
 
@@ -253,12 +253,12 @@ def get_notes_summary_for_display() -> str | None:
     if not content:
         return None
 
-    return f"\n{'='*70}\nJETBOX NOTES\n{'='*70}\n{content}\n{'='*70}\n"
+    return f"\n{'='*70}\nWORKSPACE TASK NOTES\n{'='*70}\n{content}\n{'='*70}\n"
 
 
 def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history: list = None) -> None:
     """
-    Create a jetbox notes summary when goal times out.
+    Create a workspace task notes summary when goal times out.
 
     Generic implementation that works with any context strategy by using
     action_history instead of hierarchical task trees.
@@ -359,7 +359,7 @@ Format: Dense bullets focused on facts."""
         timeout_header = f"## TIMEOUT ({elapsed_seconds:.0f}s)"
         append_to_jetbox_notes(f"{timeout_header}\n{summary}", "timeout")
 
-        print(f"[jetbox] Created timeout summary ({len(summary)} chars)")
+        print(f"[workspace_task_notes] Created timeout summary ({len(summary)} chars)")
 
     except Exception as e:
         # Fallback to basic summary (strategy-agnostic)
@@ -382,13 +382,13 @@ Format: Dense bullets focused on facts."""
 
         fallback = "\n".join(fallback_lines)
         append_to_jetbox_notes(fallback, "timeout")
-        print(f"[jetbox] Created fallback timeout summary (LLM failed: {e})")
+        print(f"[workspace_task_notes] Created fallback timeout summary (LLM failed: {e})")
 
 
 # For testing/debugging
 def _test_notes_system():
     """Test the notes system with mock data."""
-    print("Testing Jetbox Notes System...")
+    print("Testing Workspace Task Notes System...")
 
     # Test append
     append_to_jetbox_notes("- Created project structure\n- Added main.py", "task")

@@ -1,8 +1,8 @@
 """
 WorkspaceTaskNotesBehavior - Persistent context summaries across task boundaries.
 
-This behavior wraps the jetbox_notes module to provide auto-summarization
-and context persistence functionality through the AgentBehavior interface.
+This behavior wraps the workspace task notes module (jetbox_notes.py) to provide
+auto-summarization and context persistence functionality through the AgentBehavior interface.
 
 Features:
 - Event: on_goal_complete(success, **kwargs)
@@ -12,8 +12,8 @@ Features:
 
 The behavior delegates to the jetbox_notes module for actual implementation.
 
-NOTE: The underlying jetbox_notes.py module name is kept for backward compatibility.
-The behavior name has been updated to be more descriptive.
+NOTE: The underlying jetbox_notes.py module name is kept to avoid breaking imports.
+The behavior name and file names have been updated to workspace_task_notes.
 """
 
 from typing import Any
@@ -29,10 +29,10 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
     - Loads existing notes on context enhancement
     - Creates summaries on goal completion/failure
     - Creates timeout summaries when agent times out
-    - Persists summaries to jetboxnotes.md in workspace
+    - Persists summaries to workspace_task_notes.md in workspace
 
     This is a utility behavior (no tools) that integrates the
-    jetbox_notes system with the behavior framework.
+    workspace task notes system with the behavior framework.
     """
 
     def __init__(self, **kwargs):
@@ -167,7 +167,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         """
         Called when goal completes.
 
-        Generates and saves goal summary to jetboxnotes.md.
+        Generates and saves goal summary to workspace_task_notes.md.
 
         Args:
             success: True if goal succeeded, False if failed
@@ -207,7 +207,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         """
         Called when goal times out.
 
-        Generates and saves timeout summary to jetboxnotes.md.
+        Generates and saves timeout summary to workspace_task_notes.md.
 
         Args:
             elapsed_seconds: Time elapsed since goal start
@@ -232,7 +232,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         """
         return """
 WORKSPACE TASK NOTES:
-Your work is automatically summarized and persisted to workspace task notes (jetboxnotes.md).
+Your work is automatically summarized and persisted to workspace task notes (workspace_task_notes.md).
 
 Context persistence:
 - Task summaries are created when tasks complete

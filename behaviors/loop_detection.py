@@ -35,16 +35,21 @@ class LoopDetectionBehavior(AgentBehavior):
     - Configurable max_repeats threshold
     """
 
-    def __init__(self, max_repeats: int = 5):
+    def __init__(self, max_repeats: int = 5, max_empty_rounds: int = 3):
         """
         Initialize loop detection behavior.
 
         Args:
             max_repeats: Maximum times an action can repeat before warning (default: 5)
+            max_empty_rounds: Maximum consecutive rounds without tool calls before intervention (default: 3)
         """
         self.max_repeats = max_repeats
+        self.max_empty_rounds = max_empty_rounds
         self.action_history: list[dict[str, Any]] = []
         self.loop_warnings: list[str] = []
+        self.consecutive_empty_rounds = 0
+        self.recovery_prompt_injected = False
+        self.last_round_action_count = 0
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -66,6 +71,10 @@ class LoopDetectionBehavior(AgentBehavior):
             result: Result returned by the tool
             **kwargs: Additional context
         """
+        # Reset empty rounds counter - a tool was called
+        self.consecutive_empty_rounds = 0
+        self.recovery_prompt_injected = False
+
         # Create action signature (tool + args)
         serializable_args = self._make_serializable(args)
         args_str = json.dumps(serializable_args, sort_keys=True)
@@ -115,43 +124,127 @@ class LoopDetectionBehavior(AgentBehavior):
             if warning not in self.loop_warnings:
                 self.loop_warnings.append(warning)
 
+    def on_round_end(self, round_number: int, **kwargs: Any) -> None:
+        """
+        Called at end of each round to detect empty rounds.
+
+        Args:
+            round_number: Current round number
+            **kwargs: Additional context
+        """
+        # Check if action count changed this round
+        current_action_count = len(self.action_history)
+
+        if current_action_count == self.last_round_action_count:
+            # No tool was called this round (empty round)
+            self.consecutive_empty_rounds += 1
+            print(f"[loop_detection] ⚠️  Empty round #{self.consecutive_empty_rounds} - LLM did not call any tools")
+
+            # Log diagnostic info
+            agent = kwargs.get('agent')
+            if agent and hasattr(agent, 'state') and agent.state.messages:
+                # Get last assistant message
+                last_msg = None
+                for msg in reversed(agent.state.messages):
+                    if msg.get('role') == 'assistant':
+                        last_msg = msg
+                        break
+
+                if last_msg:
+                    content_preview = last_msg.get('content', '')[:200]
+                    print(f"[loop_detection] LLM response: {content_preview}...")
+        else:
+            # Tool was called - counter already reset by on_tool_call
+            pass
+
+        # Update last count for next round
+        self.last_round_action_count = current_action_count
+
     def enhance_context(
         self,
         context: list[dict[str, Any]],
         **kwargs: Any
     ) -> list[dict[str, Any]]:
         """
-        Inject loop warnings into context if loops detected.
+        Inject loop warnings and recovery prompts into context.
 
         Args:
             context: Current context
-            **kwargs: Additional context
+            **kwargs: Additional context (agent, context_manager)
 
         Returns:
-            Modified context with loop warnings (if any)
+            Modified context with warnings/recovery prompts (if any)
         """
-        if not self.loop_warnings:
-            return context
+        warnings_to_inject = []
 
-        # Build warning message
-        warnings_text = ["⚠️  LOOP DETECTION WARNING:"]
-        warnings_text.append("You appear to be repeating actions:")
-        for warning in self.loop_warnings[-3:]:  # Last 3 warnings
-            warnings_text.append(f"  • {warning}")
-        warnings_text.append("")
-        warnings_text.append("Consider trying a COMPLETELY DIFFERENT approach:")
-        warnings_text.append("  1. Read error messages more carefully")
-        warnings_text.append("  2. Check if assumptions are wrong")
-        warnings_text.append("  3. Try a fundamentally different strategy")
-        warnings_text.append("  4. If core task is complete, call mark_complete() even if tests fail")
-        warnings_text.append("  5. If truly blocked, call mark_failed() with detailed reason")
+        # Check for empty rounds - highest priority intervention
+        if self.consecutive_empty_rounds >= self.max_empty_rounds and not self.recovery_prompt_injected:
+            # Get current goal and available tools
+            agent = kwargs.get('agent')
+            context_manager = kwargs.get('context_manager')
 
-        # Insert warning after system prompt (index 1)
-        if len(context) > 0:
-            context.insert(1, {
-                "role": "user",
-                "content": "\n".join(warnings_text)
-            })
+            goal_desc = "your assigned goal"
+            if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
+                goal_desc = context_manager.state.goal.description
+
+            # Get available tools
+            available_tools = []
+            if agent:
+                tools = agent.get_tools()
+                for tool in tools:
+                    if isinstance(tool, dict) and 'function' in tool:
+                        tool_name = tool['function'].get('name', 'unknown')
+                        tool_desc = tool['function'].get('description', '')
+                        available_tools.append(f"  • {tool_name}: {tool_desc}")
+
+            tools_text = "\n".join(available_tools) if available_tools else "  (no tools available)"
+
+            # Build recovery prompt
+            recovery = [
+                "🚨 CRITICAL: You have not called ANY tools for 3 consecutive rounds.",
+                "",
+                "CURRENT GOAL:",
+                f"  {goal_desc}",
+                "",
+                "AVAILABLE TOOLS:",
+                tools_text,
+                "",
+                "YOU MUST CALL A TOOL THIS ROUND:",
+                "  1. If you know the next step: call the appropriate tool",
+                "  2. If the goal is complete: call mark_complete(summary=\"what you did\")",
+                "  3. If you are stuck/blocked: call mark_failed(reason=\"why you cannot proceed\")",
+                "",
+                "DO NOT respond without calling a tool. Choose a tool from the list above and call it now."
+            ]
+
+            warnings_to_inject.append("\n".join(recovery))
+            self.recovery_prompt_injected = True
+
+        # Check for action loops (existing logic)
+        elif self.loop_warnings:
+            # Build warning message
+            warnings_text = ["⚠️  LOOP DETECTION WARNING:"]
+            warnings_text.append("You appear to be repeating actions:")
+            for warning in self.loop_warnings[-3:]:  # Last 3 warnings
+                warnings_text.append(f"  • {warning}")
+            warnings_text.append("")
+            warnings_text.append("Consider trying a COMPLETELY DIFFERENT approach:")
+            warnings_text.append("  1. Read error messages more carefully")
+            warnings_text.append("  2. Check if assumptions are wrong")
+            warnings_text.append("  3. Try a fundamentally different strategy")
+            warnings_text.append("  4. If core task is complete, call mark_complete() even if tests fail")
+            warnings_text.append("  5. If truly blocked, call mark_failed() with detailed reason")
+
+            warnings_to_inject.append("\n".join(warnings_text))
+
+        # Inject warnings if any
+        if warnings_to_inject and len(context) > 0:
+            # Insert after system prompt (index 1)
+            for warning in reversed(warnings_to_inject):  # Reverse so they appear in correct order
+                context.insert(1, {
+                    "role": "user",
+                    "content": warning
+                })
 
         return context
 

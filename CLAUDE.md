@@ -238,7 +238,7 @@ See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
 
 **jetbox_notes.py** (persistent context system):
 - Auto-summarizes completed tasks and goals
-- Stores summaries in `jetboxnotes.md` within workspace
+- Stores summaries in `workspace_task_notes.md` within workspace
 - Loads notes on subsequent runs for context continuity
 - Passes summaries to parent agent or console
 - Prompt-engineered for factual, concise summaries (temp 0.2)
@@ -343,12 +343,12 @@ For complete documentation, see [STATUS_DISPLAY.md](STATUS_DISPLAY.md)
 The agent automatically captures and persists context across runs using the jetbox notes system:
 
 **Auto-Summarization**:
-- Task completion → 2-4 bullet summary appended to `jetboxnotes.md`
+- Task completion → 2-4 bullet summary appended to `workspace_task_notes.md`
 - Goal success → 3-6 bullet comprehensive summary appended and displayed
 - Goal failure → Failure analysis with blocking factors and retry suggestions
 
 **Persistence**:
-- Notes saved to `.agent_workspace/{goal-slug}/jetboxnotes.md`
+- Notes saved to `.agent_workspace/{goal-slug}/workspace_task_notes.md`
 - Markdown format, human-readable
 - Survives crashes and reruns
 
@@ -371,7 +371,7 @@ python agent.py "Your goal here"
 python agent.py --workspace .agent_workspace/previous-goal "Continue work"
 
 # View notes
-cat .agent_workspace/{goal-slug}/jetboxnotes.md
+cat .agent_workspace/{goal-slug}/workspace_task_notes.md
 ```
 
 For complete documentation, see:

@@ -335,10 +335,46 @@ class BaseAgent(ABC):
             }
 
         except Exception as e:
+            # Parse error to provide actionable feedback to LLM
+            error_str = str(e)
+
+            # Check if it's a tool call parsing error
+            if "error parsing tool call" in error_str.lower():
+                # Extract the malformed output from the error
+                import re
+                match = re.search(r"raw='(.*?)'", error_str, re.DOTALL)
+                if match:
+                    malformed_output = match.group(1)[:200]  # First 200 chars
+                else:
+                    malformed_output = "unknown"
+
+                # Provide clear, actionable feedback
+                feedback = (
+                    "ERROR: Your last response had a malformed tool call.\n\n"
+                    f"What you generated: {malformed_output}...\n\n"
+                    "PROBLEM: Tool calls must be pure JSON with NO text before or after.\n\n"
+                    "CORRECT FORMAT:\n"
+                    "  {\n"
+                    "    \"name\": \"tool_name\",\n"
+                    "    \"arguments\": {\"arg1\": \"value1\"}\n"
+                    "  }\n\n"
+                    "INCORRECT (what you did):\n"
+                    "  Let me do this: {\"name\": \"tool_name\", ...}  ← NO TEXT BEFORE JSON\n\n"
+                    "Try again with ONLY the JSON tool call, no explanatory text."
+                )
+
+                return {
+                    "message": {
+                        "role": "user",  # Send as user message so LLM treats it as feedback
+                        "content": feedback,
+                    }
+                }
+
+            # For other errors, provide generic feedback
             return {
                 "message": {
-                    "role": "assistant",
-                    "content": f"LLM call failed: {e}",
+                    "role": "user",
+                    "content": f"ERROR: LLM call failed with: {error_str}\n\nPlease try again.",
                 }
             }
 

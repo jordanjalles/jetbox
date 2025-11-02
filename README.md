@@ -10,7 +10,7 @@
 ## Features
 
 - 🎯 **Multi-Agent Orchestration** - Orchestrator → Architect → TaskExecutor workflow
-- 🏗️ **Composable Enhancements** - Pluggable context management with TaskManagement + JetboxNotes
+- 🏗️ **Composable Enhancements** - Pluggable context management with TaskManagement + WorkspaceTaskNotes
 - 📐 **Architecture Consulting** - Architect agent for complex project design
 - 📋 **Task Management** - Structured task tracking with dependency resolution
 - 📝 **Persistent Context** - Jetbox notes preserve context across sessions
@@ -189,7 +189,7 @@ User ↔ Orchestrator (conversation + task management)
 - Autonomous code execution
 - File operations, testing, linting
 - Progress tracking and crash recovery
-- **Enhancement**: JetboxNotes (persistent context summaries)
+- **Enhancement**: WorkspaceTaskNotes (persistent context summaries)
 - **Base Strategy**: AppendUntilFull (execution history)
 
 ### Workflow Examples
@@ -240,7 +240,7 @@ Jetbox uses a **composable enhancement architecture** where agents combine a bas
 **Plus agent-specific enhancements**:
 - **Orchestrator**: `+ TaskManagementEnhancement` (when tasks exist)
 - **Architect**: `+ TaskManagementEnhancement` (auto-detected)
-- **TaskExecutor**: `+ JetboxNotesEnhancement` (always enabled)
+- **TaskExecutor**: `+ WorkspaceTaskNotesEnhancement` (always enabled)
 
 ### Enhancement Features
 
@@ -251,8 +251,8 @@ Jetbox uses a **composable enhancement architecture** where agents combine a bas
 - Displays first 5 tasks with visual status icons (○ ⟳ ✓ ✗)
 - State persisted in `architecture/task-breakdown.json`
 
-**JetboxNotesEnhancement**:
-- Loads previous work summaries from `jetboxnotes.md`
+**WorkspaceTaskNotesEnhancement**:
+- Loads previous work summaries from `workspace_task_notes.md`
 - Auto-summarizes on task/goal completion
 - Provides context continuity across agent restarts
 - No additional tools needed (automatic)
@@ -319,7 +319,7 @@ jetbox/
 │           │   ├── *.md            # Architecture docs
 │           │   ├── modules/*.md    # Module specs
 │           │   └── task-breakdown.json   # Task breakdown
-│           ├── jetboxnotes.md      # Context summaries
+│           ├── workspace_task_notes.md      # Context summaries
 │           └── ... (implementation files)
 │
 └── Documentation
@@ -429,12 +429,12 @@ TASK LIST (first 5):
 Persistent context across runs via automatic summarization:
 
 **Auto-Summarization**:
-- Task completion → 2-4 bullet summary appended to `jetboxnotes.md`
+- Task completion → 2-4 bullet summary appended to `workspace_task_notes.md`
 - Goal success → 3-6 bullet comprehensive summary
 - Goal failure → Failure analysis with retry suggestions
 
 **Persistence**:
-- Notes saved in workspace (`jetboxnotes.md`)
+- Notes saved in workspace (`workspace_task_notes.md`)
 - Markdown format, human-readable
 - Survives crashes and reruns
 

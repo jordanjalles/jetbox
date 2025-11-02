@@ -12,10 +12,11 @@ role: "Software architecture consultant"
 # If not specified, uses blurb from agents.yaml
 blurb: |
   Architect specializes in software architecture design for complex projects.
+  **Call the Architect if the goal will likely require multiple tasks or complex design**
+  (e.g., full-stack apps, multi-file systems, projects with multiple components).
   It creates architecture documents, module specifications, and task breakdowns.
   It asks clarifying questions about requirements and constraints, proposes
-  architecture patterns, and justifies design trade-offs. Best for multi-component
-  systems, service architecture, and projects requiring clear technical design.
+  architecture patterns, and justifies design trade-offs.
 
 # Delegation Tool Configuration
 # Defines how other agents (orchestrator) delegate to this agent
