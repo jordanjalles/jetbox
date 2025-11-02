@@ -316,26 +316,20 @@ class DelegationBehavior(AgentBehavior):
             print(f"[delegation] Executing {target_agent_name} with max_rounds=50...")
             execution_result = target_agent.run(max_rounds=50)
 
-            # Extract execution status
+            # Extract execution status and summary from subagent's completion signal
             status = execution_result.get('status', 'unknown')
             success = (status == 'success')
 
             # Get subagent workspace
             subagent_workspace = target_agent.workspace if hasattr(target_agent, 'workspace') else None
 
-            # CAPTURE SUBAGENT SUMMARY FROM JETBOX NOTES
-            summary = None
-            if subagent_workspace and subagent_workspace.exists():
-                notes_file = subagent_workspace / "jetboxnotes.md"
-                if notes_file.exists():
-                    try:
-                        with open(notes_file) as f:
-                            summary = f.read().strip()
-                    except Exception:
-                        pass
+            # EXTRACT SUMMARY FROM SUBAGENT'S mark_complete/mark_failed CALL
+            # The agent.run() returns summary/reason from SubAgentModeBehavior completion
+            summary = execution_result.get('summary') or execution_result.get('reason')
 
             if not summary:
-                summary = f"Task execution {status}. No detailed summary available."
+                # Fallback if no summary provided (shouldn't happen with SubAgentModeBehavior)
+                summary = f"Task execution {status}. No summary provided by subagent."
 
             # LIST FILES CREATED BY SUBAGENT
             files_created = []
