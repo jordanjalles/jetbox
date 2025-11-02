@@ -281,27 +281,26 @@ class DelegationBehavior(AgentBehavior):
         # If calling agent has a workspace, subagent should work in SAME workspace
         # This ensures orchestrator and subagents coordinate on file locations
         workspace = None
-        if "workspace_mode" in args:
-            workspace_mode = args["workspace_mode"]
-            if workspace_mode == "existing":
-                workspace_path = args.get("workspace_path")
-                if not workspace_path:
-                    return {
-                        "success": False,
-                        "error": "workspace_path required when workspace_mode='existing'"
-                    }
-                workspace = Path(workspace_path)
-            # else: workspace_mode == "new", workspace = None (agent creates new)
-        elif "workspace_path" in args:
-            # Direct workspace path provided
+
+        # AUTOMATIC WORKSPACE COORDINATION:
+        # Priority order:
+        # 1. Explicit workspace_path provided → use it
+        # 2. Calling agent has workspace → reuse it (AUTOMATIC COORDINATION)
+        # 3. Neither → create new workspace
+
+        if "workspace_path" in args and args["workspace_path"]:
+            # Explicit workspace path overrides everything
             workspace = Path(args["workspace_path"])
+            print(f"[delegation] Using explicit workspace path: {workspace}")
         elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
-            # WORKSPACE COORDINATION: Use calling agent's workspace
+            # AUTOMATIC COORDINATION: Reuse calling agent's workspace
+            # This ensures files end up in one place
             workspace = calling_agent.workspace
             print(f"[delegation] Reusing calling agent's workspace: {workspace}")
         else:
-            # No workspace specified - create new workspace
+            # No workspace context - create new isolated workspace
             workspace = None
+            print(f"[delegation] Creating new isolated workspace")
 
         # Instantiate target agent
         try:
