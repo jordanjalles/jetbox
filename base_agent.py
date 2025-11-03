@@ -597,10 +597,10 @@ Please retry the tool call using only the valid parameters listed above.
     # ===========================
 
     def init_context_manager(self) -> None:
-        """Initialize context manager for hierarchical task tracking."""
-        from context_manager import ContextManager
-        if self.context_manager is None:
-            self.context_manager = ContextManager()
+        """Initialize context manager for hierarchical task tracking (DEPRECATED)."""
+        # Context manager is deprecated with the behavior system
+        # Behaviors now handle context management directly
+        pass
 
     def init_workspace_manager(self, goal_slug: str, workspace_path: Path | str | None = None) -> None:
         """

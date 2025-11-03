@@ -270,11 +270,12 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
         # Store goal for context injection
         self.goal = goal
 
-        # Initialize context manager with goal
-        if not agent.context_manager:
-            from context_manager import ContextManager
-            agent.context_manager = ContextManager()
-        agent.context_manager.load_or_init(goal)
+        # Initialize context manager with goal (DEPRECATED with behavior system)
+        # Context is now managed by behaviors, not a separate ContextManager
+        # if not agent.context_manager:
+        #     from context_manager import ContextManager
+        #     agent.context_manager = ContextManager()
+        # agent.context_manager.load_or_init(goal)
 
         # Initialize workspace manager
         # workspace parameter: None = create new, Path = reuse existing
