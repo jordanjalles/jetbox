@@ -438,3 +438,6 @@ When working in this codebase:
 - store report and summary markdowns in a subfolder that won't get added to github
 - remember not to kill shell because it kills the claude process too
 - swapping models in ollama takes some time
+- remember to be careful when using Kill Shell - you often kill your own claude process
+- remember to look at tasks_for_claude directory when you finish each task to see what new things I have for you to do
+- remember to update and check tasks_for_claude folder when every task is done

@@ -51,6 +51,7 @@ class LLMTimeoutConfig:
     inactivity_timeout: int
     max_call_time: int
     max_consecutive_timeouts: int
+    auto_restart_ollama: bool = False
 
 @dataclass
 class LLMConfig:

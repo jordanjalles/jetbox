@@ -30,12 +30,13 @@ TEST_PROBLEMS = {
     ],
 }
 
-def run_single_test(level: str, problem_idx: int, problem: str, run_idx: int) -> dict:
-    """Run a single test problem."""
+def run_single_test(level: str, problem_idx: int, problem: str, run_idx: int, timeout_seconds: int = 600) -> dict:
+    """Run a single test problem with timeout."""
     print(f"\n{'='*80}")
     print(f"{level} Problem {problem_idx+1} Run {run_idx+1}")
     print(f"{'='*80}")
     print(f"Task: {problem[:70]}...")
+    print(f"Timeout: {timeout_seconds}s ({timeout_seconds//60} minutes)")
     print()
 
     start_time = time.time()
@@ -45,19 +46,34 @@ def run_single_test(level: str, problem_idx: int, problem: str, run_idx: int) ->
     workspace_name = f"{level.lower()}_p{problem_idx+1}_run{run_idx+1}_{timestamp}"
     workspace = Path(".agent_workspaces") / workspace_name
 
-    # Run test
-    try:
-        orchestrator = OrchestratorAgent(workspace=workspace)
-        orchestrator.add_message({
-            "role": "user",
-            "content": problem
-        })
+    # Run test with timeout
+    from threading import Thread
+    from queue import Queue
 
-        result = orchestrator.run(max_rounds=20)
+    result_queue = Queue()
 
-        end_time = time.time()
-        duration = end_time - start_time
+    def run_orchestrator():
+        try:
+            orchestrator = OrchestratorAgent(workspace=workspace)
+            orchestrator.add_message({
+                "role": "user",
+                "content": problem
+            })
+            result = orchestrator.run(max_rounds=20)
+            result_queue.put(("success", result))
+        except Exception as e:
+            result_queue.put(("error", e))
 
+    thread = Thread(target=run_orchestrator, daemon=True)
+    thread.start()
+    thread.join(timeout=timeout_seconds)
+
+    end_time = time.time()
+    duration = end_time - start_time
+
+    # Check if thread completed
+    if thread.is_alive():
+        print(f"⚠️  TIMEOUT: Test exceeded {timeout_seconds}s - thread still running")
         # Count files created
         files_created = 0
         if workspace.exists():
@@ -68,17 +84,48 @@ def run_single_test(level: str, problem_idx: int, problem: str, run_idx: int) ->
             "problem_idx": problem_idx,
             "run_idx": run_idx,
             "problem": problem,
-            "status": result.get("status"),
+            "status": "timeout",
             "duration": duration,
             "files_created": files_created,
             "workspace": str(workspace),
-            "summary": result.get("summary", result.get("message", result.get("reason", ""))),
+            "error": f"Test exceeded {timeout_seconds}s timeout",
         }
 
-    except Exception as e:
-        end_time = time.time()
-        duration = end_time - start_time
+    # Thread completed - get result
+    if not result_queue.empty():
+        status, result = result_queue.get()
 
+        # Count files created
+        files_created = 0
+        if workspace.exists():
+            files_created = len([f for f in workspace.rglob("*") if f.is_file() and f.name != "workspace_task_notes.md"])
+
+        if status == "success":
+            return {
+                "level": level,
+                "problem_idx": problem_idx,
+                "run_idx": run_idx,
+                "problem": problem,
+                "status": result.get("status"),
+                "duration": duration,
+                "files_created": files_created,
+                "workspace": str(workspace),
+                "summary": result.get("summary", result.get("message", result.get("reason", ""))),
+            }
+        else:  # error
+            return {
+                "level": level,
+                "problem_idx": problem_idx,
+                "run_idx": run_idx,
+                "problem": problem,
+                "status": "error",
+                "duration": duration,
+                "files_created": 0,
+                "workspace": str(workspace),
+                "error": str(result),
+            }
+    else:
+        # Thread died without result
         return {
             "level": level,
             "problem_idx": problem_idx,
@@ -88,7 +135,7 @@ def run_single_test(level: str, problem_idx: int, problem: str, run_idx: int) ->
             "duration": duration,
             "files_created": 0,
             "workspace": str(workspace),
-            "error": str(e),
+            "error": "Thread completed but no result available",
         }
 
 def main():

@@ -78,8 +78,21 @@ def main():
     # Initialize agent registry
     registry = AgentRegistry(config_path="agents.yaml", workspace=workspace)
 
-    # Get orchestrator agent
-    orchestrator = registry.get_agent("orchestrator")
+    # Determine if ChatbotBehavior should be excluded
+    # Exclude it when goal string is provided (autonomous mode)
+    # Include it when no goal string (interactive mode)
+    exclude_behaviors = []
+    if initial_message:
+        # Autonomous mode: exclude chatbot behavior to prevent conversational mode
+        exclude_behaviors = ["ChatbotBehavior"]
+        print("[orchestrator_main] Autonomous mode: ChatbotBehavior excluded")
+    else:
+        # Interactive mode: include chatbot behavior for user interaction
+        print("[orchestrator_main] Interactive mode: ChatbotBehavior enabled")
+
+    # Create orchestrator agent with conditional behavior exclusion
+    from orchestrator_agent import OrchestratorAgent
+    orchestrator = OrchestratorAgent(workspace=workspace, exclude_behaviors=exclude_behaviors)
 
     # Initialize ServerManager
     server_manager = ServerManager(workspace)
