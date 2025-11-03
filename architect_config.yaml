@@ -157,8 +157,10 @@ behaviors:
   # LoopDetectionBehavior detects repeated actions
   - type: LoopDetectionBehavior
 
-  # Note: Architect does NOT use WorkspaceTaskNotesBehavior
-  # Architecture artifacts are the output, not summaries
+  # WorkspaceTaskNotesBehavior creates summaries that help task_executor discover artifacts
+  # When architect completes, it summarizes what architecture docs it created
+  # Task executor loads these notes and can find/use the architecture artifacts
+  - type: WorkspaceTaskNotesBehavior
 
   # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
   # Status display is being redesigned for the behavior system.
