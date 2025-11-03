@@ -151,13 +151,20 @@ def main():
                 if "message" in response:
                     msg = response["message"]
 
-                    # Show content if present
-                    if msg.get("content"):
-                        print(f"Orchestrator: {msg['content']}")
-                        print()
+                    # Handle both dict and string messages
+                    if isinstance(msg, dict):
+                        # Show content if present
+                        if msg.get("content"):
+                            print(f"Orchestrator: {msg['content']}")
+                            print()
+                    elif isinstance(msg, str):
+                        # String message (e.g., after goal completion)
+                        if msg:
+                            print(f"Orchestrator: {msg}")
+                            print()
 
                     # Execute tool calls (show important ones)
-                    if "tool_calls" in msg:
+                    if isinstance(msg, dict) and "tool_calls" in msg:
                         for tc in msg["tool_calls"]:
                             tool_name = tc["function"]["name"]
                             args = tc["function"]["arguments"]
