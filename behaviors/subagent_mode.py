@@ -83,27 +83,25 @@ class SubAgentModeBehavior(AgentBehavior):
         Returns:
             Modified context with goal info
         """
-        context_manager = kwargs.get('context_manager')
-
-        if not context_manager:
+        # Check if goal is set (deprecated context_manager, now using self.goal)
+        if not self.goal:
             return context
 
         # Build goal context
         context_parts = []
 
-        if context_manager.state.goal:
-            # Use different header based on delegation status
-            if self.is_subagent:
-                context_parts.append(f"DELEGATED GOAL: {context_manager.state.goal.description}")
-                context_parts.append("")
-                context_parts.append("You are working on a task delegated by a parent agent.")
-            else:
-                context_parts.append(f"GOAL: {context_manager.state.goal.description}")
-                context_parts.append("")
-                context_parts.append("You are working on a standalone task.")
+        # Use different header based on delegation status
+        if self.is_subagent:
+            context_parts.append(f"DELEGATED GOAL: {self.goal}")
+            context_parts.append("")
+            context_parts.append("You are working on a task delegated by a parent agent.")
+        else:
+            context_parts.append(f"GOAL: {self.goal}")
+            context_parts.append("")
+            context_parts.append("You are working on a standalone task.")
 
-            context_parts.append("When complete, call mark_complete(summary) with what you accomplished.")
-            context_parts.append("If you cannot complete it, call mark_failed(reason) explaining why.")
+        context_parts.append("When complete, call mark_complete(summary) with what you accomplished.")
+        context_parts.append("If you cannot complete it, call mark_failed(reason) explaining why.")
 
         # Insert after system prompt (index 1)
         if context_parts and len(context) > 0:
