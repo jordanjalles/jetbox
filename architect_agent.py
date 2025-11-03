@@ -28,12 +28,12 @@ class ArchitectAgent(BaseAgent):
         Initialize Architect agent.
 
         Args:
-            workspace: Working directory (defaults to current directory)
+            workspace: Working directory (defaults to .agent_workspaces)
             goal: Initial goal/project description (optional)
         """
         super().__init__(
             name="architect",
-            workspace=workspace or Path("."),
+            workspace=workspace or Path(".agent_workspaces"),
             config_file="architect_config.yaml",
         )
 

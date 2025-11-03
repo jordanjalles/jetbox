@@ -19,15 +19,17 @@ class OrchestratorAgent(BaseAgent):
     All logic is in base_agent.py or behaviors. NO unique logic here.
     """
 
-    def __init__(self, workspace: Path | None = None):
+    def __init__(self, workspace: Path | None = None, exclude_behaviors: list[str] | None = None):
         """
         Initialize Orchestrator agent.
 
         Args:
-            workspace: Working directory (defaults to current directory)
+            workspace: Working directory (defaults to .agent_workspaces)
+            exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
         """
         super().__init__(
             name="orchestrator",
-            workspace=workspace or Path("."),
+            workspace=workspace or Path(".agent_workspaces"),
             config_file="orchestrator_config.yaml",
+            exclude_behaviors=exclude_behaviors,
         )

@@ -28,12 +28,12 @@ class TaskExecutorAgent(BaseAgent):
         Initialize TaskExecutor agent.
 
         Args:
-            workspace: Workspace directory (None=current dir, Path=specific dir)
+            workspace: Workspace directory (None=.agent_workspaces, Path=specific dir)
             goal: Optional initial goal to set
         """
         super().__init__(
             name="task_executor",
-            workspace=Path(workspace) if workspace else Path("."),
+            workspace=Path(workspace) if workspace else Path(".agent_workspaces"),
             config_file="task_executor_config.yaml",
         )
 
