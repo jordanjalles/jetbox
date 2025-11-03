@@ -18,3 +18,4 @@ jetprojects/
 
 # Documentation and analysis (except README)
 docs/
+.agent_workspaces/
