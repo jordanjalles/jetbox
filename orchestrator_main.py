@@ -35,7 +35,7 @@ def _get_workspace_info(task_description: str) -> dict | None:
     slug = re.sub(r'[^a-z0-9]+', '-', task_description.lower())
     slug = slug.strip('-')[:60]
 
-    workspace_path = Path.cwd() / ".agent_workspace" / slug
+    workspace_path = Path.cwd() / ".agent_workspaces" / slug
 
     if not workspace_path.exists():
         return None
@@ -73,7 +73,19 @@ def main():
         initial_message = None
 
     # Setup workspace
-    workspace = Path.cwd()
+    # In autonomous mode (with initial_message), create isolated workspace
+    # In interactive mode, use current directory
+    if initial_message:
+        import re
+        # Create workspace slug from initial message
+        slug = re.sub(r'[^a-z0-9]+', '-', initial_message.lower())
+        slug = slug.strip('-')[:60]
+        workspace = Path.cwd() / ".agent_workspaces" / slug
+        workspace.mkdir(parents=True, exist_ok=True)
+        print(f"[orchestrator_main] Created isolated workspace: {workspace}")
+    else:
+        workspace = Path.cwd()
+        print(f"[orchestrator_main] Using current directory as workspace: {workspace}")
 
     # Initialize agent registry
     registry = AgentRegistry(config_path="agents.yaml", workspace=workspace)
