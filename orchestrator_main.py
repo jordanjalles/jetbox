@@ -3,6 +3,30 @@ Main entry point for the multi-agent system.
 
 Launches the Orchestrator agent which handles user conversation
 and delegates coding tasks to TaskExecutor.
+
+Usage:
+    # Interactive chat mode (current directory)
+    python orchestrator_main.py
+
+    # Autonomous mode (isolated workspace)
+    python orchestrator_main.py "Create a calculator package"
+
+    # Work in current directory instead of isolated workspace
+    python orchestrator_main.py --workspace . "Create a calculator"
+
+    # Work in custom directory
+    python orchestrator_main.py --workspace /path/to/project "Add feature X"
+
+    # Chat mode with initial goal (conversational, not isolated)
+    python orchestrator_main.py --chat "Help me build a Flask API"
+
+    # Execute once and exit (useful for scripts/automation)
+    python orchestrator_main.py --once "Generate tests for myapp.py"
+
+Flags:
+    --workspace PATH    Use specified directory instead of isolated workspace
+    --chat              Enable conversational mode even with initial goal
+    --once              Exit after completing initial goal (no interactive loop)
 """
 from __future__ import annotations
 import sys
@@ -60,6 +84,8 @@ def main():
 
     # Parse command line args
     exit_after_initial = False
+    force_chat_mode = False
+    custom_workspace = None
     args = sys.argv[1:]
 
     # Check for --once flag
@@ -67,23 +93,44 @@ def main():
         exit_after_initial = True
         args.remove("--once")
 
+    # Check for --chat flag (enables ChatbotBehavior even with goal)
+    if "--chat" in args:
+        force_chat_mode = True
+        args.remove("--chat")
+
+    # Check for --workspace flag (custom workspace directory)
+    if "--workspace" in args:
+        idx = args.index("--workspace")
+        if idx + 1 < len(args):
+            custom_workspace = Path(args[idx + 1])
+            args.pop(idx)  # Remove --workspace
+            args.pop(idx)  # Remove path
+        else:
+            print("Error: --workspace requires a path argument")
+            sys.exit(1)
+
     if args:
         initial_message = " ".join(args)
     else:
         initial_message = None
 
     # Setup workspace
-    # In autonomous mode (with initial_message), create isolated workspace
-    # In interactive mode, use current directory
-    if initial_message:
+    # Priority: custom_workspace > isolated (if goal) > current directory
+    if custom_workspace:
+        workspace = custom_workspace
+        if not workspace.exists():
+            workspace.mkdir(parents=True, exist_ok=True)
+        print(f"[orchestrator_main] Using custom workspace: {workspace}")
+    elif initial_message and not force_chat_mode:
+        # Autonomous mode with goal: create isolated workspace
         import re
-        # Create workspace slug from initial message
         slug = re.sub(r'[^a-z0-9]+', '-', initial_message.lower())
         slug = slug.strip('-')[:60]
         workspace = Path.cwd() / ".agent_workspaces" / slug
         workspace.mkdir(parents=True, exist_ok=True)
         print(f"[orchestrator_main] Created isolated workspace: {workspace}")
     else:
+        # Interactive mode or chat mode: use current directory
         workspace = Path.cwd()
         print(f"[orchestrator_main] Using current directory as workspace: {workspace}")
 
@@ -91,16 +138,19 @@ def main():
     registry = AgentRegistry(config_path="agents.yaml", workspace=workspace)
 
     # Determine if ChatbotBehavior should be excluded
-    # Exclude it when goal string is provided (autonomous mode)
-    # Include it when no goal string (interactive mode)
+    # Exclude it when goal string is provided UNLESS --chat flag is set
+    # Include it when no goal string (interactive mode) OR --chat flag
     exclude_behaviors = []
-    if initial_message:
+    if initial_message and not force_chat_mode:
         # Autonomous mode: exclude chatbot behavior to prevent conversational mode
         exclude_behaviors = ["ChatbotBehavior"]
         print("[orchestrator_main] Autonomous mode: ChatbotBehavior excluded")
     else:
-        # Interactive mode: include chatbot behavior for user interaction
-        print("[orchestrator_main] Interactive mode: ChatbotBehavior enabled")
+        # Interactive mode or chat mode: include chatbot behavior for user interaction
+        if force_chat_mode:
+            print("[orchestrator_main] Chat mode (--chat): ChatbotBehavior enabled")
+        else:
+            print("[orchestrator_main] Interactive mode: ChatbotBehavior enabled")
 
     # Create orchestrator agent with conditional behavior exclusion
     from orchestrator_agent import OrchestratorAgent
@@ -775,8 +825,8 @@ def execute_orchestrator_tool(
 
         # Get workspace manager from orchestrator if available
         workspace_manager = None
-        if hasattr(agent, 'workspace_manager'):
-            workspace_manager = agent.workspace_manager
+        if orchestrator_agent and hasattr(orchestrator_agent, 'workspace_manager'):
+            workspace_manager = orchestrator_agent.workspace_manager
 
         # Create behavior instance
         task_mgmt = TaskManagementBehavior(workspace_manager=workspace_manager)
