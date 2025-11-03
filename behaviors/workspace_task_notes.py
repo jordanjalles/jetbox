@@ -21,7 +21,6 @@ from behaviors.base import AgentBehavior
 
 # Module-level state for workspace notes system
 _workspace = None  # Global reference to workspace manager (set by behavior at runtime)
-_llm_call_func = None  # Function to call LLM (injected by behavior)
 
 
 # ============================================================================
@@ -32,12 +31,6 @@ def set_workspace(workspace_manager) -> None:
     """Set the workspace manager for notes file access."""
     global _workspace
     _workspace = workspace_manager
-
-
-def set_llm_caller(llm_func) -> None:
-    """Set the LLM calling function."""
-    global _llm_call_func
-    _llm_call_func = llm_func
 
 
 def _get_notes_file() -> Path | None:
@@ -77,6 +70,8 @@ def append_to_notes(content: str, section: str = "task") -> bool:
             entry = f"## ✓ GOAL COMPLETE - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "goal_failure":
             entry = f"## ✗ GOAL FAILED - {timestamp}\n\n{content}\n\n---\n\n"
+        elif section == "timeout":
+            entry = f"## ⏱ TIMEOUT - {timestamp}\n\n{content}\n\n---\n\n"
         else:
             entry = f"## Note - {timestamp}\n\n{content}\n\n---\n\n"
 
@@ -186,10 +181,6 @@ def prompt_for_goal_summary(
     Returns:
         Summary text from agent
     """
-    if not _llm_call_func:
-        status = "completed" if success else "failed"
-        return f"Goal {status}: {goal_description}"
-
     if success:
         prompt = f"""Goal completed successfully: "{goal_description}"
 
@@ -225,10 +216,13 @@ Be specific and factual. Help someone understand what happened.
 Format: Use bullet points starting with "-"."""
 
     try:
-        response = _llm_call_func(
+        # Call LLM directly with ollama.chat (one-shot, no context needed)
+        from ollama import chat
+
+        response = chat(
+            model="gpt-oss:20b",  # Default model
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            timeout=30,
+            options={"temperature": 0.2},
         )
 
         content = response.get("message", {}).get("content", "")
@@ -270,7 +264,7 @@ def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history
         elapsed_seconds: Total elapsed time
         action_history: List of Action objects from context manager (optional)
     """
-    if not _workspace or not _llm_call_func:
+    if not _workspace:
         return
 
     # Extract goal description
@@ -350,10 +344,13 @@ Format: Dense bullets focused on facts."""
 
     # Get LLM summary
     try:
-        response = _llm_call_func(
+        # Call LLM directly with ollama.chat (one-shot, no context needed)
+        from ollama import chat
+
+        response = chat(
+            model="gpt-oss:20b",  # Default model
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            timeout=30,
+            options={"temperature": 0.2},
         )
         summary = response.get("message", {}).get("content", "")
 
@@ -413,7 +410,6 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         Common params: enabled (bool)
         """
         self.workspace_manager = None
-        self.llm_call_func = None
         self.notes_content = None
 
     def get_name(self) -> str:
@@ -441,11 +437,6 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         if "workspace_manager" in kwargs and not self.workspace_manager:
             self.workspace_manager = kwargs["workspace_manager"]
             set_workspace(self.workspace_manager)
-
-        # Set LLM caller if provided
-        if "llm_call_func" in kwargs and not self.llm_call_func:
-            self.llm_call_func = kwargs["llm_call_func"]
-            set_llm_caller(self.llm_call_func)
 
         # Load notes (cached)
         if self.notes_content is None:
@@ -525,11 +516,6 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
             self.workspace_manager = kwargs["workspace_manager"]
             set_workspace(self.workspace_manager)
 
-        # Set LLM caller
-        if "llm_call_func" in kwargs:
-            self.llm_call_func = kwargs["llm_call_func"]
-            set_llm_caller(self.llm_call_func)
-
         # Clear cached notes to force reload
         self.notes_content = None
 
@@ -541,8 +527,13 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
 
         Args:
             success: True if goal succeeded, False if failed
-            **kwargs: Additional context (goal, reason, etc.)
+            **kwargs: Additional context (goal, reason, workspace_manager, llm_call_func, etc.)
         """
+        # Set workspace manager from kwargs
+        if "workspace_manager" in kwargs:
+            self.workspace_manager = kwargs["workspace_manager"]
+            set_workspace(self.workspace_manager)
+
         goal_description = kwargs.get("goal", "Unknown goal")
         reason = kwargs.get("reason", "")
         task_summaries = kwargs.get("task_summaries", None)
@@ -581,8 +572,13 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
 
         Args:
             elapsed_seconds: Time elapsed since goal start
-            **kwargs: Additional context (goal, action_history, etc.)
+            **kwargs: Additional context (goal, action_history, workspace_manager, llm_call_func, etc.)
         """
+        # Set workspace manager from kwargs
+        if "workspace_manager" in kwargs:
+            self.workspace_manager = kwargs["workspace_manager"]
+            set_workspace(self.workspace_manager)
+
         goal = kwargs.get("goal", None)
         action_history = kwargs.get("action_history", None)
 
