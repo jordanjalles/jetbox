@@ -1,0 +1,2 @@
+your tests are still making slugs in the root directory
+clean goal-slugs from root directory and ensure that workspaces are created in a .agent_workspaces by default. only way for agent to make workspaces in or edit jetbox root directory is by specifying that in the workspace definition via ../ or ~full path to jetbox root

@@ -1,0 +1,3 @@
+separate file tools into directory navigation (ls) read file, and write file behaviors, as some agents in the future will need only one part
+subagent_mode and subaget_context look likely to need to be combined into one behavior
+think about where to put tools that would be useful for navigating a large existing codebase, such as searching for a specific string in the files, and make a behavior proposal md

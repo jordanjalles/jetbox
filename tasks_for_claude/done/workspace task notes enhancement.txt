@@ -1,0 +1,1 @@
+workspace task notes should also include an LLM summary progress made against the goal for the next agent to pick up work. currently only includes time, goal name, and success/failure. 
