@@ -114,7 +114,7 @@ def main():
             # Clean up old server requests before task
             server_manager.cleanup_old_requests()
 
-            orchestrator.add_user_message(initial_message)
+            orchestrator.add_message({"role": "user", "content": initial_message})
 
             # Keep executing rounds until no more tool calls
             # No max_rounds limit - let wall-clock timeout control execution
