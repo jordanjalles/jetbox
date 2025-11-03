@@ -57,14 +57,24 @@ Key settings:
 - **3x approach retries**: Agent gets 3 chances to reconsider approach at root before final failure
 - **Configurable depth/breadth**: Adjust max_depth, max_siblings, max_rounds_per_subtask
 
-Set the Ollama model via environment variable:
+**Default Model: qwen3:8b**
+
+The default model is `qwen3:8b`, chosen based on comprehensive evaluation:
+- **2x higher success rate** vs gpt-oss:20b (50% vs 25%)
+- **1.8x faster execution** (77.7s vs 140.6s average)
+- **128K context window** (sufficient for complex multi-agent workflows)
+- **5.2GB model size** (60% smaller than gpt-oss:20b)
+
+Override via environment variable if needed:
 ```bash
 # PowerShell
-$env:OLLAMA_MODEL = "gpt-oss:20b"
+$env:OLLAMA_MODEL = "qwen3:8b"
 
 # Bash
-export OLLAMA_MODEL="gpt-oss:20b"
+export OLLAMA_MODEL="qwen3:8b"
 ```
+
+See evaluation results in `evaluation_results/` for detailed model comparisons.
 
 ## Architecture
 

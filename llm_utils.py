@@ -14,6 +14,18 @@ from ollama import Client
 # Initialize Ollama client with proper host configuration
 OLLAMA_CLIENT = Client(host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"))
 
+# Model-specific context window sizes (in tokens)
+# Qwen3: 0.6b-4b = 32K, 8b-14b-32b = 128K
+# GPT-OSS: 128K
+# Llama3.2: Varies by size
+MODEL_CONTEXT_WINDOWS = {
+    "qwen3:4b": 32768,       # 32K
+    "qwen3:8b": 131072,      # 128K
+    "qwen3:14b": 131072,     # 128K
+    "gpt-oss:20b": 131072,   # 128K
+    "llama3.2:3b": 131072,   # 128K
+}
+
 
 def chat_with_inactivity_timeout(
     model: str,
@@ -55,8 +67,8 @@ def chat_with_inactivity_timeout(
             # Default Ollama is only 2048 tokens, but models support much more
             options_with_context = options.copy()
             if "num_ctx" not in options_with_context:
-                # Set to 128K (131072) to match gpt-oss:20b capacity
-                options_with_context["num_ctx"] = 131072
+                # Use model-specific context window, fallback to 128K
+                options_with_context["num_ctx"] = MODEL_CONTEXT_WINDOWS.get(model, 131072)
 
             # Build chat arguments
             chat_args = {
