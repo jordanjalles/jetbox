@@ -119,13 +119,21 @@ def main():
             # Keep executing rounds until no more tool calls
             # No max_rounds limit - let wall-clock timeout control execution
             round_num = 0
+            max_rounds = 100  # Reasonable upper limit
             while True:
                 round_num += 1
                 # Execute orchestrator round
-                response = orchestrator.execute_round(
+                response = orchestrator._execute_round(
+                    round_no=round_num,
+                    max_rounds=max_rounds,
                     model=config.llm.model,
                     temperature=config.llm.temperature,
                 )
+
+                # Check if goal completed/failed
+                if response is None:
+                    # Continue to next round
+                    continue
 
                 # Display response
                 if "message" in response:

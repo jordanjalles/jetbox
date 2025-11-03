@@ -298,7 +298,7 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
 
         # Initialize status display if not already present
         if not hasattr(agent, 'status_display') or agent.status_display is None:
-            from status_display import StatusDisplay
+            from behaviors.status_display import StatusDisplay
             agent.status_display = StatusDisplay(ctx=agent.context_manager, reset_stats=True)
 
         # Start wall-clock timer for goal

@@ -620,7 +620,7 @@ Please retry the tool call using only the valid parameters listed above.
 
     def init_perf_stats(self) -> None:
         """Initialize performance stats tracking."""
-        from status_display import PerformanceStats
+        from behaviors.status_display import PerformanceStats
         if self.perf_stats is None:
             self.perf_stats = PerformanceStats()
 
