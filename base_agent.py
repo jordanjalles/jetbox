@@ -283,7 +283,7 @@ class BaseAgent:
             Response dict with timeout/circuit breaker information
         """
         print(f"\n⚠️  LLM TIMEOUT: {error}")
-        print(f"[timeout] Incrementing timeout counter...")
+        print("[timeout] Incrementing timeout counter...")
 
         # Increment timeout counter
         self.consecutive_timeouts = getattr(self, 'consecutive_timeouts', 0) + 1
@@ -292,15 +292,15 @@ class BaseAgent:
         # Check circuit breaker threshold
         if self.consecutive_timeouts >= self.max_consecutive_timeouts:
             print(f"[timeout] {self.consecutive_timeouts} consecutive timeouts (max: {self.max_consecutive_timeouts})")
-            print(f"[timeout] Circuit breaker triggered - LLM service appears unavailable")
+            print("[timeout] Circuit breaker triggered - LLM service appears unavailable")
 
             # Attempt Ollama restart if configured
             if self.auto_restart_ollama:
-                print(f"[timeout] auto_restart_ollama is enabled - attempting restart...")
+                print("[timeout] auto_restart_ollama is enabled - attempting restart...")
                 from llm_utils import restart_ollama
                 restart_success = restart_ollama()
                 if restart_success:
-                    print(f"[timeout] Ollama restarted successfully - resetting timeout counter")
+                    print("[timeout] Ollama restarted successfully - resetting timeout counter")
                     self.consecutive_timeouts = 0
                     # Return special marker to indicate restart occurred
                     return {
@@ -311,9 +311,9 @@ class BaseAgent:
                         "_ollama_restarted": True,
                     }
                 else:
-                    print(f"[timeout] Ollama restart failed - circuit breaker will trigger")
+                    print("[timeout] Ollama restart failed - circuit breaker will trigger")
             else:
-                print(f"[timeout] auto_restart_ollama is disabled (set to true in agent_config.yaml to enable)")
+                print("[timeout] auto_restart_ollama is disabled (set to true in agent_config.yaml to enable)")
 
             # Return a special response indicating circuit breaker triggered
             # The calling agent's run() method should detect this and save partial progress
@@ -354,7 +354,6 @@ class BaseAgent:
         Returns:
             LLM response dict with 'message' key
         """
-        from ollama import chat
         from llm_utils import chat_with_inactivity_timeout
 
         context = self.build_context()
@@ -508,7 +507,6 @@ Please retry the tool call using only the valid parameters listed above.
             invalid_params: Set of invalid parameter names
         """
         import json
-        from datetime import datetime
 
         wishlist_file = Path(".agent_context") / "parameter_wishlist.jsonl"
         wishlist_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1341,6 +1339,41 @@ Please retry the tool call using only the valid parameters listed above.
 
         return None
 
+    def _format_tool_call_preview(self, tool_name: str, args: dict[str, Any], max_length: int = 30) -> str:
+        """
+        Format a tool call with truncated argument preview.
+
+        Args:
+            tool_name: Name of the tool
+            args: Tool arguments dict
+            max_length: Maximum characters for each argument value preview
+
+        Returns:
+            Formatted string like "write_file(path=calculator.py, conte...)"
+        """
+        if not args:
+            return f"{tool_name}()"
+
+        # Format each argument with truncated value
+        arg_previews = []
+        for key, value in args.items():
+            # Convert value to string and truncate
+            value_str = str(value)
+            if len(value_str) > max_length:
+                value_preview = value_str[:max_length] + "..."
+            else:
+                value_preview = value_str
+
+            # Clean up newlines and multiple spaces for display
+            value_preview = value_preview.replace("\n", "\\n").replace("\r", "")
+            value_preview = " ".join(value_preview.split())  # Collapse whitespace
+
+            arg_previews.append(f"{key}={value_preview}")
+
+        # Join arguments with comma
+        args_str = ", ".join(arg_previews)
+        return f"{tool_name}({args_str})"
+
     def _execute_tool_calls(self, tool_calls: list[dict[str, Any]]) -> dict[str, Any] | None:
         """
         Execute tool calls and check for completion after each.
@@ -1357,7 +1390,11 @@ Please retry the tool call using only the valid parameters listed above.
 
         for tool_call in tool_calls:
             tool_name = tool_call["function"]["name"]
-            print(f"[{self.name}] -> {tool_name}")
+            args = tool_call["function"].get("arguments", {})
+
+            # Create preview of arguments
+            preview = self._format_tool_call_preview(tool_name, args)
+            print(f"[{self.name}] -> {preview}")
 
             # Dispatch tool
             result = self.dispatch_tool(tool_call)
