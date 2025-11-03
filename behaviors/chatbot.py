@@ -78,6 +78,13 @@ class ChatbotBehavior(AgentBehavior):
                     # Goal already set - don't provide chatbot tools
                     return []
 
+            # Check if SubAgentModeBehavior has set a goal (for delegated agents)
+            for behavior in self.agent._behaviors:
+                if behavior.get_name() in ['subagent_mode', 'subagent_context']:
+                    if hasattr(behavior, 'goal') and behavior.goal:
+                        # Goal set by delegation - don't provide chatbot tools
+                        return []
+
         # No goal set - provide set_goal tool for chat mode
         return [
             {
@@ -216,6 +223,13 @@ Guidelines:
                     # Goal already set - don't provide chat instructions
                     return ""
 
+            # Check if SubAgentModeBehavior has set a goal (for delegated agents)
+            for behavior in self.agent._behaviors:
+                if behavior.get_name() in ['subagent_mode', 'subagent_context']:
+                    if hasattr(behavior, 'goal') and behavior.goal:
+                        # Goal set by delegation - don't provide chat instructions
+                        return ""
+
         # No goal set - provide chat mode instructions
         return """
 CHAT MODE:
@@ -258,6 +272,14 @@ After set_goal is called, you will automatically transition to execution mode.
         if hasattr(agent, 'context_manager') and agent.context_manager:
             if hasattr(agent.context_manager, 'state') and agent.context_manager.state.goal:
                 has_goal = True
+
+        # Check if SubAgentModeBehavior has set a goal (for delegated agents)
+        if not has_goal and hasattr(agent, '_behaviors'):
+            for behavior in agent._behaviors:
+                if behavior.get_name() in ['subagent_mode', 'subagent_context']:
+                    if hasattr(behavior, 'goal') and behavior.goal:
+                        has_goal = True
+                        break
 
         # Activate chat mode if no goal
         if not has_goal:

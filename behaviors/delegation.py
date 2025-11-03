@@ -285,22 +285,23 @@ class DelegationBehavior(AgentBehavior):
         # AUTOMATIC WORKSPACE COORDINATION:
         # Priority order:
         # 1. Explicit workspace_path provided → use it
-        # 2. Calling agent has workspace → reuse it (AUTOMATIC COORDINATION)
-        # 3. Neither → create new workspace
+        # 2. Calling agent has workspace_manager with isolated workspace → reuse it
+        # 3. Neither → let subagent create isolated workspace (will be reused on retry via goal slug)
 
         if "workspace_path" in args and args["workspace_path"]:
             # Explicit workspace path overrides everything
             workspace = Path(args["workspace_path"])
             print(f"[delegation] Using explicit workspace path: {workspace}")
-        elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
-            # AUTOMATIC COORDINATION: Reuse calling agent's workspace
-            # This ensures files end up in one place
-            workspace = calling_agent.workspace
-            print(f"[delegation] Reusing calling agent's workspace: {workspace}")
+        elif hasattr(calling_agent, 'workspace_manager') and calling_agent.workspace_manager:
+            # AUTOMATIC COORDINATION: Reuse calling agent's isolated workspace
+            # This ensures files end up in one place across retries
+            workspace = calling_agent.workspace_manager.workspace_dir
+            print(f"[delegation] Reusing calling agent's isolated workspace: {workspace}")
         else:
-            # No workspace context - create new isolated workspace
+            # No isolated workspace context - let subagent create its own
+            # (will be reused on retry because same goal → same slug → same workspace path)
             workspace = None
-            print(f"[delegation] Creating new isolated workspace")
+            print(f"[delegation] Subagent will create/reuse isolated workspace based on goal")
 
         # Instantiate target agent
         try:
@@ -350,7 +351,7 @@ SUMMARY:
 WORKSPACE: {subagent_workspace}
 FILES CREATED: {', '.join(files_created) if files_created else 'none'}
 
-The delegated task is complete. You can now proceed with next steps or mark your goal complete if all work is done."""
+This delegation phase is complete. Review the summary and determine what to do next based on your overall goal."""
             else:
                 message = f"""Task delegated to {target_agent_name} did not complete successfully (status: {status}).
 

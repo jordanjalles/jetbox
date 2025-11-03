@@ -195,6 +195,75 @@ def _dump_timeout_context(
         print(f"\n[timeout_dump] Failed to save context: {e}")
 
 
+def restart_ollama() -> bool:
+    """
+    Attempt to restart Ollama service.
+
+    Tries multiple restart strategies:
+    1. systemctl restart (systemd-based systems)
+    2. pkill + ollama serve (manual restart)
+
+    Returns:
+        True if restart successful, False otherwise
+    """
+    import subprocess
+    import time
+
+    print("[ollama_restart] Attempting to restart Ollama service...")
+
+    try:
+        # Try systemctl (systemd-based systems)
+        result = subprocess.run(
+            ["systemctl", "restart", "ollama"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode == 0:
+            print("[ollama_restart] systemctl restart ollama successful")
+            print("[ollama_restart] Waiting 30s for model reload...")
+            time.sleep(30)
+            return True
+        else:
+            print(f"[ollama_restart] systemctl failed: {result.stderr}")
+
+    except FileNotFoundError:
+        print("[ollama_restart] systemctl not available")
+    except subprocess.TimeoutExpired:
+        print("[ollama_restart] systemctl command timed out")
+    except Exception as e:
+        print(f"[ollama_restart] systemctl error: {e}")
+
+    # Try pkill + start (manual restart)
+    try:
+        print("[ollama_restart] Trying manual restart (pkill + ollama serve)...")
+
+        # Kill existing Ollama process
+        subprocess.run(["pkill", "ollama"], capture_output=True, timeout=5)
+        time.sleep(2)
+
+        # Start Ollama in background
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        print("[ollama_restart] Manual restart initiated")
+        print("[ollama_restart] Waiting 30s for model reload...")
+        time.sleep(30)
+        return True
+
+    except FileNotFoundError:
+        print("[ollama_restart] pkill or ollama command not found")
+    except Exception as e:
+        print(f"[ollama_restart] Manual restart error: {e}")
+
+    print("[ollama_restart] ⚠️  Could not restart Ollama - continuing anyway")
+    return False
+
+
 def check_ollama_health(timeout: int = 5) -> bool:
     """
     Check if Ollama is responsive using stdlib only.

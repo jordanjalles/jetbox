@@ -1,13 +1,14 @@
 """
 Base agent class providing common functionality for all agent types.
 
-All agents inherit from BaseAgent and implement:
-- get_tools(): Returns list of tools available to this agent
-- get_system_prompt(): Returns the system prompt for this agent
-- get_context_strategy(): Returns context management strategy name
+All agents inherit from BaseAgent and can override:
+- get_tools(): Returns list of tools (default: returns behavior tools)
+- get_system_prompt(): Returns system prompt (default: config + behaviors + tool docs)
+- get_context_strategy(): Returns context strategy (DEPRECATED - use behaviors)
+
+The behavior system provides the primary extensibility mechanism.
 """
 from __future__ import annotations
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 from pathlib import Path
@@ -71,20 +72,19 @@ class AgentState:
         return cls(**data)
 
 
-class BaseAgent(ABC):
+class BaseAgent:
     """
-    Abstract base class for all agents.
+    Base class for all agents.
 
     Provides common functionality:
     - LLM calling with tool support
     - Message history management
     - State persistence
     - Tool dispatch
+    - Behavior system integration
 
-    Subclasses must implement:
-    - get_tools(): Tool definitions for this agent
-    - get_system_prompt(): System prompt for this agent
-    - get_context_strategy(): Context management strategy
+    Subclasses can override methods like get_tools(), get_system_prompt(),
+    but most customization should be done via behaviors in YAML config.
     """
 
     def __init__(
@@ -92,6 +92,7 @@ class BaseAgent(ABC):
         name: str,
         workspace: Path,
         config_file: str,
+        exclude_behaviors: list[str] | None = None,
     ):
         """
         Initialize base agent.
@@ -100,6 +101,7 @@ class BaseAgent(ABC):
             name: Agent identifier (e.g., "orchestrator", "task_executor")
             workspace: Working directory for this agent
             config_file: Path to agent-specific config YAML (e.g., "task_executor_config.yaml")
+            exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
         """
         import yaml
         from agent_config import config as global_config
@@ -149,6 +151,7 @@ class BaseAgent(ABC):
         self.tool_registry: dict[str, Any] = {}  # Map tool_name -> behavior that provides it
         self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
         self.config_blurb: str | None = None  # Agent blurb loaded from config (if any)
+        self.exclude_behaviors: list[str] = exclude_behaviors or []  # Behaviors to exclude from loading
 
         # Timeout handling
         self.consecutive_timeouts = 0
@@ -159,11 +162,13 @@ class BaseAgent(ABC):
             self.inactivity_timeout = self.config.llm.timeout.inactivity_timeout
             self.max_call_time = self.config.llm.timeout.max_call_time
             self.max_consecutive_timeouts = self.config.llm.timeout.max_consecutive_timeouts
+            self.auto_restart_ollama = getattr(self.config.llm.timeout, 'auto_restart_ollama', False)
         else:
             # Fallback defaults
             self.inactivity_timeout = 30
             self.max_call_time = 180
             self.max_consecutive_timeouts = 3
+            self.auto_restart_ollama = False
 
         # Load behaviors from agent config
         # This must happen at the end of __init__ after all attributes are set
@@ -261,6 +266,77 @@ class BaseAgent(ABC):
     # Shared functionality
     # ===========================
 
+
+    def _handle_timeout(self, error: TimeoutError) -> dict[str, Any]:
+        """
+        Handle LLM timeout with circuit breaker logic.
+
+        Implements circuit breaker pattern:
+        - Tracks consecutive timeouts
+        - Attempts Ollama restart after threshold
+        - Returns special markers for different states
+
+        Args:
+            error: The TimeoutError that occurred
+
+        Returns:
+            Response dict with timeout/circuit breaker information
+        """
+        print(f"\n⚠️  LLM TIMEOUT: {error}")
+        print(f"[timeout] Incrementing timeout counter...")
+
+        # Increment timeout counter
+        self.consecutive_timeouts = getattr(self, 'consecutive_timeouts', 0) + 1
+        self.total_timeouts = getattr(self, 'total_timeouts', 0) + 1
+
+        # Check circuit breaker threshold
+        if self.consecutive_timeouts >= self.max_consecutive_timeouts:
+            print(f"[timeout] {self.consecutive_timeouts} consecutive timeouts (max: {self.max_consecutive_timeouts})")
+            print(f"[timeout] Circuit breaker triggered - LLM service appears unavailable")
+
+            # Attempt Ollama restart if configured
+            if self.auto_restart_ollama:
+                print(f"[timeout] auto_restart_ollama is enabled - attempting restart...")
+                from llm_utils import restart_ollama
+                restart_success = restart_ollama()
+                if restart_success:
+                    print(f"[timeout] Ollama restarted successfully - resetting timeout counter")
+                    self.consecutive_timeouts = 0
+                    # Return special marker to indicate restart occurred
+                    return {
+                        "message": {
+                            "role": "assistant",
+                            "content": "__OLLAMA_RESTARTED__ - will retry immediately",
+                        },
+                        "_ollama_restarted": True,
+                    }
+                else:
+                    print(f"[timeout] Ollama restart failed - circuit breaker will trigger")
+            else:
+                print(f"[timeout] auto_restart_ollama is disabled (set to true in agent_config.yaml to enable)")
+
+            # Return a special response indicating circuit breaker triggered
+            # The calling agent's run() method should detect this and save partial progress
+            return {
+                "message": {
+                    "role": "assistant",
+                    "content": "__CIRCUIT_BREAKER_TRIGGERED__",
+                },
+                "_circuit_breaker": True,
+                "_consecutive_timeouts": self.consecutive_timeouts,
+            }
+
+        # Otherwise, return timeout message but allow retry
+        print(f"[timeout] Timeout {self.consecutive_timeouts}/{self.max_consecutive_timeouts} - will retry")
+        return {
+            "message": {
+                "role": "assistant",
+                "content": f"__LLM_TIMEOUT__ (attempt {self.consecutive_timeouts}/{self.max_consecutive_timeouts})",
+            },
+            "_timeout": True,
+            "_consecutive_timeouts": self.consecutive_timeouts,
+        }
+
     def call_llm(
         self,
         model: str,
@@ -299,40 +375,7 @@ class BaseAgent(ABC):
             return response
 
         except TimeoutError as e:
-            # LLM timeout - handle gracefully with circuit breaker
-            print(f"\n⚠️  LLM TIMEOUT: {e}")
-            print(f"[timeout] Incrementing timeout counter...")
-
-            # Increment timeout counter
-            self.consecutive_timeouts = getattr(self, 'consecutive_timeouts', 0) + 1
-            self.total_timeouts = getattr(self, 'total_timeouts', 0) + 1
-
-            # Check circuit breaker threshold
-            if self.consecutive_timeouts >= self.max_consecutive_timeouts:
-                print(f"[timeout] {self.consecutive_timeouts} consecutive timeouts (max: {self.max_consecutive_timeouts})")
-                print(f"[timeout] Circuit breaker triggered - LLM service appears unavailable")
-
-                # Return a special response indicating circuit breaker triggered
-                # The calling agent's run() method should detect this and save partial progress
-                return {
-                    "message": {
-                        "role": "assistant",
-                        "content": "__CIRCUIT_BREAKER_TRIGGERED__",
-                    },
-                    "_circuit_breaker": True,
-                    "_consecutive_timeouts": self.consecutive_timeouts,
-                }
-
-            # Otherwise, return timeout message but allow retry
-            print(f"[timeout] Timeout {self.consecutive_timeouts}/{self.max_consecutive_timeouts} - will retry")
-            return {
-                "message": {
-                    "role": "assistant",
-                    "content": f"__LLM_TIMEOUT__ (attempt {self.consecutive_timeouts}/{self.max_consecutive_timeouts})",
-                },
-                "_timeout": True,
-                "_consecutive_timeouts": self.consecutive_timeouts,
-            }
+            return self._handle_timeout(e)
 
         except Exception as e:
             # Parse error to provide actionable feedback to LLM
@@ -378,6 +421,109 @@ class BaseAgent(ABC):
                 }
             }
 
+    def _validate_tool_parameters(self, tool_call: dict[str, Any]) -> dict[str, Any] | None:
+        """
+        Validate tool call parameters against tool schema.
+
+        If invalid parameters found:
+        1. Returns feedback dict with error message and correct spec
+        2. Logs hallucinated parameter to wishlist file
+
+        Args:
+            tool_call: Tool call dict with function name and arguments
+
+        Returns:
+            None if valid, dict with error message if invalid
+        """
+        tool_name = tool_call.get("function", {}).get("name")
+        args = tool_call.get("function", {}).get("arguments", {})
+
+        if not tool_name or not isinstance(args, dict):
+            return None
+
+        # Get tool spec from agent's tools
+        tool_spec = None
+        for tool in self.get_tools():
+            if tool.get("function", {}).get("name") == tool_name:
+                tool_spec = tool.get("function")
+                break
+
+        if not tool_spec:
+            # Tool not found in spec - let dispatch handle it
+            return None
+
+        # Get valid parameters from schema
+        schema = tool_spec.get("parameters", {})
+        valid_params = set(schema.get("properties", {}).keys())
+
+        # Check for invalid parameters
+        provided_params = set(args.keys())
+        invalid_params = provided_params - valid_params
+
+        if not invalid_params:
+            # All parameters valid
+            return None
+
+        # Log hallucinated parameters to wishlist
+        self._log_parameter_wishlist(tool_name, invalid_params)
+
+        # Build feedback message with correct spec
+        param_specs = []
+        for param_name, param_info in schema.get("properties", {}).items():
+            param_type = param_info.get("type", "unknown")
+            param_desc = param_info.get("description", "")
+            required = param_name in schema.get("required", [])
+            req_marker = " (required)" if required else " (optional)"
+            param_specs.append(f"  - {param_name}: {param_type}{req_marker} - {param_desc}")
+
+        feedback = f"""⚠️  Tool call used invalid parameters
+
+Tool: {tool_name}
+Invalid parameters: {', '.join(invalid_params)}
+
+These parameters were IGNORED because they don't exist in the tool spec.
+
+CORRECT TOOL SPEC FOR {tool_name}:
+{tool_spec.get('description', '')}
+
+Valid parameters:
+{chr(10).join(param_specs) if param_specs else '  (no parameters)'}
+
+Please retry the tool call using only the valid parameters listed above.
+"""
+
+        return {
+            "status": "parameter_error",
+            "message": feedback,
+            "tool_name": tool_name,
+            "invalid_params": list(invalid_params),
+        }
+
+    def _log_parameter_wishlist(self, tool_name: str, invalid_params: set[str]) -> None:
+        """
+        Log hallucinated parameters to wishlist file for future consideration.
+
+        Args:
+            tool_name: Tool that was called
+            invalid_params: Set of invalid parameter names
+        """
+        import json
+        from datetime import datetime
+
+        wishlist_file = Path(".agent_context") / "parameter_wishlist.jsonl"
+        wishlist_file.parent.mkdir(parents=True, exist_ok=True)
+
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "tool_name": tool_name,
+            "hallucinated_params": list(invalid_params),
+            "agent": self.name,
+        }
+
+        # Append to JSONL file
+        with open(wishlist_file, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+
     def dispatch_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
         """
         Dispatch a tool call to the appropriate handler.
@@ -391,6 +537,12 @@ class BaseAgent(ABC):
         Returns:
             Tool result dict
         """
+        # Validate parameters before dispatch
+        validation_result = self._validate_tool_parameters(tool_call)
+        if validation_result:
+            # Invalid parameters detected - return feedback to LLM
+            return validation_result
+
         # New architecture: always use behavior dispatch
         return self.dispatch_tool_to_behavior(tool_call)
 
@@ -546,6 +698,11 @@ class BaseAgent(ABC):
 
         for behavior_spec in config.get("behaviors", []):
             behavior_type = behavior_spec["type"]
+
+            # Skip behaviors in the exclude list
+            if behavior_type in self.exclude_behaviors:
+                print(f"[{self.name}] Skipping excluded behavior: {behavior_type}")
+                continue
 
             # Get global defaults for this behavior type
             default_params = global_defaults.get(behavior_type, {})
@@ -1150,17 +1307,32 @@ class BaseAgent(ABC):
                             # Look for completion signals in result
                             if isinstance(result, dict):
                                 # Check for mark_complete/mark_failed
-                                if result.get("success") is True and "summary" in result:
+                                # IMPORTANT: Exclude delegation results (they have "target_agent" field)
+                                # Delegation success should NOT auto-complete the calling agent's goal
+                                is_delegation_result = "target_agent" in result
+
+                                # Get goal description from multiple sources
+                                goal_desc = None
+                                if self.context_manager and self.context_manager.state.goal:
+                                    goal_desc = self.context_manager.state.goal.description
+                                else:
+                                    # Check SubAgentModeBehavior
+                                    for behavior in self._behaviors:
+                                        if hasattr(behavior, 'goal') and behavior.goal:
+                                            goal_desc = behavior.goal
+                                            break
+
+                                if not is_delegation_result and result.get("success") is True and "summary" in result:
                                     print(f"[{self.name}] Goal marked complete")
-                                    self.trigger_behavior_event("on_goal_complete", success=True, result=result)
+                                    self.trigger_behavior_event("on_goal_complete", success=True, result=result, goal=goal_desc, llm_call_func=self.call_llm, workspace_manager=self.workspace_manager)
                                     return {
                                         "status": "success",
                                         "summary": result.get("summary"),
                                         "workspace": str(self.workspace) if self.workspace else None,
                                     }
-                                elif result.get("success") is False and "reason" in result:
+                                elif not is_delegation_result and result.get("success") is False and "reason" in result:
                                     print(f"[{self.name}] Goal marked failed")
-                                    self.trigger_behavior_event("on_goal_complete", success=False, result=result)
+                                    self.trigger_behavior_event("on_goal_complete", success=False, result=result, goal=goal_desc, llm_call_func=self.call_llm, workspace_manager=self.workspace_manager)
                                     return {
                                         "status": "failure",
                                         "reason": result.get("reason"),
@@ -1171,7 +1343,7 @@ class BaseAgent(ABC):
                                 actual_result = result.get("result", result)
                                 if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
                                     print(f"[{self.name}] Goal completed (legacy signal)")
-                                    self.trigger_behavior_event("on_goal_complete", success=True, result=actual_result)
+                                    self.trigger_behavior_event("on_goal_complete", success=True, result=actual_result, goal=goal_desc, llm_call_func=self.call_llm, workspace_manager=self.workspace_manager)
                                     return {
                                         "status": "success",
                                         "message": actual_result.get("message", "Goal completed"),

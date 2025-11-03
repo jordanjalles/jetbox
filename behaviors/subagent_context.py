@@ -63,7 +63,7 @@ class SubAgentContextBehavior(AgentBehavior):
         2. Adds completion instructions
 
         It does NOT:
-        - Load jetbox notes (use WorkspaceTaskNotesBehavior)
+        - Load workspace task notes (use WorkspaceTaskNotesBehavior)
         - Compact context (use CompactWhenNearFullBehavior)
 
         Args:

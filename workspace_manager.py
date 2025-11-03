@@ -19,24 +19,40 @@ class WorkspaceManager:
 
         Args:
             goal: The goal/task description
-            base_dir: Base directory for isolated workspaces (default: .agent_workspace)
+            base_dir: Base directory for isolated workspaces (default: .agent_workspaces)
             auto_cleanup: Whether to auto-cleanup on destruction
             workspace_path: If provided, use this existing directory (edit mode)
-                           If None, create isolated workspace (isolate mode)
+                           - Relative paths (e.g., "myproject") automatically go under .agent_workspaces
+                           - Use "../" or absolute path to explicitly write to root/other locations
+                           - If None, create isolated workspace under .agent_workspaces (isolate mode)
         """
         self.goal = goal
         self.auto_cleanup = auto_cleanup
 
         # Edit mode: use specified existing directory
         if workspace_path is not None:
-            self.workspace_dir = Path(workspace_path).resolve()
+            workspace_path_str = str(workspace_path)
+            path_obj = Path(workspace_path)
+
+            # ANTI-POLLUTION: Only allow root directory writes with explicit opt-out
+            # If absolute path or explicitly escaping (../), use as-is
+            if path_obj.is_absolute() or workspace_path_str.startswith('../') or workspace_path_str.startswith('..\\'):
+                self.workspace_dir = path_obj.resolve()
+            # If already under .agent_workspaces, use as-is
+            elif workspace_path_str.startswith('.agent_workspaces/') or workspace_path_str.startswith('.agent_workspaces\\'):
+                self.workspace_dir = path_obj.resolve()
+            # Otherwise, automatically put it under .agent_workspaces to prevent root pollution
+            else:
+                base = base_dir or Path(".agent_workspaces")
+                self.workspace_dir = (base / path_obj).resolve()
+                print(f"[workspace_manager] Automatically placed workspace under {base}: {self.workspace_dir}")
+
             self.is_edit_mode = True
             self.base_dir = self.workspace_dir.parent
             self.workspace_name = self.workspace_dir.name
 
-            # Ensure directory exists
-            if not self.workspace_dir.exists():
-                raise ValueError(f"Edit mode workspace path does not exist: {workspace_path}")
+            # Create directory if it doesn't exist
+            self.workspace_dir.mkdir(parents=True, exist_ok=True)
 
         # Isolate mode: create new isolated workspace under .agent_workspaces
         else:

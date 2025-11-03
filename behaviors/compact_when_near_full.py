@@ -98,12 +98,19 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         estimated_tokens = self._estimate_context_size(context)
 
         if estimated_tokens > self.max_tokens * self.compact_threshold:
+            percent_used = estimated_tokens / self.max_tokens * 100
             print(f"[compact_when_near_full] Context at {estimated_tokens:,} tokens "
-                  f"({estimated_tokens/self.max_tokens*100:.1f}% of {self.max_tokens:,}) "
-                  f"- triggering LLM summarization")
+                  f"({percent_used:.1f}% of {self.max_tokens:,}) "
+                  f"- triggering compaction")
 
-            # Keep recent N messages, summarize the rest
-            keep_recent = self.keep_recent
+            # AGGRESSIVE: If already way over limit (>100%), keep only 5 recent messages
+            # Otherwise use configured keep_recent
+            if estimated_tokens > self.max_tokens:
+                keep_recent = min(5, self.keep_recent)
+                print(f"[compact_when_near_full] ⚠️  OVER LIMIT ({percent_used:.0f}%) - emergency compaction, keeping only {keep_recent} messages")
+            else:
+                keep_recent = self.keep_recent
+
             to_summarize = messages[:-keep_recent] if len(messages) > keep_recent else []
 
             if to_summarize:
@@ -126,6 +133,16 @@ class CompactWhenNearFullBehavior(AgentBehavior):
                 print(f"[compact_when_near_full] Reduced from {estimated_tokens:,} to {new_tokens:,} tokens "
                       f"({new_tokens/self.max_tokens*100:.1f}%)")
 
+                # HARD LIMIT: If still over max_tokens, aggressively drop messages
+                if new_tokens > self.max_tokens:
+                    print(f"[compact_when_near_full] ⚠️  STILL OVER LIMIT after compaction - dropping oldest messages")
+                    # Keep system + goal + last 5 messages only
+                    system_and_goal = context_base[:messages_start_idx]
+                    recent_msgs = context_base[-5:] if len(context_base) > 5 else context_base[messages_start_idx:]
+                    context_base = system_and_goal + recent_msgs
+                    final_tokens = self._estimate_context_size(context_base)
+                    print(f"[compact_when_near_full] Emergency truncation: {new_tokens:,} → {final_tokens:,} tokens")
+
                 return context_base
             else:
                 # Not enough messages to summarize, just keep recent
@@ -140,6 +157,8 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         """
         Estimate context size using 4 chars per token heuristic.
 
+        FIXED: Now includes tool_calls, role overhead, and message structure.
+
         Args:
             context: Context to estimate
 
@@ -148,7 +167,22 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         """
         total_chars = 0
         for msg in context:
-            total_chars += len(str(msg.get("content", "")))
+            # Count content
+            content = msg.get("content", "")
+            if content:
+                total_chars += len(str(content))
+
+            # Count tool_calls (can be huge!)
+            tool_calls = msg.get("tool_calls")
+            if tool_calls:
+                # Convert to string to get approximate size
+                # (ToolCall objects may not be JSON serializable)
+                total_chars += len(str(tool_calls))
+
+            # Add overhead for role, structure (approximately 20 chars per message)
+            total_chars += 20
+
+        # 4 chars per token is standard heuristic
         return total_chars // 4
 
     def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
