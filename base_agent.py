@@ -619,10 +619,10 @@ Please retry the tool call using only the valid parameters listed above.
             )
 
     def init_perf_stats(self) -> None:
-        """Initialize performance stats tracking."""
-        from behaviors.status_display import PerformanceStats
-        if self.perf_stats is None:
-            self.perf_stats = PerformanceStats()
+        """Initialize performance stats tracking (DEPRECATED)."""
+        # Performance stats are deprecated with the behavior system
+        # Stats are now tracked by StatusDisplayBehavior if enabled
+        pass
 
     # ===========================
     # Phase 4 additions: Behavior system methods
