@@ -9,7 +9,7 @@ behavior_defaults:
   CompactWhenNearFullBehavior:
     max_tokens: 64000         # Model-based: 64K for gpt-oss:20b
     compact_threshold: 0.75   # Compact at 75% capacity
-    keep_recent: 20           # Keep last 20 message exchanges
+    keep_recent: 20           # Keep last 20 message exchanges (reduced to 5 if over limit)
 
   LoopDetectionBehavior:
     max_repeats: 5            # Warn after 5 identical actions
@@ -26,7 +26,13 @@ behavior_defaults:
   SubAgentContextBehavior:
     # No parameters needed - uses global settings
 
-  FileToolsBehavior:
+  DirectoryToolsBehavior:
+    # No parameters needed
+
+  ReadFileToolsBehavior:
+    # No parameters needed
+
+  WriteFileToolsBehavior:
     # No parameters needed
 
   ServerToolsBehavior:
@@ -56,6 +62,7 @@ llm:
     inactivity_timeout: 30      # Max seconds without activity (default: 30s)
     max_call_time: 180          # Max seconds per LLM call (default: 3 minutes)
     max_consecutive_timeouts: 3 # Circuit breaker threshold (default: 3)
+    auto_restart_ollama: true   # Auto-restart Ollama on circuit breaker (enabled for L7 testing)
 
   # System prompt for the agent (base prompt - context strategies may extend this)
   system_prompt: |

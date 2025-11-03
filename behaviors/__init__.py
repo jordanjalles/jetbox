@@ -24,7 +24,9 @@ Example:
 """
 
 from behaviors.base import AgentBehavior
-from behaviors.file_tools import FileToolsBehavior
+from behaviors.directory_tools import DirectoryToolsBehavior
+from behaviors.read_file_tools import ReadFileToolsBehavior
+from behaviors.write_file_tools import WriteFileToolsBehavior
 from behaviors.command_tools import CommandToolsBehavior
 from behaviors.server_tools import ServerToolsBehavior
 from behaviors.architect_tools import ArchitectToolsBehavior
@@ -37,7 +39,9 @@ from behaviors.delegation import DelegationBehavior
 
 __all__ = [
     "AgentBehavior",
-    "FileToolsBehavior",
+    "DirectoryToolsBehavior",
+    "ReadFileToolsBehavior",
+    "WriteFileToolsBehavior",
     "CommandToolsBehavior",
     "ServerToolsBehavior",
     "ArchitectToolsBehavior",

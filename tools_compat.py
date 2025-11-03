@@ -10,31 +10,41 @@ from pathlib import Path
 from typing import Any
 
 # Import behaviors for delegation
-from behaviors import FileToolsBehavior, CommandToolsBehavior, ServerToolsBehavior
+from behaviors import (
+    DirectoryToolsBehavior,
+    ReadFileToolsBehavior,
+    WriteFileToolsBehavior,
+    CommandToolsBehavior,
+    ServerToolsBehavior
+)
 
 # Global references (for backward compatibility)
 _workspace = None
 _ledger_file = None
-_file_tools: FileToolsBehavior | None = None
+_directory_tools: DirectoryToolsBehavior | None = None
+_read_file_tools: ReadFileToolsBehavior | None = None
+_write_file_tools: WriteFileToolsBehavior | None = None
 _command_tools: CommandToolsBehavior | None = None
 _server_tools: ServerToolsBehavior | None = None
 
 
 def set_workspace(workspace_manager) -> None:
     """Set workspace manager (backward compatibility)."""
-    global _workspace, _file_tools, _command_tools, _server_tools
+    global _workspace, _directory_tools, _read_file_tools, _write_file_tools, _command_tools, _server_tools
     _workspace = workspace_manager
-    _file_tools = FileToolsBehavior(workspace_manager=workspace_manager, ledger_file=_ledger_file)
+    _directory_tools = DirectoryToolsBehavior(workspace_manager=workspace_manager)
+    _read_file_tools = ReadFileToolsBehavior(workspace_manager=workspace_manager)
+    _write_file_tools = WriteFileToolsBehavior(workspace_manager=workspace_manager, ledger_file=_ledger_file)
     _command_tools = CommandToolsBehavior(workspace_manager=workspace_manager, ledger_file=_ledger_file)
     _server_tools = ServerToolsBehavior(workspace_manager=workspace_manager, ledger_file=_ledger_file)
 
 
 def set_ledger(ledger_path: Path) -> None:
     """Set ledger file (backward compatibility)."""
-    global _ledger_file, _file_tools, _command_tools, _server_tools
+    global _ledger_file, _write_file_tools, _command_tools, _server_tools
     _ledger_file = ledger_path
-    if _file_tools:
-        _file_tools.ledger_file = ledger_path
+    if _write_file_tools:
+        _write_file_tools.ledger_file = ledger_path
     if _command_tools:
         _command_tools.ledger_file = ledger_path
     if _server_tools:
@@ -43,18 +53,18 @@ def set_ledger(ledger_path: Path) -> None:
 
 def list_dir(path: str | None = ".", **kwargs) -> list[str]:
     """List directory contents."""
-    global _file_tools
-    if not _file_tools:
-        _file_tools = FileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
-    return _file_tools.dispatch_tool("list_dir", {"path": path or ".", **kwargs})
+    global _directory_tools
+    if not _directory_tools:
+        _directory_tools = DirectoryToolsBehavior(workspace_manager=_workspace)
+    return _directory_tools.dispatch_tool("list_dir", {"path": path or ".", **kwargs})
 
 
 def read_file(path: str, encoding: str = "utf-8", max_size: int = 1_000_000, **kwargs) -> str:
     """Read file contents."""
-    global _file_tools
-    if not _file_tools:
-        _file_tools = FileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
-    return _file_tools.dispatch_tool("read_file", {
+    global _read_file_tools
+    if not _read_file_tools:
+        _read_file_tools = ReadFileToolsBehavior(workspace_manager=_workspace)
+    return _read_file_tools.dispatch_tool("read_file", {
         "path": path, "encoding": encoding, "max_size": max_size, **kwargs
     })
 
@@ -70,10 +80,10 @@ def write_file(
     **kwargs
 ) -> str:
     """Write file contents."""
-    global _file_tools
-    if not _file_tools:
-        _file_tools = FileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
-    return _file_tools.dispatch_tool("write_file", {
+    global _write_file_tools
+    if not _write_file_tools:
+        _write_file_tools = WriteFileToolsBehavior(workspace_manager=_workspace, ledger_file=_ledger_file)
+    return _write_file_tools.dispatch_tool("write_file", {
         "path": path,
         "content": content,
         "append": append,

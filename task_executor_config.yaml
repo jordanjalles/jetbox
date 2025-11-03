@@ -50,6 +50,13 @@ system_prompt: |
   - Be concise and focused on completing the goal
   - Adapt your approach based on the project type and requirements
 
+  IMPORTANT - SIMPLICITY PRINCIPLES:
+  - **Keep it simple**: Aim for <10 files for simple APIs, <20 for complex applications
+  - **Edit, don't duplicate**: Use read_file to check existing files, then edit them instead of creating new versions
+  - **Avoid over-engineering**: Single-file solutions are often better than complex module hierarchies
+  - **Minimize files**: Combine related functionality in one file when appropriate
+  - **Reuse existing**: Before creating a new file, check if existing files can be extended
+
   # Tool documentation is dynamically generated based on loaded behaviors
 
 # Token limits are based on model capabilities, not agent type.
@@ -68,8 +75,10 @@ behaviors:
   - type: CompactWhenNearFullBehavior
 
   # Tool Behaviors
-  # FileToolsBehavior provides file read/write/list operations
-  - type: FileToolsBehavior
+  # File operation behaviors (split from FileToolsBehavior for granular control)
+  - type: DirectoryToolsBehavior     # list_dir
+  - type: ReadFileToolsBehavior      # read_file
+  - type: WriteFileToolsBehavior     # write_file
 
   # CommandToolsBehavior provides bash command execution
   - type: CommandToolsBehavior
