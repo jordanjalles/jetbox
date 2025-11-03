@@ -285,23 +285,24 @@ class DelegationBehavior(AgentBehavior):
         # AUTOMATIC WORKSPACE COORDINATION:
         # Priority order:
         # 1. Explicit workspace_path provided → use it
-        # 2. Calling agent has workspace_manager with isolated workspace → reuse it
+        # 2. Calling agent has workspace attribute → reuse it (FOOLPROOF: works for orchestrator!)
         # 3. Neither → let subagent create isolated workspace (will be reused on retry via goal slug)
 
         if "workspace_path" in args and args["workspace_path"]:
             # Explicit workspace path overrides everything
             workspace = Path(args["workspace_path"])
             print(f"[delegation] Using explicit workspace path: {workspace}")
-        elif hasattr(calling_agent, 'workspace_manager') and calling_agent.workspace_manager:
-            # AUTOMATIC COORDINATION: Reuse calling agent's isolated workspace
-            # This ensures files end up in one place across retries
-            workspace = calling_agent.workspace_manager.workspace_dir
-            print(f"[delegation] Reusing calling agent's isolated workspace: {workspace}")
+        elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
+            # AUTOMATIC COORDINATION: Reuse calling agent's workspace
+            # This is FOOLPROOF - works even if workspace_manager isn't initialized yet
+            # (e.g., orchestrator doesn't have a goal, so workspace_manager is None)
+            workspace = calling_agent.workspace
+            print(f"[delegation] Reusing calling agent's workspace: {workspace}")
         else:
-            # No isolated workspace context - let subagent create its own
+            # No workspace context - let subagent create its own
             # (will be reused on retry because same goal → same slug → same workspace path)
             workspace = None
-            print(f"[delegation] Subagent will create/reuse isolated workspace based on goal")
+            print(f"[delegation] Subagent will create isolated workspace based on goal")
 
         # Instantiate target agent
         try:
