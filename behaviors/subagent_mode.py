@@ -298,9 +298,10 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
         # This is handled by behaviors themselves - no need to do it here
 
         # Initialize status display if not already present
-        if not hasattr(agent, 'status_display') or agent.status_display is None:
-            from behaviors.status_display import StatusDisplay
-            agent.status_display = StatusDisplay(ctx=agent.context_manager, reset_stats=True)
+        # DEPRECATED: StatusDisplay is being redesigned for behavior system
+        # if not hasattr(agent, 'status_display') or agent.status_display is None:
+        #     from behaviors.status_display import StatusDisplay
+        #     agent.status_display = StatusDisplay(ctx=agent.context_manager, reset_stats=True)
 
         # Start wall-clock timer for goal
         import time
