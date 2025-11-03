@@ -35,16 +35,18 @@ class LoopDetectionBehavior(AgentBehavior):
     - Configurable max_repeats threshold
     """
 
-    def __init__(self, max_repeats: int = 5, max_empty_rounds: int = 3):
+    def __init__(self, max_repeats: int = 5, max_empty_rounds: int = 3, auto_fail_empty_rounds: int = 6):
         """
         Initialize loop detection behavior.
 
         Args:
             max_repeats: Maximum times an action can repeat before warning (default: 5)
             max_empty_rounds: Maximum consecutive rounds without tool calls before intervention (default: 3)
+            auto_fail_empty_rounds: Maximum consecutive empty rounds before auto-failing (default: 6)
         """
         self.max_repeats = max_repeats
         self.max_empty_rounds = max_empty_rounds
+        self.auto_fail_empty_rounds = auto_fail_empty_rounds
         self.action_history: list[dict[str, Any]] = []
         self.loop_warnings: list[str] = []
         self.consecutive_empty_rounds = 0
@@ -153,6 +155,22 @@ class LoopDetectionBehavior(AgentBehavior):
                 if last_msg:
                     content_preview = last_msg.get('content', '')[:200]
                     print(f"[loop_detection] LLM response: {content_preview}...")
+
+            # AUTO-FAIL: If recovery prompt was injected but LLM continues having empty rounds,
+            # agent is stuck and should fail fast instead of wasting time
+            if self.consecutive_empty_rounds >= self.auto_fail_empty_rounds:
+                print(f"[loop_detection] ❌ AUTO-FAIL: {self.consecutive_empty_rounds} consecutive "
+                      f"empty rounds exceeded threshold ({self.auto_fail_empty_rounds})")
+                print(f"[loop_detection] Recovery prompts were injected but LLM did not respond with tool calls.")
+                print(f"[loop_detection] Agent is stuck - forcing failure to prevent infinite loop.")
+
+                # Force agent to fail by raising an exception
+                # This will be caught by the agent's run loop and trigger mark_failed
+                raise RuntimeError(
+                    f"Auto-fail: Agent stuck with {self.consecutive_empty_rounds} consecutive "
+                    f"empty rounds (threshold: {self.auto_fail_empty_rounds}). Recovery prompts "
+                    f"were injected but LLM did not call any tools."
+                )
         else:
             # Tool was called - counter already reset by on_tool_call
             pass

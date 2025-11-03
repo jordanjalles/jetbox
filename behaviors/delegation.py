@@ -277,6 +277,21 @@ class DelegationBehavior(AgentBehavior):
                 "error": f"No goal/task description found in args: {list(args.keys())}"
             }
 
+        # CRITICAL: For architect, reframe goal as DOCUMENTATION task, not implementation
+        # This prevents architect from thinking it should implement code
+        if target_agent_name == "architect":
+            # Wrap goal to emphasize documentation-only role
+            goal_description = (
+                f"Design the architecture documentation for the following project:\n\n"
+                f"{goal_description}\n\n"
+                f"Your task is to create:\n"
+                f"1. Architecture overview (write_architecture_doc)\n"
+                f"2. Module specifications for each component (write_module_spec)\n"
+                f"3. Task breakdown for implementation (write_task_list)\n"
+                f"4. Call mark_complete when documentation is finished\n\n"
+                f"DO NOT implement code - only create architecture documentation."
+            )
+
         # PROPER WORKSPACE COORDINATION
         # If calling agent has a workspace, subagent should work in SAME workspace
         # This ensures orchestrator and subagents coordinate on file locations

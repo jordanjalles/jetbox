@@ -1485,6 +1485,27 @@ Please retry the tool call using only the valid parameters listed above.
             # Max rounds reached without completion
             return self._handle_max_rounds(max_rounds)
 
+        except RuntimeError as e:
+            # Handle auto-fail from loop detection
+            error_msg = str(e)
+            if "Auto-fail" in error_msg or "consecutive empty rounds" in error_msg:
+                print(f"[{self.name}] Auto-fail triggered by loop detection: {e}")
+                # Return as failure (not error) - this is expected behavior
+                return {
+                    "status": "failure",
+                    "reason": f"Auto-failed due to stuck state: {error_msg}",
+                    "workspace": str(self.workspace) if self.workspace else None,
+                }
+            else:
+                # Other RuntimeErrors - treat as errors
+                print(f"[{self.name}] RuntimeError during run: {e}")
+                import traceback
+                traceback.print_exc()
+                return {
+                    "status": "error",
+                    "reason": str(e),
+                    "workspace": str(self.workspace) if self.workspace else None,
+                }
         except Exception as e:
             print(f"[{self.name}] Exception during run: {e}")
             import traceback
