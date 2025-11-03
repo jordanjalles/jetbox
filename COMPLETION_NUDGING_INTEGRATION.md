@@ -166,15 +166,16 @@ def should_nudge_completion(llm_response: str, tool_calls: list[dict[str, Any]])
 ### Example Scenario
 
 **Round 5**:
+- Goal: "Create a calculator package"
 - Agent: "I've successfully created all the files and all tests passed! 🎉"
 - Tool calls: [write_file, run_bash("pytest")]
 - **Detector**: Matches pattern "all tests passed" → should nudge
-- **Action**: Sets `pending_nudge = "💡 REMINDER: You mentioned 'all tests passed'. If task is complete, call mark_complete(summary='...')"`
+- **Action**: Sets `pending_nudge = "💡 REMINDER: You mentioned 'all tests passed'. If 'Create a calculator package' is complete, please call mark_complete(summary='...') with what you accomplished."`
 
 **Round 6**:
-- Context includes: "💡 REMINDER: You mentioned 'all tests passed'. If task is complete, call mark_complete(summary='...')"
-- Agent: "You're right! Let me call mark_complete."
-- Tool calls: [mark_complete(summary="Created all files, tests pass")]
+- Context includes: "💡 REMINDER: You mentioned 'all tests passed'. If 'Create a calculator package' is complete, please call mark_complete(summary='...') with what you accomplished."
+- Agent: "You're right! The calculator package is complete."
+- Tool calls: [mark_complete(summary="Created calculator package with add, subtract, multiply, divide functions. All tests pass.")]
 - **Result**: Task properly marked complete ✓
 
 ---
@@ -208,8 +209,10 @@ behaviors:
 ### Parameters
 
 - **enable_completion_nudging**: Enable/disable the feature (default: True)
-- **min_rounds_before_nudge**: Minimum rounds before nudging (default: 3)
-  - Prevents premature nudges on early rounds
+- **min_rounds_before_nudge**: Minimum rounds before checking for completion signals (default: 3)
+  - Prevents premature nudges on early rounds when completion signals might be false positives
+  - Does NOT inject nudges based purely on round count - only checks for signals after this threshold
+  - Example: If set to 3, rounds 1-2 skip signal detection entirely, round 3+ check for signals
   - Recommended: 3 for simple tasks, 5-7 for complex tasks
 
 ---

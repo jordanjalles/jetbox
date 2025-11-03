@@ -58,7 +58,11 @@ class SubAgentModeBehavior(AgentBehavior):
             is_subagent: If True, agent is being delegated to (shows "DELEGATED GOAL").
                         If False, agent runs standalone (shows "GOAL").
             enable_completion_nudging: If True, detect completion signals and nudge agent to call mark_complete
-            min_rounds_before_nudge: Minimum rounds before nudging (avoid premature nudges)
+            min_rounds_before_nudge: Minimum rounds before checking for completion signals.
+                                    This prevents premature nudges on early rounds when completion
+                                    signals might be false positives (e.g., "task 1 complete" when
+                                    there are multiple tasks). Does NOT inject nudges based purely
+                                    on round count - only checks for signals after this threshold.
         """
         self.is_subagent = is_subagent
         self.goal = None  # Store goal for context injection
@@ -260,12 +264,26 @@ class SubAgentModeBehavior(AgentBehavior):
 
         # Set pending nudge if completion signal detected
         if analysis["should_nudge"]:
+            # Get base nudge message
             self.pending_nudge = analysis["nudge_message"]
+
             # Update message to use mark_complete instead of mark_subtask_complete
             self.pending_nudge = self.pending_nudge.replace(
                 "mark_subtask_complete(success=True)",
                 "mark_complete(summary='...')"
             )
+
+            # Replace generic "subtask" with specific goal reference
+            if self.goal:
+                # Extract the matched phrase for context
+                matched = analysis["matched_phrases"][0] if analysis["matched_phrases"] else "completion signal"
+
+                # Compose goal-specific nudge
+                self.pending_nudge = (
+                    f"💡 REMINDER: You mentioned '{matched}'. "
+                    f"If '{self.goal}' is complete, please call mark_complete(summary='...') with what you accomplished."
+                )
+
             matched = analysis["matched_phrases"][0] if analysis["matched_phrases"] else "completion signal"
             print(f"[subagent_mode] 💡 Completion signal detected: '{matched[:50]}' - will nudge next round")
 

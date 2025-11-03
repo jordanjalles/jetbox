@@ -29,12 +29,13 @@ def test_completion_nudging_detects_signals():
         tool_calls=tool_calls
     )
 
-    # Should have set a pending nudge
+    # Should have set a pending nudge with the specific goal
     assert behavior.pending_nudge is not None
     assert "mark_complete" in behavior.pending_nudge
     assert "REMINDER" in behavior.pending_nudge
+    assert "Create a test file" in behavior.pending_nudge  # Goal included
 
-    print("✓ Completion signal detected and nudge created")
+    print("✓ Completion signal detected and nudge created with specific goal")
 
 
 def test_completion_nudging_respects_min_rounds():
