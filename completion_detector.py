@@ -32,9 +32,19 @@ def detect_completion_signal(text: str) -> tuple[bool, list[str]]:
     return len(matches) > 0, matches
 
 def should_nudge_completion(llm_response: str, tool_calls: list[dict[str, Any]]) -> tuple[bool, str]:
+    """Check if we should nudge the agent to call a completion tool.
+
+    Returns False if agent already called a completion tool.
+    Returns True if completion signal detected without completion tool call.
+    """
+    # Check if agent already called a completion tool
+    completion_tools = {"mark_subtask_complete", "mark_complete", "mark_failed", "mark_goal_complete"}
     for call in tool_calls:
-        if call.get("function", {}).get("name") == "mark_subtask_complete":
+        tool_name = call.get("function", {}).get("name", "")
+        if tool_name in completion_tools:
             return False, "already_marked_complete"
+
+    # Check for completion signal in LLM response
     has_signal, matches = detect_completion_signal(llm_response)
     if has_signal:
         return True, f"completion_signal_detected: {matches[0][:50]}"

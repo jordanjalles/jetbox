@@ -10,6 +10,7 @@ Key features:
 - Sets up workspace, context manager, performance tracking
 - Provides completion signaling tools (mark_complete, mark_failed)
 - Handles execution mode (no chat, just work and return)
+- Detects completion signals and nudges agent to call mark_complete
 
 COMPOSITION:
 - This behavior does NOT handle compaction (use CompactWhenNearFullBehavior)
@@ -20,8 +21,12 @@ COMPOSITION:
 This is a RENAMED and ENHANCED version of SubAgentContextBehavior.
 """
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from behaviors.base import AgentBehavior
+from completion_detector import analyze_llm_response
+
+if TYPE_CHECKING:
+    pass
 
 
 class SubAgentModeBehavior(AgentBehavior):
@@ -45,16 +50,21 @@ class SubAgentModeBehavior(AgentBehavior):
     - ONLY manages execution mode setup and completion signaling
     """
 
-    def __init__(self, is_subagent: bool = True):
+    def __init__(self, is_subagent: bool = True, enable_completion_nudging: bool = True, min_rounds_before_nudge: int = 3):
         """
         Initialize subagent mode behavior.
 
         Args:
             is_subagent: If True, agent is being delegated to (shows "DELEGATED GOAL").
                         If False, agent runs standalone (shows "GOAL").
+            enable_completion_nudging: If True, detect completion signals and nudge agent to call mark_complete
+            min_rounds_before_nudge: Minimum rounds before nudging (avoid premature nudges)
         """
         self.is_subagent = is_subagent
         self.goal = None  # Store goal for context injection
+        self.enable_completion_nudging = enable_completion_nudging
+        self.min_rounds_before_nudge = min_rounds_before_nudge
+        self.pending_nudge = None  # Store nudge message to inject in next round
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -109,6 +119,14 @@ class SubAgentModeBehavior(AgentBehavior):
                 "role": "user",
                 "content": "\n".join(context_parts)
             })
+
+        # Inject completion nudge if pending
+        if self.pending_nudge:
+            context.append({
+                "role": "user",
+                "content": self.pending_nudge
+            })
+            self.pending_nudge = None  # Clear after injection
 
         return context
 
@@ -205,6 +223,52 @@ class SubAgentModeBehavior(AgentBehavior):
 
         return super().dispatch_tool(tool_name, args, **kwargs)
 
+    def on_round_end(self, round_number: int, **kwargs: Any) -> None:
+        """
+        Called at end of each round to detect completion signals.
+
+        This method analyzes the LLM response from the just-completed round
+        and sets a pending nudge if completion signals are detected without
+        a corresponding mark_complete call.
+
+        Args:
+            round_number: Current round number (1-indexed)
+            **kwargs: Additional context (llm_response, tool_calls, etc.)
+        """
+        # Skip if completion nudging is disabled
+        if not self.enable_completion_nudging:
+            return
+
+        # Don't nudge on early rounds (avoid premature nudges)
+        if round_number < self.min_rounds_before_nudge:
+            return
+
+        # Extract LLM response and tool calls from kwargs
+        llm_response = kwargs.get("llm_response", "")
+        tool_calls = kwargs.get("tool_calls", [])
+
+        # Skip if no LLM response to analyze
+        if not llm_response:
+            return
+
+        # Analyze for completion signals
+        analysis = analyze_llm_response(
+            llm_response,
+            tool_calls,
+            current_subtask=self.goal  # Use goal as context
+        )
+
+        # Set pending nudge if completion signal detected
+        if analysis["should_nudge"]:
+            self.pending_nudge = analysis["nudge_message"]
+            # Update message to use mark_complete instead of mark_subtask_complete
+            self.pending_nudge = self.pending_nudge.replace(
+                "mark_subtask_complete(success=True)",
+                "mark_complete(summary='...')"
+            )
+            matched = analysis["matched_phrases"][0] if analysis["matched_phrases"] else "completion signal"
+            print(f"[subagent_mode] 💡 Completion signal detected: '{matched[:50]}' - will nudge next round")
+
     def get_instructions(self) -> str:
         """
         Return execution workflow instructions.
@@ -286,7 +350,7 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
             agent.init_workspace_manager(goal_slug, workspace_path=workspace_param)
         else:
             # Create new mode: create isolated workspace
-            print(f"[subagent_mode] Creating new workspace for goal")
+            print("[subagent_mode] Creating new workspace for goal")
             agent.init_workspace_manager(goal_slug, workspace_path=None)
 
         # Initialize performance tracking
