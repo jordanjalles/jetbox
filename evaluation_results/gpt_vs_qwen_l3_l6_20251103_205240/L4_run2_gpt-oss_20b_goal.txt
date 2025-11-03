@@ -1,0 +1,1 @@
+Build a 'json_validator' package that validates JSON schemas with detailed error messages. Include tests.

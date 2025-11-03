@@ -1,0 +1,13 @@
+=== L1_gpt-oss_20b ===
+Model: gpt-oss:20b
+Level: L1
+Goal: Create a Python file called greet.py with a function greet(name) that returns 'Hello, {name}!'
+Started: 2025-11-03T19:11:34.299664
+Elapsed: 0.1s
+
+=== STDOUT ===
+
+=== STDERR ===
+Traceback (most recent call last):
+  File "<string>", line 10, in <module>
+TypeError: TaskExecutorAgent.__init__() got an unexpected keyword argument 'max_rounds'
