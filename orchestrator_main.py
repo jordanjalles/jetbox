@@ -743,18 +743,19 @@ def execute_orchestrator_tool(
 
     # Check if this is a task management tool (if enhancement is active)
     elif tool_name in ["read_task_breakdown", "get_next_task", "mark_task_status", "update_task"]:
-        # Dispatch to task management tools
-        import task_management_tools
+        # Dispatch to task management behavior
+        from behaviors import TaskManagementBehavior
 
-        tool_map = {
-            "read_task_breakdown": task_management_tools.read_task_breakdown,
-            "get_next_task": task_management_tools.get_next_task,
-            "mark_task_status": task_management_tools.mark_task_status,
-            "update_task": task_management_tools.update_task,
-        }
+        # Get workspace manager from orchestrator if available
+        workspace_manager = None
+        if hasattr(agent, 'workspace_manager'):
+            workspace_manager = agent.workspace_manager
+
+        # Create behavior instance
+        task_mgmt = TaskManagementBehavior(workspace_manager=workspace_manager)
 
         try:
-            result = tool_map[tool_name](**args)
+            result = task_mgmt.dispatch_tool(tool_name, args)
             return result
         except Exception as e:
             import traceback

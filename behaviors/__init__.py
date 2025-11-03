@@ -30,6 +30,7 @@ from behaviors.write_file_tools import WriteFileToolsBehavior
 from behaviors.command_tools import CommandToolsBehavior
 from behaviors.server_tools import ServerToolsBehavior
 from behaviors.architect_tools import ArchitectToolsBehavior
+from behaviors.task_management import TaskManagementBehavior
 from behaviors.compact_when_near_full import CompactWhenNearFullBehavior
 from behaviors.subagent_context import SubAgentContextBehavior
 from behaviors.loop_detection import LoopDetectionBehavior
@@ -45,6 +46,7 @@ __all__ = [
     "CommandToolsBehavior",
     "ServerToolsBehavior",
     "ArchitectToolsBehavior",
+    "TaskManagementBehavior",
     "CompactWhenNearFullBehavior",
     "SubAgentContextBehavior",
     "LoopDetectionBehavior",
