@@ -1,0 +1,112 @@
+[
+  {
+    "test_id": "L3_run2_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L3",
+    "run": 2,
+    "goal": "Create a 'string_utils' package with functions: reverse(s), capitalize_words(s), count_vowels(s), is_palindrome(s). Include tests.",
+    "status": "TIMEOUT",
+    "elapsed": 180.00375723838806,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L3_run2_qwen3_8b.log"
+  },
+  {
+    "test_id": "L3_run3_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L3",
+    "run": 3,
+    "goal": "Build a 'data_structures' package with Stack and Queue classes in separate files. Include comprehensive tests.",
+    "status": "UNKNOWN",
+    "elapsed": 172.87351727485657,
+    "returncode": 1,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L3_run3_qwen3_8b.log"
+  },
+  {
+    "test_id": "L3_run4_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L3",
+    "run": 4,
+    "goal": "Create a 'validators' package with email, phone, url, and password validation functions. Include tests for all.",
+    "status": "TIMEOUT",
+    "elapsed": 180.00398755073547,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L3_run4_qwen3_8b.log"
+  },
+  {
+    "test_id": "L3_run5_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L3",
+    "run": 5,
+    "goal": "Build a 'converters' package with temperature, distance, weight, and time conversion functions. Include tests.",
+    "status": "UNKNOWN",
+    "elapsed": 119.59211230278015,
+    "returncode": 1,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L3_run5_qwen3_8b.log"
+  },
+  {
+    "test_id": "L4_run2_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L4",
+    "run": 2,
+    "goal": "Build a 'json_validator' package that validates JSON schemas with detailed error messages. Include tests.",
+    "status": "UNKNOWN",
+    "elapsed": 117.31931400299072,
+    "returncode": 1,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L4_run2_qwen3_8b.log"
+  },
+  {
+    "test_id": "L4_run3_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L4",
+    "run": 3,
+    "goal": "Create a 'file_processor' package that reads/writes CSV, JSON, and XML files with error handling. Include tests.",
+    "status": "TIMEOUT",
+    "elapsed": 240.0031099319458,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L4_run3_qwen3_8b.log"
+  },
+  {
+    "test_id": "L4_run4_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L4",
+    "run": 4,
+    "goal": "Build a 'cache_manager' package with TTL-based in-memory caching and LRU eviction. Include tests.",
+    "status": "TIMEOUT",
+    "elapsed": 240.00365900993347,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L4_run4_qwen3_8b.log"
+  },
+  {
+    "test_id": "L5_run1_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L5",
+    "run": 1,
+    "goal": "Create a Flask REST API with CRUD endpoints for a User model (fields: id, name, email). Use in-memory storage. Include POST /users, GET /users, GET /users/<id>, PUT /users/<id>, DELETE /users/<id>. Write pytest tests for all endpoints.",
+    "status": "TIMEOUT",
+    "elapsed": 299.99926829338074,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L5_run1_qwen3_8b.log"
+  },
+  {
+    "test_id": "L5_run5_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L5",
+    "run": 5,
+    "goal": "Create a Flask REST API for Student records (id, name, grade, courses). Use in-memory storage. Include CRUD endpoints and full test coverage.",
+    "status": "TIMEOUT",
+    "elapsed": 300.0010550022125,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L5_run5_qwen3_8b.log"
+  },
+  {
+    "test_id": "L6_run4_qwen3_8b",
+    "model": "qwen3:8b",
+    "level": "L6",
+    "run": 4,
+    "goal": "Create a Flask notes API with User and Note models. Include JWT auth, note CRUD with sharing, SQLite storage, and pytest tests.",
+    "status": "TIMEOUT",
+    "elapsed": 419.99348306655884,
+    "returncode": 124,
+    "log_file": "evaluation_results/gpt_vs_qwen_l3_l6_20251103_205240/L6_run4_qwen3_8b.log"
+  }
+]
