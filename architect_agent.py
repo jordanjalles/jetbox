@@ -23,6 +23,7 @@ class ArchitectAgent(BaseAgent):
         self,
         workspace: Path | None = None,
         goal: str | None = None,
+        timeout_seconds: int = 600,
     ):
         """
         Initialize Architect agent.
@@ -30,11 +31,13 @@ class ArchitectAgent(BaseAgent):
         Args:
             workspace: Working directory (defaults to .agent_workspaces)
             goal: Initial goal/project description (optional)
+            timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
         """
         super().__init__(
             name="architect",
             workspace=workspace or Path(".agent_workspaces"),
             config_file="architect_config.yaml",
+            timeout_seconds=timeout_seconds,
         )
 
         # Set goal if provided (triggers on_goal_set event in SubAgentModeBehavior)

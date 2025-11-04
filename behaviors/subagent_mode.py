@@ -118,11 +118,8 @@ class SubAgentModeBehavior(AgentBehavior):
         context_parts.append("If you cannot complete it, call mark_failed(reason) explaining why.")
 
         # Insert after system prompt (index 1)
-        if context_parts and len(context) > 0:
-            context.insert(1, {
-                "role": "user",
-                "content": "\n".join(context_parts)
-            })
+        if context_parts:
+            self.inject_user_message_after_system(context, "\n".join(context_parts))
 
         # Inject completion nudge if pending
         if self.pending_nudge:
@@ -350,13 +347,6 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
         # Store goal for context injection
         self.goal = goal
 
-        # Initialize context manager with goal (DEPRECATED with behavior system)
-        # Context is now managed by behaviors, not a separate ContextManager
-        # if not agent.context_manager:
-        #     from context_manager import ContextManager
-        #     agent.context_manager = ContextManager()
-        # agent.context_manager.load_or_init(goal)
-
         # Initialize workspace manager
         # workspace parameter: None = create new, Path = reuse existing
         workspace_param = kwargs.get('workspace')
@@ -382,12 +372,6 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
 
         # Configure tools with workspace (for FileToolsBehavior, CommandToolsBehavior)
         # This is handled by behaviors themselves - no need to do it here
-
-        # Initialize status display if not already present
-        # DEPRECATED: StatusDisplay is being redesigned for behavior system
-        # if not hasattr(agent, 'status_display') or agent.status_display is None:
-        #     from behaviors.status_display import StatusDisplay
-        #     agent.status_display = StatusDisplay(ctx=agent.context_manager, reset_stats=True)
 
         # Start wall-clock timer for goal
         import time

@@ -337,7 +337,7 @@ class DelegationBehavior(AgentBehavior):
         2. Runs agent as isolated subprocess
         3. Checks exit code for success/failure
         4. Reads state.json for completion verification
-        5. Reads messages from messages_to_orchestrator.jsonl
+        5. Reads messages from messages_to_{parent_name}.jsonl (auto-detected from calling agent)
         6. Returns structured result
 
         Args:
@@ -401,12 +401,15 @@ class DelegationBehavior(AgentBehavior):
         print("=" * 60 + "\n")
 
         try:
+            # Get timeout from agent (default 600 if not set)
+            timeout = getattr(calling_agent, 'timeout_seconds', 600)
+
             # Run subprocess
             proc = subprocess.run(
                 cmd,
                 capture_output=False,  # Show output in real-time
                 text=True,
-                timeout=600,  # 10 minute timeout
+                timeout=timeout,
             )
 
             print("\n" + "=" * 60)
@@ -415,7 +418,9 @@ class DelegationBehavior(AgentBehavior):
 
             # Read messages from agent if any
             messages_from_agent = []
-            msg_file = Path(".agent_context/messages_to_orchestrator.jsonl")
+            # Auto-detect parent agent name from calling agent (supports multi-level delegation)
+            parent_name = calling_agent.name if calling_agent and hasattr(calling_agent, 'name') else "orchestrator"
+            msg_file = Path(f".agent_context/messages_to_{parent_name}.jsonl")
             if msg_file.exists():
                 try:
                     with open(msg_file, "r", encoding="utf-8") as f:
@@ -489,9 +494,10 @@ class DelegationBehavior(AgentBehavior):
                 }
 
         except subprocess.TimeoutExpired:
+            timeout_minutes = timeout / 60
             return {
                 "success": False,
-                "message": f"{target_agent_name} execution timed out",
+                "message": f"{target_agent_name} execution timed out after {timeout_minutes:.1f} minutes (timeout: {timeout}s)",
                 "agent": target_agent_name,
             }
         except Exception as e:
@@ -778,11 +784,7 @@ The delegated task did not complete. Consider:
             delegation_info.append(f"- **{target_agent}**: {blurb}")
 
         # Insert after system prompt (index 1)
-        delegation_message = {
-            "role": "user",
-            "content": "\n".join(delegation_info)
-        }
-        context.insert(1, delegation_message)
+        self.inject_user_message_after_system(context, "\n".join(delegation_info))
 
         return context
 

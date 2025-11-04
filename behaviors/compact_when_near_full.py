@@ -10,7 +10,6 @@ Features:
 - Monitors token usage (estimate via character count)
 - Compacts at 75% threshold via LLM summarization
 - Preserves recent messages (last 3-5 exchanges)
-- Tools: mark_goal_complete
 """
 
 from typing import Any
@@ -195,118 +194,25 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         Returns:
             Concise summary of the messages
         """
-        from llm_utils import chat_with_inactivity_timeout
-
-        # Build a prompt asking for summary - aggressively truncate for compactness
-        messages_text = []
-        for msg in messages:
-            role = msg.get("role", "unknown")
-            content = str(msg.get("content", ""))
-            tool_calls = msg.get("tool_calls")
-
-            if tool_calls:
-                # Just show tool names, not full arguments
-                tool_names = str(tool_calls)[:200]
-                messages_text.append(f"[{role}] {tool_names}")
-            elif content:
-                # Aggressively truncate - we only need gist for summarization
-                if role == "tool":
-                    # Tool results: just first 100 chars (usually enough to see success/error)
-                    content = content[:100] + ("..." if len(content) > 100 else "")
-                else:
-                    # Other messages: first 300 chars
-                    content = content[:300] + ("..." if len(content) > 300 else "")
-                messages_text.append(f"[{role}] {content}")
-
-        prompt = f"""Provide an extremely concise summary (max 200 words) of this conversation, focusing ONLY on:
-1. Files created/modified (just names, not content)
-2. Commands run (results only if they failed)
-3. Current state/progress
-
-Omit: successful tool outputs, file contents, verbose explanations.
-Format: Dense bullet points.
-
-Conversation:
-{chr(10).join(messages_text)}
-
-Concise summary (max 200 words):"""
+        from utils.llm_utils import summarize_messages
 
         try:
-            response = chat_with_inactivity_timeout(
+            summary = summarize_messages(
+                messages=messages,
                 model="gpt-oss:20b",
-                messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0.2},
-                inactivity_timeout=30,
-                max_total_time=60,  # 1 minute max for summarization
+                temperature=0.2,
             )
-            return response.get("message", {}).get("content", "Unable to generate summary.")
+            return summary if summary else "Unable to generate summary."
         except Exception as e:
             # If summarization fails, return a basic summary
             return f"[Summarization failed: {e}] Previous work included {len(messages)} message exchanges with tool calls and results."
-
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Provide mark_goal_complete tool.
-
-        Returns:
-            Tool definition for mark_goal_complete
-        """
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "mark_goal_complete",
-                    "description": "Mark the goal as complete. Call this when you have finished all work and tests pass.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "summary": {
-                                "type": "string",
-                                "description": "Brief summary of what was accomplished"
-                            }
-                        },
-                        "required": ["summary"]
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
-        self,
-        tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
-    ) -> dict[str, Any]:
-        """
-        Handle tool calls for this behavior.
-
-        Args:
-            tool_name: Tool being called
-            args: Tool arguments
-            **kwargs: Additional context
-
-        Returns:
-            Tool result dict
-        """
-        if tool_name == "mark_goal_complete":
-            summary = args.get('summary', 'Goal completed')
-
-            # Return goal_complete status to trigger agent exit
-            # This matches what legacy mark_goal_complete() in tools.py returns
-            return {
-                "status": "goal_complete",
-                "message": "Goal completed!",
-                "summary": summary
-            }
-
-        return super().dispatch_tool(tool_name, args, **kwargs)
 
     def get_instructions(self) -> str:
         """
         Return workflow instructions for this behavior.
 
         Returns:
-            Instructions for using mark_goal_complete
+            Instructions for completing work
         """
         return """
 WORKFLOW:
@@ -318,5 +224,4 @@ Your goal is shown at the start of the conversation. Simply complete the work us
 - Use list_dir to explore directories
 
 Work directly on the goal - no need to decompose into subtasks.
-When all work is complete and tests pass, call mark_goal_complete(summary="what you accomplished").
 """

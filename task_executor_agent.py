@@ -23,6 +23,7 @@ class TaskExecutorAgent(BaseAgent):
         self,
         workspace: Path | str | None = None,
         goal: str | None = None,
+        timeout_seconds: int = 600,
     ):
         """
         Initialize TaskExecutor agent.
@@ -30,6 +31,7 @@ class TaskExecutorAgent(BaseAgent):
         Args:
             workspace: Workspace directory (None=.agent_workspaces, Path=specific dir)
             goal: Optional initial goal to set
+            timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
         """
         # Resolve workspace path - if None, use .agent_workspaces (absolute path)
         if workspace:
@@ -43,6 +45,7 @@ class TaskExecutorAgent(BaseAgent):
             name="task_executor",
             workspace=workspace_path,
             config_file="task_executor_config.yaml",
+            timeout_seconds=timeout_seconds,
         )
 
         # Set goal if provided (triggers on_goal_set event in SubAgentModeBehavior)

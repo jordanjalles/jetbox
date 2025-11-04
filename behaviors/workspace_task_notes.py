@@ -216,16 +216,14 @@ Be specific and factual. Help someone understand what happened.
 Format: Use bullet points starting with "-"."""
 
     try:
-        # Call LLM directly with ollama.chat (one-shot, no context needed)
-        from ollama import chat
+        from utils.llm_utils import summarize_with_llm
 
-        response = chat(
-            model="gpt-oss:20b",  # Default model
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0.2},
+        content = summarize_with_llm(
+            prompt=prompt,
+            model="gpt-oss:20b",
+            temperature=0.2,
         )
 
-        content = response.get("message", {}).get("content", "")
         if not content:
             status = "succeeded" if success else "failed"
             return f"- Goal {status}: {goal_description}"
@@ -344,15 +342,13 @@ Format: Dense bullets focused on facts."""
 
     # Get LLM summary
     try:
-        # Call LLM directly with ollama.chat (one-shot, no context needed)
-        from ollama import chat
+        from utils.llm_utils import summarize_with_llm
 
-        response = chat(
-            model="gpt-oss:20b",  # Default model
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0.2},
+        summary = summarize_with_llm(
+            prompt=prompt,
+            model="gpt-oss:20b",
+            temperature=0.2,
         )
-        summary = response.get("message", {}).get("content", "")
 
         # Append to notes
         timeout_header = f"## TIMEOUT ({elapsed_seconds:.0f}s)"
@@ -458,11 +454,10 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
                         print(f"⚠️  Workspace task notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
 
             # Insert after system prompt (index 1)
-            notes_message = {
-                "role": "user",
-                "content": f"## Previous Context (from workspace task notes)\n\n{self.notes_content}"
-            }
-            context.insert(1, notes_message)
+            self.inject_user_message_after_system(
+                context,
+                f"## Previous Context (from workspace task notes)\n\n{self.notes_content}"
+            )
 
         return context
 

@@ -21,19 +21,21 @@ class OrchestratorAgent(BaseAgent):
     All logic is in base_agent.py or behaviors. NO unique logic here.
     """
 
-    def __init__(self, workspace: Path | None = None, exclude_behaviors: list[str] | None = None):
+    def __init__(self, workspace: Path | None = None, exclude_behaviors: list[str] | None = None, timeout_seconds: int = 600):
         """
         Initialize Orchestrator agent.
 
         Args:
             workspace: Working directory (defaults to .agent_workspaces)
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
+            timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
         """
         super().__init__(
             name="orchestrator",
             workspace=workspace or Path(".agent_workspaces"),
             config_file="orchestrator_config.yaml",
             exclude_behaviors=exclude_behaviors,
+            timeout_seconds=timeout_seconds,
         )
 
     # ===========================
@@ -54,6 +56,7 @@ class OrchestratorAgent(BaseAgent):
         """
         initial_message = args["initial_message"]
         force_chat_mode = args["force_chat_mode"]
+        timeout_seconds = args.get("timeout_seconds", 600)
 
         # Determine if ChatbotBehavior should be excluded
         # Exclude it when goal string is provided UNLESS --chat flag is set
@@ -70,7 +73,7 @@ class OrchestratorAgent(BaseAgent):
             else:
                 print("[OrchestratorAgent] Interactive mode: ChatbotBehavior enabled")
 
-        return cls(workspace=workspace, exclude_behaviors=exclude_behaviors)
+        return cls(workspace=workspace, exclude_behaviors=exclude_behaviors, timeout_seconds=timeout_seconds)
 
     @classmethod
     def run_agent(cls, agent: BaseAgent, args: dict[str, Any]) -> None:
@@ -223,8 +226,8 @@ class OrchestratorAgent(BaseAgent):
                             break
                         execute_task(user_input)
                         print("\n✅ Task completed. Ready for next request.\n")
-                    except KeyboardInterrupt:
-                        print("\n\nInterrupted. Shutting down...")
+                    except (EOFError, KeyboardInterrupt):
+                        print("\nShutting down...")
                         break
                     except Exception as e:
                         print(f"\nError: {e}")

@@ -352,13 +352,10 @@ class LoopDetectionBehavior(AgentBehavior):
                 warnings_to_inject.append("\n".join(warnings_text))
 
         # Inject warnings if any
-        if warnings_to_inject and len(context) > 0:
+        if warnings_to_inject:
             # Insert after system prompt (index 1)
             for warning in reversed(warnings_to_inject):  # Reverse so they appear in correct order
-                context.insert(1, {
-                    "role": "user",
-                    "content": warning
-                })
+                self.inject_user_message_after_system(context, warning)
 
         return context
 

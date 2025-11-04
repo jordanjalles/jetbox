@@ -451,3 +451,4 @@ When working in this codebase:
 - remember to be careful when using Kill Shell - you often kill your own claude process
 - remember to look at tasks_for_claude directory when you finish each task to see what new things I have for you to do
 - remember to update and check tasks_for_claude folder when every task is done
+- remember agents are composed of system prompts and Behaviors that are configured in yaml files. All system prompts live in configs. All configurable logic lives in Behaviors. All universal agent logic lives in base_agent.py.

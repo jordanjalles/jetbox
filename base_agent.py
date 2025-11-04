@@ -14,6 +14,7 @@ from typing import Any
 from pathlib import Path
 import json
 import time
+import os
 from datetime import datetime
 import re
 import importlib
@@ -93,6 +94,7 @@ class BaseAgent:
         workspace: Path,
         config_file: str,
         exclude_behaviors: list[str] | None = None,
+        timeout_seconds: int = 600,
     ):
         """
         Initialize base agent.
@@ -102,6 +104,7 @@ class BaseAgent:
             workspace: Working directory for this agent
             config_file: Path to agent-specific config YAML (e.g., "task_executor_config.yaml")
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
+            timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
         """
         import yaml
         from agent_config import config as global_config
@@ -109,14 +112,31 @@ class BaseAgent:
         self.name = name
         self.workspace = Path(workspace)
         self.config = global_config  # Global config for behavior defaults
+        self.timeout_seconds = timeout_seconds  # Subprocess timeout (for delegation)
 
         # Load agent-specific config file
         config_path = Path(config_file)
         if not config_path.exists():
             raise FileNotFoundError(f"Agent config file not found: {config_file}")
 
-        with open(config_path) as f:
-            agent_config = yaml.safe_load(f) or {}
+        # Optional: Validate config with pydantic (enable with VALIDATE_CONFIGS=1)
+        if os.environ.get("VALIDATE_CONFIGS") == "1":
+            try:
+                from utils.config_validator import validate_agent_config
+                is_valid, error_msg, validated_config = validate_agent_config(config_path)
+                if not is_valid:
+                    raise ValueError(f"Invalid config file {config_file}:\n{error_msg}")
+                agent_config = validated_config
+            except ImportError:
+                # Validation not available, skip
+                pass
+        else:
+            with open(config_path) as f:
+                agent_config = yaml.safe_load(f) or {}
+
+        if not agent_config:
+            with open(config_path) as f:
+                agent_config = yaml.safe_load(f) or {}
 
         # Extract role from agent config
         self.role = agent_config.get("role", f"{name} agent")
@@ -1262,8 +1282,47 @@ Please retry the tool call using only the valid parameters listed above.
                 print("Error: --workspace requires a path argument")
                 sys.exit(1)
 
+        # Check for --timeout flag (subprocess timeout in seconds)
+        timeout_seconds = 600  # Default: 10 minutes
+        if "--timeout" in args:
+            idx = args.index("--timeout")
+            if idx + 1 < len(args):
+                try:
+                    timeout_seconds = int(args[idx + 1])
+                    args.pop(idx)  # Remove --timeout
+                    args.pop(idx)  # Remove value
+                except ValueError:
+                    print("Error: --timeout requires an integer value (seconds)")
+                    sys.exit(1)
+            else:
+                print("Error: --timeout requires a timeout value in seconds")
+                sys.exit(1)
+
+        # Check for --clean-workspaces flag (workspace cleanup utility)
+        clean_workspaces = False
+        clean_older_than = None
+        clean_dry_run = False
+
+        if "--clean-workspaces" in args:
+            clean_workspaces = True
+            args.remove("--clean-workspaces")
+
+            # Check for --older-than
+            for arg in args[:]:
+                if arg.startswith("--older-than="):
+                    clean_older_than = arg.split("=", 1)[1]
+                    args.remove(arg)
+
+            # Check for --dry-run
+            if "--dry-run" in args:
+                clean_dry_run = True
+                args.remove("--dry-run")
+
         if args:
-            initial_message = " ".join(args)
+            initial_message = " ".join(args).strip()
+            # Treat empty string as None (no goal provided)
+            if not initial_message:
+                initial_message = None
         else:
             initial_message = None
 
@@ -1272,6 +1331,10 @@ Please retry the tool call using only the valid parameters listed above.
             "force_chat_mode": force_chat_mode,
             "custom_workspace": custom_workspace,
             "initial_message": initial_message,
+            "timeout_seconds": timeout_seconds,
+            "clean_workspaces": clean_workspaces,
+            "clean_older_than": clean_older_than,
+            "clean_dry_run": clean_dry_run,
         }
 
     @classmethod
@@ -1389,6 +1452,22 @@ Please retry the tool call using only the valid parameters listed above.
 
         # Parse CLI arguments
         args = cls.parse_cli_args()
+
+        # Handle workspace cleanup mode (exits after cleanup)
+        if args.get("clean_workspaces"):
+            from utils.workspace_cleanup import clean_workspaces, print_cleanup_report
+
+            try:
+                results = clean_workspaces(
+                    older_than=args.get("clean_older_than"),
+                    dry_run=args.get("clean_dry_run", False),
+                )
+                print_cleanup_report(results)
+                sys.exit(0)
+            except ValueError as e:
+                print(f"Error: {e}")
+                print("\nUsage: python agent.py --clean-workspaces --older-than=7d [--dry-run]")
+                sys.exit(1)
 
         # Setup workspace
         workspace = cls.setup_workspace(args)

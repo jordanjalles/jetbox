@@ -210,9 +210,7 @@ class ChatbotBehavior(AgentBehavior):
         """
         if self.chat_mode_active:
             # Insert chat mode instructions after system prompt
-            chat_instructions = {
-                "role": "user",
-                "content": """CHAT MODE ACTIVE:
+            chat_instructions = """CHAT MODE ACTIVE:
 
 No goal has been provided yet. Your job is to:
 1. Engage in conversation with the user
@@ -227,10 +225,7 @@ Guidelines:
 - When requirements are clear, form a concise goal statement
 - Use set_goal tool to transition to execution mode
 """
-            }
-
-            if len(context) > 0:
-                context.insert(1, chat_instructions)
+            self.inject_user_message_after_system(context, chat_instructions)
 
         # Inject pending nudge if set (for idle detection)
         if self.pending_nudge:
@@ -440,8 +435,8 @@ After set_goal is called, you will automatically transition to execution mode.
                                 "content": str(result)
                             })
 
-            except KeyboardInterrupt:
-                print("\n\nChat interrupted. Exiting...")
+            except (EOFError, KeyboardInterrupt):
+                print("\nShutting down...")
                 break
             except Exception as e:
                 print(f"\nError in chat loop: {e}")
@@ -516,8 +511,8 @@ After set_goal is called, you will automatically transition to execution mode.
                 # Show completion
                 print("\n✅ Task completed. Ready for next request.\n")
 
-            except KeyboardInterrupt:
-                print("\n\nInterrupted. Shutting down...")
+            except (EOFError, KeyboardInterrupt):
+                print("\nShutting down...")
                 break
             except Exception as e:
                 print(f"\nError: {e}")
