@@ -160,185 +160,123 @@ def main():
     server_manager = ServerManager(workspace)
     server_manager.start_monitoring()
 
-    print("=" * 60)
-    print("JETBOX ORCHESTRATOR")
-    print("=" * 60)
-    print()
-    print("Type your request, or 'quit' to exit.")
-    print()
+    # Define task execution callback for ChatbotBehavior
+    def execute_task(user_message: str) -> None:
+        """
+        Execute a single orchestrator task.
 
-    try:
-        # If initial message provided, process it
-        if initial_message:
-            print(f"User: {initial_message}")
-            print()
+        This function is called by ChatbotBehavior for each user message.
+        It runs the orchestrator's LLM loop until the task completes.
+        """
+        # Clean up old server requests
+        server_manager.cleanup_old_requests()
 
-            # Clean up old server requests before task
-            server_manager.cleanup_old_requests()
+        # Add user message to history
+        orchestrator.add_message({"role": "user", "content": user_message})
 
-            orchestrator.add_message({"role": "user", "content": initial_message})
-
-            # Keep executing rounds until no more tool calls
-            # No max_rounds limit - let wall-clock timeout control execution
-            round_num = 0
-            max_rounds = 100  # Reasonable upper limit
-            while True:
-                round_num += 1
-                # Execute orchestrator round
-                response = orchestrator._execute_round(
-                    round_no=round_num,
-                    max_rounds=max_rounds,
-                    model=config.llm.model,
-                    temperature=config.llm.temperature,
-                )
-
-                # Check if goal completed/failed
-                if response is None:
-                    # Continue to next round
-                    continue
-
-                # Display response
-                if "message" in response:
-                    msg = response["message"]
-
-                    # Handle both dict and string messages
-                    if isinstance(msg, dict):
-                        # Show content if present
-                        if msg.get("content"):
-                            print(f"Orchestrator: {msg['content']}")
-                            print()
-                    elif isinstance(msg, str):
-                        # String message (e.g., after goal completion)
-                        if msg:
-                            print(f"Orchestrator: {msg}")
-                            print()
-
-                    # Execute tool calls (show important ones)
-                    if isinstance(msg, dict) and "tool_calls" in msg:
-                        for tc in msg["tool_calls"]:
-                            tool_name = tc["function"]["name"]
-                            args = tc["function"]["arguments"]
-
-                            # Show clarification questions
-                            if tool_name == "clarify_with_user":
-                                question = args.get("question", "")
-                                print(f"Orchestrator: {question}\n")
-
-                            # Show delegation events
-                            elif tool_name == "consult_architect":
-                                project_desc = args.get("project_description", "")
-                                print(f"→ Consulting Architect: {project_desc[:60]}...\n")
-                            elif tool_name == "delegate_to_executor":
-                                task_desc = args.get("task_description", "")
-                                print(f"→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
-
-                            result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
-
-                            # Add tool result to conversation (one message per tool call)
-                            tool_result_str = json.dumps(result)
-                            orchestrator.add_message({
-                                "role": "tool",
-                                "content": tool_result_str,
-                            })
-                    else:
-                        # No more tool calls, task is complete
-                        break
-
-            # Show completion message
-            if not exit_after_initial:
-                print("\n✅ Task completed. Ready for next request.\n")
-
-            # Exit if --once flag was provided
-            if exit_after_initial:
-                print("\nTask completed. Exiting...")
-                return
-
-        # Interactive loop (only if not --once)
+        # Execute rounds until task complete
+        round_num = 0
+        max_rounds = 100
         while True:
-            try:
-                user_input = input("You: ").strip()
+            round_num += 1
+            response = orchestrator._execute_round(
+                round_no=round_num,
+                max_rounds=max_rounds,
+                model=config.llm.model,
+                temperature=config.llm.temperature,
+            )
 
-                if not user_input:
-                    continue
+            # Check if goal completed/failed
+            if response is None:
+                continue
 
-                if user_input.lower() in ["quit", "exit", "q"]:
-                    print("\nShutting down...")
+            # Display response
+            if "message" in response:
+                msg = response["message"]
+
+                if isinstance(msg, dict):
+                    if msg.get("content"):
+                        print(f"Orchestrator: {msg['content']}")
+                        print()
+                elif isinstance(msg, str):
+                    if msg:
+                        print(f"Orchestrator: {msg}")
+                        print()
+
+                # Execute tool calls
+                if isinstance(msg, dict) and "tool_calls" in msg:
+                    for tc in msg["tool_calls"]:
+                        tool_name = tc["function"]["name"]
+                        args = tc["function"]["arguments"]
+
+                        # Show delegation events
+                        if tool_name == "clarify_with_user":
+                            print(f"Orchestrator: {args.get('question', '')}\n")
+                        elif tool_name == "consult_architect":
+                            print(f"→ Consulting Architect: {args.get('project_description', '')[:60]}...\n")
+                        elif tool_name == "delegate_to_executor":
+                            print(f"→ Delegating to TaskExecutor: {args.get('task_description', '')[:60]}...\n")
+
+                        result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
+
+                        # Add tool result
+                        orchestrator.add_message({
+                            "role": "tool",
+                            "content": json.dumps(result),
+                        })
+                else:
+                    # No more tool calls - task complete
                     break
 
-                # Clean up old server requests before each task
-                server_manager.cleanup_old_requests()
+    # Get ChatbotBehavior instance
+    chatbot_behavior = None
+    for behavior in orchestrator.behaviors:
+        if behavior.get_name() == "chatbot":
+            chatbot_behavior = behavior
+            break
 
-                # Add user message
-                orchestrator.add_message({
-                    "role": "user",
-                    "content": user_input
-                })
+    try:
+        # Use ChatbotBehavior's orchestrator chat loop if available
+        if chatbot_behavior and not exit_after_initial:
+            # Multi-task chat mode
+            chatbot_behavior.run_orchestrator_chat_loop(
+                agent=orchestrator,
+                execute_task_callback=execute_task,
+                initial_message=initial_message
+            )
+        elif initial_message and exit_after_initial:
+            # Single task mode (--once flag)
+            print(f"User: {initial_message}\n")
+            execute_task(initial_message)
+            print("\nTask completed. Exiting...")
+        else:
+            # Fallback to manual loop if ChatbotBehavior not available
+            print("Warning: ChatbotBehavior not found, using fallback loop")
+            if initial_message:
+                print(f"User: {initial_message}\n")
+                execute_task(initial_message)
+                if exit_after_initial:
+                    print("\nTask completed. Exiting...")
+                    return
+                print("\n✅ Task completed. Ready for next request.\n")
 
-                # Keep executing rounds until no more tool calls
-                # This allows orchestrator to:
-                # 1. Think/analyze user request
-                # 2. Call find_workspace if needed
-                # 3. Then delegate_to_executor
-                # No max_rounds limit - let wall-clock timeout control execution
-                round_num = 0
-                while True:
-                    round_num += 1
-                    # Call LLM
-                    response = orchestrator.call_llm(
-                        model=config.llm.model,
-                        temperature=config.llm.temperature,
-                    )
-
-                    # Display response
-                    if "message" in response:
-                        msg = response["message"]
-
-                        # Add assistant message to history
-                        orchestrator.add_message(msg)
-
-                        # Show content first if present
-                        if msg.get("content"):
-                            print(f"\nOrchestrator: {msg['content']}\n")
-
-                        # Execute tool calls (show important ones)
-                        if "tool_calls" in msg:
-                            for tc in msg["tool_calls"]:
-                                tool_name = tc["function"]["name"]
-                                args = tc["function"]["arguments"]
-
-                                # Show clarification questions
-                                if tool_name == "clarify_with_user":
-                                    question = args.get("question", "")
-                                    print(f"\nOrchestrator: {question}\n")
-
-                                # Show delegation events
-                                elif tool_name == "consult_architect":
-                                    project_desc = args.get("project_description", "")
-                                    print(f"\n→ Consulting Architect: {project_desc[:60]}...\n")
-                                elif tool_name == "delegate_to_executor":
-                                    task_desc = args.get("task_description", "")
-                                    print(f"\n→ Delegating to TaskExecutor: {task_desc[:60]}...\n")
-
-                                result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
-
-                                # Add tool result to conversation (one message per tool call)
-                                tool_result_str = json.dumps(result)
-                                orchestrator.add_message({
-                                    "role": "tool",
-                                    "content": tool_result_str,
-                                })
-                        else:
-                            # No more tool calls, orchestrator is done
-                            print("\n✅ Task completed. Ready for next request.\n")
-                            break
-
-            except KeyboardInterrupt:
-                print("\n\nInterrupted. Shutting down...")
-                break
-            except Exception as e:
-                print(f"\nError: {e}")
-                import traceback
-                traceback.print_exc()
+            while True:
+                try:
+                    user_input = input("You: ").strip()
+                    if not user_input:
+                        continue
+                    if user_input.lower() in ["quit", "exit", "q"]:
+                        print("\nShutting down...")
+                        break
+                    execute_task(user_input)
+                    print("\n✅ Task completed. Ready for next request.\n")
+                except KeyboardInterrupt:
+                    print("\n\nInterrupted. Shutting down...")
+                    break
+                except Exception as e:
+                    print(f"\nError: {e}")
+                    import traceback
+                    traceback.print_exc()
 
     finally:
         # Clean shutdown
