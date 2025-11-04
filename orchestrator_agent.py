@@ -37,66 +37,6 @@ class OrchestratorAgent(BaseAgent):
             timeout_seconds=timeout_seconds,
         )
 
-    def pre_task_hook(self) -> None:
-        """
-        Hook called before each task in multi-task chat mode.
-
-        Used by base_agent._run_multi_task_chat_mode().
-        """
-        # Clean up old server requests before starting new task
-        if self.server_manager:
-            self.server_manager.cleanup_old_requests()
-
-    def cleanup_hook(self) -> None:
-        """
-        Hook called at end of agent execution for cleanup.
-
-        Used by base_agent._run_multi_task_chat_mode().
-        """
-        # Stop all servers and monitoring
-        if self.server_manager:
-            print("\n[Orchestrator] Stopping all servers...")
-            self.server_manager.stop_all_servers()
-            self.server_manager.stop_monitoring()
-            print("Goodbye!")
-
-    # ===========================
-    # CLI customization
-    # ===========================
-
-    @classmethod
-    def create_agent_instance(cls, workspace: Path, args: dict[str, Any]):
-        """
-        Create orchestrator agent with conditional ChatbotBehavior exclusion.
-
-        Args:
-            workspace: Workspace directory path
-            args: Parsed CLI arguments
-
-        Returns:
-            OrchestratorAgent instance
-        """
-        initial_message = args["initial_message"]
-        force_chat_mode = args["force_chat_mode"]
-        timeout_seconds = args.get("timeout_seconds", 600)
-
-        # Determine if ChatbotBehavior should be excluded
-        # Exclude it when goal string is provided UNLESS --chat flag is set
-        # Include it when no goal string (interactive mode) OR --chat flag
-        exclude_behaviors = []
-        if initial_message and not force_chat_mode:
-            # Autonomous mode: exclude chatbot behavior to prevent conversational mode
-            exclude_behaviors = ["ChatbotBehavior"]
-            print("[OrchestratorAgent] Autonomous mode: ChatbotBehavior excluded")
-        else:
-            # Interactive mode or chat mode: include chatbot behavior for user interaction
-            if force_chat_mode:
-                print("[OrchestratorAgent] Chat mode (--chat): ChatbotBehavior enabled")
-            else:
-                print("[OrchestratorAgent] Interactive mode: ChatbotBehavior enabled")
-
-        return cls(workspace=workspace, exclude_behaviors=exclude_behaviors, timeout_seconds=timeout_seconds)
-
 
 if __name__ == "__main__":
     OrchestratorAgent.main()

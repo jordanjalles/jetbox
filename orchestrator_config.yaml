@@ -136,6 +136,10 @@ behaviors:
   # (orchestrator only - other agents work within workspaces but don't manage them)
   - type: WorkspaceManagementBehavior
 
+  # ServerManagementBehavior manages development server lifecycle
+  # (orchestrator and task_executor - architect doesn't run code)
+  - type: ServerManagementBehavior
+
   # NOTE: DelegationBehavior is automatically added based on agents.yaml relationships.
   # The orchestrator can delegate to: architect, task_executor (defined in agents.yaml)
   # This creates tools: consult_architect, delegate_to_executor

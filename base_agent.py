@@ -1404,6 +1404,10 @@ Please retry the tool call using only the valid parameters listed above.
         """
         Create agent instance with appropriate configuration.
 
+        Automatically handles ChatbotBehavior exclusion for agents:
+        - Exclude ChatbotBehavior when goal string provided (unless --chat flag)
+        - Include ChatbotBehavior when no goal (interactive) or --chat flag
+
         Subclasses can override to customize agent creation.
 
         Args:
@@ -1413,8 +1417,22 @@ Please retry the tool call using only the valid parameters listed above.
         Returns:
             Agent instance
         """
-        # Default: just create agent with workspace
-        return cls(workspace=workspace)
+        initial_message = args.get("initial_message")
+        force_chat_mode = args.get("force_chat_mode", False)
+        timeout_seconds = args.get("timeout_seconds", 600)
+
+        # Determine if ChatbotBehavior should be excluded
+        exclude_behaviors = []
+        if initial_message and not force_chat_mode:
+            # Autonomous mode: exclude chatbot to run goal directly
+            exclude_behaviors = ["ChatbotBehavior"]
+
+        # Create agent with appropriate exclusions
+        return cls(
+            workspace=workspace,
+            exclude_behaviors=exclude_behaviors,
+            timeout_seconds=timeout_seconds
+        )
 
     @classmethod
     def run_agent(cls, agent: BaseAgent, args: dict[str, Any]) -> None:
@@ -1488,9 +1506,12 @@ Please retry the tool call using only the valid parameters listed above.
         # Define task execution callback
         def execute_task(user_message: str) -> None:
             """Execute a single task in multi-task mode."""
-            # Call agent-specific pre-task hook if available
+            # Call pre-task hooks (agent and behaviors)
             if hasattr(agent, 'pre_task_hook'):
                 agent.pre_task_hook()
+            for behavior in agent.behaviors:
+                if hasattr(behavior, 'pre_task_hook'):
+                    behavior.pre_task_hook(agent)
 
             # Reset ChatbotBehavior flags for new task
             chatbot_behavior.task_complete_flag = False
@@ -1533,9 +1554,12 @@ Please retry the tool call using only the valid parameters listed above.
                     initial_message=None
                 )
         finally:
-            # Call agent-specific cleanup hook if available
+            # Call cleanup hooks (agent and behaviors)
             if hasattr(agent, 'cleanup_hook'):
                 agent.cleanup_hook()
+            for behavior in agent.behaviors:
+                if hasattr(behavior, 'cleanup_hook'):
+                    behavior.cleanup_hook(agent)
 
     @classmethod
     def main(cls) -> None:
