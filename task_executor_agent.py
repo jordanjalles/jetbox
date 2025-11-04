@@ -24,6 +24,7 @@ class TaskExecutorAgent(BaseAgent):
         workspace: Path | str | None = None,
         goal: str | None = None,
         timeout_seconds: int = 600,
+        exclude_behaviors: list[str] | None = None,
     ):
         """
         Initialize TaskExecutor agent.
@@ -32,6 +33,7 @@ class TaskExecutorAgent(BaseAgent):
             workspace: Workspace directory (None=.agent_workspaces, Path=specific dir)
             goal: Optional initial goal to set
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
+            exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
         """
         # Resolve workspace path - if None, use .agent_workspaces (absolute path)
         if workspace:
@@ -46,6 +48,7 @@ class TaskExecutorAgent(BaseAgent):
             workspace=workspace_path,
             config_file="task_executor_config.yaml",
             timeout_seconds=timeout_seconds,
+            exclude_behaviors=exclude_behaviors,
         )
 
         # Set goal if provided (triggers on_goal_set event in SubAgentModeBehavior)

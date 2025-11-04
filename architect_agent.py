@@ -24,6 +24,7 @@ class ArchitectAgent(BaseAgent):
         workspace: Path | None = None,
         goal: str | None = None,
         timeout_seconds: int = 600,
+        exclude_behaviors: list[str] | None = None,
     ):
         """
         Initialize Architect agent.
@@ -32,12 +33,14 @@ class ArchitectAgent(BaseAgent):
             workspace: Working directory (defaults to .agent_workspaces)
             goal: Initial goal/project description (optional)
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
+            exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
         """
         super().__init__(
             name="architect",
             workspace=workspace or Path(".agent_workspaces"),
             config_file="architect_config.yaml",
             timeout_seconds=timeout_seconds,
+            exclude_behaviors=exclude_behaviors,
         )
 
         # Set goal if provided (triggers on_goal_set event in SubAgentModeBehavior)
