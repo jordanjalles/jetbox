@@ -279,8 +279,8 @@ def main():
                 round_num = 0
                 while True:
                     round_num += 1
-                    # Execute round
-                    response = orchestrator.execute_round(
+                    # Call LLM
+                    response = orchestrator.call_llm(
                         model=config.llm.model,
                         temperature=config.llm.temperature,
                     )
@@ -288,6 +288,9 @@ def main():
                     # Display response
                     if "message" in response:
                         msg = response["message"]
+
+                        # Add assistant message to history
+                        orchestrator.add_message(msg)
 
                         # Show content first if present
                         if msg.get("content"):
