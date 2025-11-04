@@ -180,6 +180,8 @@ def main():
         # Execute rounds until task complete
         round_num = 0
         max_rounds = 100
+        last_delegation_succeeded = False
+
         while True:
             round_num += 1
             response = orchestrator._execute_round(
@@ -222,14 +224,28 @@ def main():
 
                         result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
 
+                        # Track if delegation succeeded
+                        if tool_name in ["delegate_to_executor", "consult_architect"]:
+                            last_delegation_succeeded = result.get("success", False)
+
                         # Add tool result
                         orchestrator.add_message({
                             "role": "tool",
                             "content": json.dumps(result),
                         })
+
+                    # Continue to next round to process tool results
+                    continue
                 else:
-                    # No more tool calls - task complete
-                    break
+                    # No tool calls
+                    # If last action was successful delegation, task is complete
+                    if last_delegation_succeeded:
+                        print("[orchestrator] Delegation complete, returning to prompt")
+                        break
+                    # Otherwise, continue (might be thinking/clarifying)
+                    if round_num >= max_rounds:
+                        print("[orchestrator] Max rounds reached")
+                        break
 
     # Get ChatbotBehavior instance
     chatbot_behavior = None

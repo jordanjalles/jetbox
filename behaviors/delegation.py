@@ -331,10 +331,23 @@ class DelegationBehavior(AgentBehavior):
         try:
             print(f"\n[delegation] Delegating to {target_agent_name}: {goal_description[:60]}...")
 
-            target_agent = agent_class(
-                workspace=workspace,
-                goal=goal_description
-            )
+            # Temporarily clear OLLAMA_MODEL env var so delegated agent uses its own config
+            # The calling agent's model choice shouldn't override the delegated agent's config
+            import os
+            saved_model_override = os.environ.get("OLLAMA_MODEL")
+            if saved_model_override:
+                del os.environ["OLLAMA_MODEL"]
+                print(f"[delegation] Cleared OLLAMA_MODEL override for delegated agent")
+
+            try:
+                target_agent = agent_class(
+                    workspace=workspace,
+                    goal=goal_description
+                )
+            finally:
+                # Restore OLLAMA_MODEL for calling agent
+                if saved_model_override:
+                    os.environ["OLLAMA_MODEL"] = saved_model_override
 
             # EXECUTE THE AGENT SYNCHRONOUSLY
             print(f"[delegation] Executing {target_agent_name} with max_rounds=50...")
