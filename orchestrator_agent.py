@@ -37,34 +37,6 @@ class OrchestratorAgent(BaseAgent):
             timeout_seconds=timeout_seconds,
         )
 
-        # Initialize orchestrator-specific subsystems
-        self.init_server_manager()
-        self.init_registry()
-
-    def dispatch_tool(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
-        """
-        Dispatch tool call with orchestrator context (registry, server_manager).
-
-        Overrides BaseAgent.dispatch_tool() to automatically provide registry
-        and server_manager to behaviors that need them (e.g., DelegationBehavior).
-
-        Args:
-            tool_call: Tool call dict with function name and arguments
-            **extra_context: Additional context (will be merged with orchestrator context)
-
-        Returns:
-            Tool result dict
-        """
-        # Merge orchestrator-specific context with any provided context
-        orchestrator_context = {
-            "registry": self.registry,
-            "server_manager": self.server_manager,
-            **extra_context  # Allow override if needed
-        }
-
-        # Dispatch with merged context
-        return super().dispatch_tool(tool_call, **orchestrator_context)
-
     def pre_task_hook(self) -> None:
         """
         Hook called before each task in multi-task chat mode.

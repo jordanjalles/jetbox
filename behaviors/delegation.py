@@ -162,8 +162,17 @@ class DelegationBehavior(AgentBehavior):
             Delegation result
         """
         agent = kwargs.get("agent")
-        registry = kwargs.get("registry")  # AgentRegistry (for subprocess delegation)
-        server_manager = kwargs.get("server_manager")  # ServerManager (for subprocess delegation)
+        # Get registry and server_manager from agent if available (orchestrator has these)
+        # Initialize them lazily if agent supports it but hasn't initialized yet
+        registry = kwargs.get("registry") or getattr(agent, 'registry', None)
+        if not registry and agent and hasattr(agent, 'init_registry'):
+            agent.init_registry()
+            registry = agent.registry
+
+        server_manager = kwargs.get("server_manager") or getattr(agent, 'server_manager', None)
+        if not server_manager and agent and hasattr(agent, 'init_server_manager'):
+            agent.init_server_manager()
+            server_manager = agent.server_manager
 
         # Parse tool name to get target agent name
         target_agent_name = self._get_target_agent_for_tool(tool_name)
