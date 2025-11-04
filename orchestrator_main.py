@@ -180,7 +180,7 @@ def main():
         # Execute rounds until task complete
         round_num = 0
         max_rounds = 100
-        last_delegation_succeeded = False
+        consecutive_empty_rounds = 0
 
         while True:
             round_num += 1
@@ -210,6 +210,9 @@ def main():
 
                 # Execute tool calls
                 if isinstance(msg, dict) and "tool_calls" in msg:
+                    # Reset empty round counter - orchestrator is doing something
+                    consecutive_empty_rounds = 0
+
                     for tc in msg["tool_calls"]:
                         tool_name = tc["function"]["name"]
                         args = tc["function"]["arguments"]
@@ -224,10 +227,6 @@ def main():
 
                         result = execute_orchestrator_tool(tc, registry, server_manager, orchestrator)
 
-                        # Track if delegation succeeded
-                        if tool_name in ["delegate_to_executor", "consult_architect"]:
-                            last_delegation_succeeded = result.get("success", False)
-
                         # Add tool result
                         orchestrator.add_message({
                             "role": "tool",
@@ -237,12 +236,16 @@ def main():
                     # Continue to next round to process tool results
                     continue
                 else:
-                    # No tool calls
-                    # If last action was successful delegation, task is complete
-                    if last_delegation_succeeded:
-                        print("[orchestrator] Delegation complete, returning to prompt")
+                    # No tool calls - orchestrator is idle
+                    consecutive_empty_rounds += 1
+
+                    # If orchestrator has been idle for 2 rounds, task is complete
+                    # This allows it to think/respond after delegations but prevents infinite loops
+                    if consecutive_empty_rounds >= 2:
+                        print("[orchestrator] Task complete, returning to prompt")
                         break
-                    # Otherwise, continue (might be thinking/clarifying)
+
+                    # Check max rounds
                     if round_num >= max_rounds:
                         print("[orchestrator] Max rounds reached")
                         break
