@@ -110,6 +110,23 @@ class ChatbotBehavior(AgentBehavior):
                         "required": ["goal"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "clarify_with_user",
+                    "description": "Ask the user a clarifying question. The question will be displayed in the assistant's response.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "The question to ask the user"
+                            }
+                        },
+                        "required": ["question"]
+                    }
+                }
             }
         ]
 
@@ -162,6 +179,16 @@ class ChatbotBehavior(AgentBehavior):
                 "goal": goal,
                 "requirements": requirements,
                 "mode_transition": "chat → execution"
+            }
+
+        elif tool_name == "clarify_with_user":
+            # Question already displayed in assistant message content
+            # Just acknowledge internally
+            question = args.get('question', '')
+            return {
+                "success": True,
+                "message": "Question posed to user",
+                "question": question
             }
 
         return super().dispatch_tool(tool_name, args, **kwargs)

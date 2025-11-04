@@ -522,7 +522,7 @@ Please retry the tool call using only the valid parameters listed above.
         with open(wishlist_file, "a") as f:
             f.write(json.dumps(entry) + "\n")
 
-    def dispatch_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
+    def dispatch_tool(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
         """
         Dispatch a tool call to the appropriate handler.
 
@@ -531,6 +531,7 @@ Please retry the tool call using only the valid parameters listed above.
 
         Args:
             tool_call: Tool call dict with function name and arguments
+            **extra_context: Additional context to pass to behaviors
 
         Returns:
             Tool result dict
@@ -542,7 +543,7 @@ Please retry the tool call using only the valid parameters listed above.
             return validation_result
 
         # New architecture: always use behavior dispatch
-        return self.dispatch_tool_to_behavior(tool_call)
+        return self.dispatch_tool_to_behavior(tool_call, **extra_context)
 
     def persist_state(self) -> None:
         """Save agent state to disk."""
@@ -1085,12 +1086,13 @@ Please retry the tool call using only the valid parameters listed above.
 
         return context
 
-    def dispatch_tool_to_behavior(self, tool_call: dict[str, Any]) -> dict[str, Any]:
+    def dispatch_tool_to_behavior(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
         """
         Dispatch tool call to appropriate behavior.
 
         Args:
             tool_call: Tool call dict with function name and arguments
+            **extra_context: Additional context to pass to behaviors (e.g., registry, server_manager)
 
         Returns:
             Tool result dict
@@ -1103,7 +1105,7 @@ Please retry the tool call using only the valid parameters listed above.
         if not behavior:
             return {"error": f"Unknown tool: {tool_name}"}
 
-        # Dispatch to behavior
+        # Dispatch to behavior with standard context + extra context
         try:
             result = behavior.dispatch_tool(
                 tool_name=tool_name,
@@ -1112,7 +1114,8 @@ Please retry the tool call using only the valid parameters listed above.
                 workspace=self.workspace,
                 context_manager=self.context_manager,
                 workspace_manager=self.workspace_manager,
-                ledger_file=getattr(self, 'ledger_file', None)
+                ledger_file=getattr(self, 'ledger_file', None),
+                **extra_context  # Pass through additional context (registry, server_manager, etc.)
             )
         except Exception as e:
             return {"error": f"Tool {tool_name} failed: {e}"}

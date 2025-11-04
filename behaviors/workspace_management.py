@@ -169,6 +169,23 @@ Use these tools to help decide:
                         "required": ["workspace_name"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "find_workspace",
+                    "description": "Find best matching workspace for a project name. Returns the workspace path that best matches the query.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "project_name": {
+                                "type": "string",
+                                "description": "Project name or description to search for"
+                            }
+                        },
+                        "required": ["project_name"]
+                    }
+                }
             }
         ]
 
@@ -198,6 +215,8 @@ Use these tools to help decide:
             return self._search_workspaces(args["query"])
         elif tool_name == "get_workspace_info":
             return self._get_workspace_info(args["workspace_name"])
+        elif tool_name == "find_workspace":
+            return self._find_workspace(args["project_name"])
 
         return super().dispatch_tool(tool_name, args, **kwargs)
 
@@ -383,3 +402,120 @@ Use these tools to help decide:
             "modified_time_human": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime)),
             "file_count": file_count
         }
+
+    def _find_workspace(self, project_name: str) -> dict[str, Any]:
+        """
+        Find best matching workspace for a project name.
+
+        Uses fuzzy matching to score workspaces by how well they match the query.
+
+        Args:
+            project_name: Project name or description to search for
+
+        Returns:
+            Dict with best matching workspace or error if none found
+        """
+        project_name_lower = project_name.lower()
+
+        if not self.workspaces_root.exists():
+            return {
+                "success": False,
+                "message": f"No workspaces found. Cannot find workspace for '{project_name}'."
+            }
+
+        try:
+            # Get all workspaces
+            workspaces = []
+            for item in self.workspaces_root.iterdir():
+                if item.is_dir() and not item.name.startswith('.'):
+                    workspaces.append({
+                        "name": item.name,
+                        "path": str(item),
+                        "modified": item.stat().st_mtime,
+                    })
+
+            if not workspaces:
+                return {
+                    "success": False,
+                    "message": f"No workspaces found. Cannot find workspace for '{project_name}'."
+                }
+
+            # Score each workspace by how well it matches project_name
+            def score_match(workspace_name: str, query: str) -> int:
+                """Score how well a workspace name matches a query. Higher is better."""
+                ws_lower = workspace_name.lower()
+                query_lower = query.lower()
+
+                # Exact match
+                if query_lower in ws_lower:
+                    # Bonus for matching at word boundaries
+                    words = ws_lower.split('-')
+                    for word in words:
+                        if word == query_lower:
+                            return 100  # Exact word match
+                        if word.startswith(query_lower):
+                            return 80  # Word starts with query
+                    return 60  # Contains query
+
+                # Fuzzy match - check if all characters appear in order
+                query_idx = 0
+                for char in ws_lower:
+                    if query_idx < len(query_lower) and char == query_lower[query_idx]:
+                        query_idx += 1
+                if query_idx == len(query_lower):
+                    return 30  # All chars present in order
+
+                # Check individual words
+                query_words = query_lower.split()
+                ws_words = ws_lower.split('-')
+                matches = sum(1 for qw in query_words if any(qw in wsw for wsw in ws_words))
+                if matches > 0:
+                    return 20 * matches
+
+                return 0
+
+            # Score all workspaces
+            scored = []
+            for ws in workspaces:
+                score = score_match(ws["name"], project_name)
+                if score > 0:
+                    scored.append((score, ws))
+
+            if not scored:
+                # No matches - return list of available workspaces
+                ws_list = "\n".join(f"  - {ws['name']}" for ws in workspaces[:10])
+                return {
+                    "success": False,
+                    "message": f"No workspace found matching '{project_name}'.\n\nAvailable workspaces:\n{ws_list}"
+                }
+
+            # Sort by score (descending), then by recency
+            scored.sort(key=lambda x: (x[0], x[1]["modified"]), reverse=True)
+
+            best_match = scored[0][1]
+            best_score = scored[0][0]
+
+            # If we have multiple good matches, show them
+            other_matches = [ws for score, ws in scored[1:3] if score >= 30]
+
+            msg = f"Found workspace for '{project_name}':\n"
+            msg += f"  Best match: {best_match['name']}\n"
+            msg += f"  Path: {best_match['path']}\n"
+
+            if other_matches:
+                msg += "\nOther possible matches:\n"
+                for ws in other_matches:
+                    msg += f"  - {ws['name']}\n"
+
+            return {
+                "success": True,
+                "workspace": best_match["path"],
+                "workspace_name": best_match["name"],
+                "message": msg,
+                "confidence": "high" if best_score >= 60 else "medium" if best_score >= 30 else "low",
+            }
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "message": f"Error finding workspace: {e}"}

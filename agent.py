@@ -1,105 +1,87 @@
 #!/usr/bin/env python3
 """
-agent.py - CLI wrapper for TaskExecutorAgent
+agent.py - Universal agent wrapper based on agents.yaml configuration
 
-This file is now a thin wrapper around TaskExecutorAgent.
-All agent logic has been moved to task_executor_agent.py.
+This file dynamically loads and runs the first agent defined in agents.yaml.
+By default, this is the orchestrator agent, but it can be changed via config.
 
-The original 2068-line agent.py has been backed up to agent_legacy.py.
+Usage:
+    python agent.py [args]  # Runs first agent in agents.yaml with all args
+
+The actual agent implementation and CLI logic lives in the agent classes
+(orchestrator_agent.py, task_executor_agent.py, architect_agent.py).
 """
-import argparse
 import sys
+import yaml
 from pathlib import Path
 
-from task_executor_agent import TaskExecutorAgent
 
-
-def dispatch(call):
+def get_first_agent_class():
     """
-    Dispatch tool calls - imported by base_agent.py.
+    Load agents.yaml and return the first agent's class.
 
-    This delegates to the tools module which has all tool implementations.
+    Returns:
+        The agent class to instantiate
     """
-    import tools
+    # Load agents.yaml
+    config_path = Path("agents.yaml")
+    if not config_path.exists():
+        print("Error: agents.yaml not found")
+        sys.exit(1)
 
-    # Get tool name and args
-    tool_name = call["function"]["name"]
-    args = call["function"]["arguments"]
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
 
-    # Map tool names to functions
-    tool_map = {
-        "list_dir": tools.list_dir,
-        "read_file": tools.read_file,
-        "grep_file": tools.grep_file,
-        "write_file": tools.write_file,
-        "run_cmd": tools.run_cmd,
-        "start_server": tools.start_server,
-        "stop_server": tools.stop_server,
-        "check_server": tools.check_server,
-        "list_servers": tools.list_servers,
-        "mark_subtask_complete": tools.mark_subtask_complete,
-        "mark_goal_complete": tools.mark_goal_complete,
-        "mark_complete": tools.mark_complete,
-        "mark_failed": tools.mark_failed,
-        "decompose_task": tools.decompose_task,
+    # Get first agent
+    agents = config.get("agents", {})
+    if not agents:
+        print("Error: No agents defined in agents.yaml")
+        sys.exit(1)
+
+    # Get first agent (dict maintains insertion order in Python 3.7+)
+    first_agent_name = next(iter(agents.keys()))
+    first_agent_config = agents[first_agent_name]
+
+    # Get class name
+    class_name = first_agent_config.get("class")
+    if not class_name:
+        print(f"Error: No class defined for agent '{first_agent_name}' in agents.yaml")
+        sys.exit(1)
+
+    print(f"[agent.py] Loading first agent from agents.yaml: {first_agent_name} ({class_name})")
+
+    # Import the class dynamically
+    # Map class names to modules
+    module_map = {
+        "OrchestratorAgent": "orchestrator_agent",
+        "TaskExecutorAgent": "task_executor_agent",
+        "ArchitectAgent": "architect_agent",
     }
 
-    # Execute the tool
-    if tool_name in tool_map:
-        result = tool_map[tool_name](**args)
-        return {"result": result}
-    else:
-        return {"result": {"status": "error", "message": f"Unknown tool: {tool_name}"}}
-
-
-def main() -> None:
-    """Main entry point - parse args and run TaskExecutorAgent."""
-    parser = argparse.ArgumentParser(description="Jetbox coding agent")
-    parser.add_argument("goal", nargs="?", default="", help="Goal description")
-    parser.add_argument("--workspace", type=str, help="Existing workspace path")
-    parser.add_argument("--context", type=str, help="Additional context")
-    parser.add_argument("--model", type=str, help="Ollama model to use")
-    parser.add_argument("--temperature", type=float, default=0.2, help="LLM temperature")
-    parser.add_argument("--max-rounds", type=int, default=128, help="Max rounds")
-
-    args = parser.parse_args()
-
-    # Require goal
-    if not args.goal:
-        print("Error: Goal required")
-        print("Usage: python agent.py \"Your goal description\"")
+    module_name = module_map.get(class_name)
+    if not module_name:
+        print(f"Error: Unknown agent class '{class_name}'. Add to module_map in agent.py")
         sys.exit(1)
 
-    # Determine workspace
-    # If --workspace provided, pass it to TaskExecutor to REUSE existing workspace
-    # If not provided, pass None to create NEW isolated workspace
-    workspace = Path(args.workspace) if args.workspace else None
-
-    # Create TaskExecutorAgent
-    print(f"[agent] Initializing TaskExecutorAgent...")
-    executor = TaskExecutorAgent(
-        workspace=workspace,
-        goal=args.goal,
-    )
-
-    # Override config settings with command-line flags if provided
-    if args.model:
-        executor.model = args.model
-    if args.temperature != 0.2:  # Only override if different from default
-        executor.temperature = args.temperature
-
-    # Run it
-    print(f"[agent] Running goal: {args.goal}")
-    # max_rounds can be overridden via run() parameter
-    result = executor.run(max_rounds=args.max_rounds if args.max_rounds != 128 else None)
-
-    # Exit with appropriate code
-    if result["status"] == "success":
-        print(f"\n[agent] ✅ Goal completed successfully")
-        sys.exit(0)
-    else:
-        print(f"\n[agent] ❌ Goal failed: {result.get('reason', 'unknown')}")
+    # Import and return the class
+    try:
+        module = __import__(module_name, fromlist=[class_name])
+        agent_class = getattr(module, class_name)
+        return agent_class
+    except ImportError as e:
+        print(f"Error: Could not import {class_name} from {module_name}: {e}")
         sys.exit(1)
+    except AttributeError as e:
+        print(f"Error: Class {class_name} not found in module {module_name}: {e}")
+        sys.exit(1)
+
+
+def main():
+    """Main entry point - load first agent from agents.yaml and run its main()."""
+    agent_class = get_first_agent_class()
+
+    # Call the agent's main() method, which handles all CLI parsing and execution
+    agent_class.main()
 
 
 if __name__ == "__main__":

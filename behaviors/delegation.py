@@ -146,12 +146,14 @@ class DelegationBehavior(AgentBehavior):
         Args:
             tool_name: Tool name (consult_architect, delegate_to_executor, etc.)
             args: Tool arguments
-            **kwargs: Additional context (agent, workspace, etc.)
+            **kwargs: Additional context (agent, workspace, registry, server_manager, etc.)
 
         Returns:
             Delegation result
         """
         agent = kwargs.get("agent")
+        registry = kwargs.get("registry")  # AgentRegistry (for subprocess delegation)
+        server_manager = kwargs.get("server_manager")  # ServerManager (for subprocess delegation)
 
         # Map tool names to target agent names
         # Tool name format: "consult_X" or "delegate_to_X"
@@ -171,7 +173,13 @@ class DelegationBehavior(AgentBehavior):
             target_agent_name = tool_name.replace("consult_", "")
 
         if target_agent_name:
-            return self._delegate_to_agent(target_agent_name, args, agent)
+            # Choose delegation strategy based on available context
+            # If registry/server_manager provided, use subprocess delegation (orchestrator mode)
+            # Otherwise, use direct instantiation (simpler mode)
+            if registry and target_agent_name in ["architect", "task_executor"]:
+                return self._delegate_via_subprocess(target_agent_name, args, agent, registry, server_manager)
+            else:
+                return self._delegate_to_agent(target_agent_name, args, agent)
         else:
             # Unknown delegation tool
             return {"error": f"Unknown delegation tool: {tool_name}"}
@@ -195,6 +203,411 @@ class DelegationBehavior(AgentBehavior):
             "task": task_description,
             "result": result,
         })
+
+    def _delegate_via_subprocess(
+        self,
+        target_agent_name: str,
+        args: dict[str, Any],
+        calling_agent: Any,
+        registry: Any,
+        server_manager: Any
+    ) -> dict[str, Any]:
+        """
+        Delegate to agent via subprocess (orchestrator mode).
+
+        This method runs agents as separate processes for:
+        - Process isolation (crash resilience)
+        - Independent execution context
+        - Clean separation of concerns
+
+        Handles both consult_architect and delegate_to_executor tools.
+
+        Args:
+            target_agent_name: Name of target agent ("architect" or "task_executor")
+            args: Tool arguments
+            calling_agent: The agent initiating delegation
+            registry: AgentRegistry instance
+            server_manager: ServerManager instance
+
+        Returns:
+            Delegation result dict
+        """
+        from pathlib import Path
+        import subprocess
+        import sys
+        import json
+
+        if target_agent_name == "architect":
+            return self._consult_architect_subprocess(args, calling_agent, registry)
+        elif target_agent_name == "task_executor":
+            return self._delegate_to_executor_subprocess(args, calling_agent, registry)
+        else:
+            return {"success": False, "error": f"Subprocess delegation not supported for: {target_agent_name}"}
+
+    def _consult_architect_subprocess(
+        self,
+        args: dict[str, Any],
+        calling_agent: Any,
+        registry: Any
+    ) -> dict[str, Any]:
+        """
+        Consult architect via subprocess (from orchestrator_agent.py execute_orchestrator_tool).
+
+        Args:
+            args: Tool arguments (project_description, requirements, constraints, workspace_path)
+            calling_agent: OrchestratorAgent instance
+            registry: AgentRegistry instance
+
+        Returns:
+            Consultation result dict
+        """
+        from pathlib import Path
+        import re
+        import json
+
+        project_description = args.get("project_description", "")
+        requirements = args.get("requirements", "")
+        constraints = args.get("constraints", "")
+        workspace_path = args.get("workspace_path", "")
+
+        if not project_description:
+            return {
+                "success": False,
+                "message": "ERROR: project_description is REQUIRED for architect consultation"
+            }
+
+        print("\n" + "=" * 60)
+        print("ARCHITECT CONSULTATION")
+        print("=" * 60)
+        print(f"Project: {project_description}")
+        if requirements:
+            print(f"Requirements: {requirements[:100]}...")
+        if constraints:
+            print(f"Constraints: {constraints[:100]}...")
+        print("=" * 60 + "\n")
+
+        try:
+            # Get architect agent from registry
+            architect = registry.get_agent("architect")
+
+            # Determine workspace (use provided or create new from project description)
+            if workspace_path:
+                workspace = Path(workspace_path)
+            else:
+                # Create new workspace for this project
+                slug = re.sub(r'[^\w\s-]', '', project_description.lower())
+                slug = re.sub(r'[-\s]+', '-', slug)[:50]
+                workspace = Path(f".agent_workspace/{slug}")
+                workspace.mkdir(parents=True, exist_ok=True)
+
+            # Configure architect with workspace (updates tools)
+            architect.configure_workspace(workspace)
+
+            # Run architect consultation
+            result = architect.consult(
+                project_description=project_description,
+                requirements=requirements,
+                constraints=constraints,
+                max_rounds=10
+            )
+
+            if result["status"] == "success":
+                artifacts = result["artifacts"]
+
+                # Build detailed message about artifacts
+                message_parts = [
+                    "\n✅ Architecture consultation complete!\n",
+                    f"Workspace: {workspace}\n",
+                ]
+
+                if artifacts["docs"]:
+                    message_parts.append(f"\nArchitecture documents ({len(artifacts['docs'])}):")
+                    for doc in artifacts["docs"]:
+                        message_parts.append(f"  - {doc}")
+
+                if artifacts["modules"]:
+                    message_parts.append(f"\nModule specifications ({len(artifacts['modules'])}):")
+                    for module in artifacts["modules"]:
+                        message_parts.append(f"  - {module}")
+
+                # Read and include actual task list
+                task_list = None
+                if artifacts["task_breakdown"]:
+                    message_parts.append(f"\nTask breakdown: {artifacts['task_breakdown']}")
+                    task_file = workspace / artifacts["task_breakdown"]
+                    if task_file.exists():
+                        with open(task_file) as f:
+                            task_data = json.load(f)
+                        task_list = task_data.get("tasks", [])
+                        message_parts.append(f"  ({task_data['total_tasks']} tasks ready for delegation)")
+
+                        # Include task summary in message
+                        message_parts.append("\nTasks to delegate:")
+                        for task in task_list[:5]:  # Show first 5 tasks
+                            deps = f" (depends on: {', '.join(task['dependencies'])})" if task.get('dependencies') else ""
+                            message_parts.append(f"  [{task['id']}] {task['description']}{deps}")
+                        if len(task_list) > 5:
+                            message_parts.append(f"  ... and {len(task_list) - 5} more tasks")
+
+                message_parts.append("\n" + "=" * 60)
+
+                # Add task management enhancement to orchestrator if task breakdown exists
+                if calling_agent and task_list and hasattr(calling_agent, 'add_task_management'):
+                    calling_agent.add_task_management(workspace)
+                    print(f"[delegation] Added task management enhancement ({len(task_list)} tasks)")
+
+                return {
+                    "success": True,
+                    "message": "\n".join(message_parts),
+                    "artifacts": artifacts,
+                    "workspace": str(workspace),
+                    "tasks": task_list,  # Include actual task list
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Architect consultation incomplete: {result.get('message', 'unknown error')}"
+                }
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "message": f"Architect consultation failed: {e}"
+            }
+
+    def _delegate_to_executor_subprocess(
+        self,
+        args: dict[str, Any],
+        calling_agent: Any,
+        registry: Any
+    ) -> dict[str, Any]:
+        """
+        Delegate to TaskExecutor via subprocess (from orchestrator_agent.py execute_orchestrator_tool).
+
+        Args:
+            args: Tool arguments (task_description, context, workspace_mode, workspace_path)
+            calling_agent: OrchestratorAgent instance
+            registry: AgentRegistry instance
+
+        Returns:
+            Delegation result dict
+        """
+        from pathlib import Path
+        import subprocess
+        import sys
+        import json
+
+        task_description = args.get("task_description", "")
+        context = args.get("context", "")
+        workspace_mode = args.get("workspace_mode", "")
+        workspace_path = args.get("workspace_path", "")
+
+        # Validate workspace_mode parameter
+        if not workspace_mode:
+            return {
+                "success": False,
+                "message": "ERROR: workspace_mode parameter is REQUIRED. Must be 'new' or 'existing'."
+            }
+
+        if workspace_mode not in ["new", "existing"]:
+            return {
+                "success": False,
+                "message": f"ERROR: workspace_mode must be 'new' or 'existing', got: {workspace_mode}"
+            }
+
+        # Validate workspace_path based on mode
+        if workspace_mode == "existing":
+            if not workspace_path:
+                return {
+                    "success": False,
+                    "message": "ERROR: workspace_path is REQUIRED when workspace_mode='existing'. Use find_workspace tool first to get the path."
+                }
+            # Verify the workspace exists
+            if not Path(workspace_path).exists():
+                return {
+                    "success": False,
+                    "message": f"ERROR: workspace_path does not exist: {workspace_path}. Use find_workspace to get a valid path."
+                }
+        elif workspace_mode == "new":
+            if workspace_path:
+                return {
+                    "success": False,
+                    "message": "ERROR: workspace_path should NOT be provided when workspace_mode='new'. Remove workspace_path parameter."
+                }
+
+        # For backward compatibility, map workspace_mode to workspace parameter
+        workspace = workspace_path if workspace_mode == "existing" else ""
+
+        try:
+            # Set up the task
+            result = registry.delegate_task(
+                from_agent="orchestrator",
+                to_agent="task_executor",
+                task_description=task_description,
+                context=context,
+                workspace=workspace,
+            )
+
+            if not result.get("success"):
+                return result
+
+            # Now actually RUN the task executor directly
+            print("\n" + "=" * 60)
+            print("TASK EXECUTOR RUNNING")
+            print("=" * 60 + "\n")
+
+            # Run task_executor_agent.py as a subprocess
+            # Build command with optional workspace and context parameters
+            cmd = [sys.executable, "task_executor_agent.py"]
+            if workspace:
+                cmd.extend(["--workspace", workspace])
+                print(f"[delegation] Using existing workspace: {workspace}\n")
+            if context:
+                cmd.extend(["--context", context])
+                print("[delegation] Additional context provided\n")
+            cmd.append(task_description)
+
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=False,  # Show output in real-time
+                    text=True,
+                    timeout=600,  # 10 minute timeout
+                )
+
+                print("\n" + "=" * 60)
+                print("TASK EXECUTOR COMPLETED")
+                print("=" * 60 + "\n")
+
+                # Read messages from TaskExecutor if any
+                messages_from_executor = []
+                msg_file = Path(".agent_context/messages_to_orchestrator.jsonl")
+                if msg_file.exists():
+                    try:
+                        with open(msg_file, "r", encoding="utf-8") as f:
+                            for line in f:
+                                if line.strip():
+                                    messages_from_executor.append(json.loads(line))
+                        # Clear the file after reading
+                        msg_file.unlink()
+                    except Exception as e:
+                        print(f"[delegation] Warning: Failed to read executor messages: {e}")
+
+                # Display messages from executor
+                if messages_from_executor:
+                    print("Messages from TaskExecutor:")
+                    for msg in messages_from_executor:
+                        severity = msg.get("severity", "info").upper()
+                        content = msg.get("message", "")
+                        print(f"  [{severity}] {content}")
+                    print()
+
+                # Verify actual task completion by checking state.json
+                # Exit code 0 means success, 1 means failure/incomplete
+                task_completed = proc.returncode == 0
+
+                # Double-check with state.json to ensure tasks were actually completed
+                if proc.returncode == 0:
+                    state_file = Path(".agent_context/state.json")
+                    if state_file.exists():
+                        try:
+                            with open(state_file, encoding="utf-8") as f:
+                                state = json.load(f)
+                                # Verify all tasks are marked completed
+                                if state.get("goal", {}).get("tasks"):
+                                    all_completed = all(
+                                        t.get("status") == "completed"
+                                        for t in state["goal"]["tasks"]
+                                    )
+                                    if not all_completed:
+                                        # Exit code was 0 but tasks not completed - this shouldn't happen
+                                        # but handle it defensively
+                                        task_completed = False
+                                        print("[delegation] Warning: Exit code 0 but not all tasks completed in state.json")
+                        except Exception as e:
+                            print(f"[delegation] Warning: Could not verify state.json: {e}")
+
+                if task_completed:
+                    # Try to determine workspace location and files created
+                    workspace_info = self._get_workspace_info_from_task(task_description)
+
+                    result_msg = "Task execution completed successfully"
+                    if workspace_info:
+                        result_msg += f"\n\nWorkspace: {workspace_info['workspace']}"
+                        if workspace_info.get('files'):
+                            result_msg += f"\nFiles created: {', '.join(workspace_info['files'])}"
+
+                    # Include executor messages in result
+                    if messages_from_executor:
+                        result_msg += "\n\nTaskExecutor Messages:"
+                        for msg in messages_from_executor:
+                            result_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
+
+                    return {
+                        "success": True,
+                        "message": result_msg,
+                        "workspace": workspace_info.get('workspace') if workspace_info else None,
+                        "files": workspace_info.get('files') if workspace_info else [],
+                        "executor_messages": messages_from_executor,
+                    }
+                else:
+                    error_msg = f"Task execution failed (exit code {proc.returncode})"
+                    if messages_from_executor:
+                        error_msg += "\n\nTaskExecutor Messages:"
+                        for msg in messages_from_executor:
+                            error_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
+
+                    return {
+                        "success": False,
+                        "message": error_msg,
+                        "executor_messages": messages_from_executor,
+                    }
+
+            except subprocess.TimeoutExpired:
+                return {"success": False, "message": "Task execution timed out"}
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "message": f"Execution failed: {e}"}
+
+    def _get_workspace_info_from_task(self, task_description: str) -> dict | None:
+        """
+        Determine workspace location and files created from task description.
+
+        Args:
+            task_description: The task that was executed
+
+        Returns:
+            Dict with 'workspace' and 'files' keys, or None if not found
+        """
+        from pathlib import Path
+        import re
+
+        # Create workspace slug from task description (matches workspace_manager.py logic)
+        slug = re.sub(r'[^a-z0-9]+', '-', task_description.lower())
+        slug = slug.strip('-')[:60]
+
+        workspace_path = Path.cwd() / ".agent_workspaces" / slug
+
+        if not workspace_path.exists():
+            return None
+
+        # List all files in workspace (excluding directories and hidden files)
+        try:
+            files = []
+            for item in workspace_path.iterdir():
+                if item.is_file() and not item.name.startswith('.'):
+                    files.append(item.name)
+
+            return {
+                "workspace": str(workspace_path),
+                "files": sorted(files),
+            }
+        except Exception:
+            return None
 
     def _delegate_to_agent(
         self,
