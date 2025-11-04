@@ -52,3 +52,7 @@ class TaskExecutorAgent(BaseAgent):
                 goal=goal,
                 workspace=Path(workspace) if workspace else None,
             )
+
+
+if __name__ == "__main__":
+    TaskExecutorAgent.main()

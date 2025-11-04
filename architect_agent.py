@@ -44,3 +44,7 @@ class ArchitectAgent(BaseAgent):
                 goal=goal,
                 workspace=workspace,
             )
+
+
+if __name__ == "__main__":
+    ArchitectAgent.main()

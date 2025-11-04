@@ -1216,6 +1216,194 @@ Please retry the tool call using only the valid parameters listed above.
         return summary
 
     # ===========================
+    # CLI entry points (classmethod)
+    # ===========================
+
+    @classmethod
+    def parse_cli_args(cls) -> dict[str, Any]:
+        """
+        Parse command line arguments.
+
+        Returns:
+            Dict with parsed arguments:
+            - exit_after_initial: bool (--once flag)
+            - force_chat_mode: bool (--chat flag)
+            - custom_workspace: Path | None (--workspace path)
+            - initial_message: str | None (remaining args as goal)
+        """
+        import sys
+
+        exit_after_initial = False
+        force_chat_mode = False
+        custom_workspace = None
+        args = sys.argv[1:]
+
+        # Check for --once flag
+        if "--once" in args:
+            exit_after_initial = True
+            args.remove("--once")
+
+        # Check for --chat flag (enables ChatbotBehavior even with goal)
+        if "--chat" in args:
+            force_chat_mode = True
+            args.remove("--chat")
+
+        # Check for --workspace flag (custom workspace directory)
+        if "--workspace" in args:
+            idx = args.index("--workspace")
+            if idx + 1 < len(args):
+                custom_workspace = Path(args[idx + 1])
+                args.pop(idx)  # Remove --workspace
+                args.pop(idx)  # Remove path
+            else:
+                print("Error: --workspace requires a path argument")
+                sys.exit(1)
+
+        if args:
+            initial_message = " ".join(args)
+        else:
+            initial_message = None
+
+        return {
+            "exit_after_initial": exit_after_initial,
+            "force_chat_mode": force_chat_mode,
+            "custom_workspace": custom_workspace,
+            "initial_message": initial_message,
+        }
+
+    @classmethod
+    def setup_workspace(cls, args: dict[str, Any]) -> Path:
+        """
+        Determine workspace directory based on CLI args.
+
+        Args:
+            args: Parsed CLI arguments from parse_cli_args()
+
+        Returns:
+            Workspace Path
+        """
+        import re
+
+        custom_workspace = args["custom_workspace"]
+        initial_message = args["initial_message"]
+        force_chat_mode = args["force_chat_mode"]
+
+        if custom_workspace:
+            workspace = custom_workspace
+            if not workspace.exists():
+                workspace.mkdir(parents=True, exist_ok=True)
+            print(f"[{cls.__name__}] Using custom workspace: {workspace}")
+        elif initial_message and not force_chat_mode:
+            # Autonomous mode with goal: create isolated workspace for this specific goal
+            slug = re.sub(r'[^a-z0-9]+', '-', initial_message.lower())
+            slug = slug.strip('-')[:60]
+            workspace = Path.cwd() / ".agent_workspaces" / slug
+            workspace.mkdir(parents=True, exist_ok=True)
+            print(f"[{cls.__name__}] Created isolated workspace: {workspace}")
+        else:
+            # Interactive/chat mode: use .agent_workspaces/{agent_name} for state
+            agent_name = cls.__name__.replace("Agent", "").lower()
+            workspace = Path.cwd() / ".agent_workspaces" / agent_name
+            workspace.mkdir(parents=True, exist_ok=True)
+            print(f"[{cls.__name__}] Using {agent_name} workspace for state: {workspace}")
+
+        return workspace
+
+    @classmethod
+    def create_agent_instance(cls, workspace: Path, args: dict[str, Any]):
+        """
+        Create agent instance with appropriate configuration.
+
+        Subclasses can override to customize agent creation.
+
+        Args:
+            workspace: Workspace directory path
+            args: Parsed CLI arguments
+
+        Returns:
+            Agent instance
+        """
+        # Default: just create agent with workspace
+        return cls(workspace=workspace)
+
+    @classmethod
+    def run_agent(cls, agent: BaseAgent, args: dict[str, Any]) -> None:
+        """
+        Execute the agent (interactive or autonomous mode).
+
+        Subclasses can override to customize execution logic.
+
+        Args:
+            agent: Agent instance
+            args: Parsed CLI arguments
+        """
+        initial_message = args["initial_message"]
+        exit_after_initial = args["exit_after_initial"]
+
+        if initial_message:
+            # Single task mode
+            print(f"User: {initial_message}\n")
+            agent.trigger_behavior_event("on_goal_set", goal=initial_message, workspace=agent.workspace)
+            result = agent.run()
+
+            # Print result
+            if result.get("status") == "success":
+                print("\nTask completed successfully!")
+                if "summary" in result:
+                    print(f"Summary: {result['summary']}")
+            else:
+                print(f"\nTask failed: {result.get('reason', 'unknown')}")
+
+            if exit_after_initial:
+                print("\nExiting...")
+                return
+        else:
+            # Interactive mode without initial message
+            print("Interactive mode not supported for this agent type.")
+            print("Usage: python {script} 'goal description'")
+
+    @classmethod
+    def main(cls) -> None:
+        """
+        Main entry point for CLI execution.
+
+        This method orchestrates:
+        1. UTF-8 encoding setup (Windows)
+        2. CLI argument parsing
+        3. Workspace setup
+        4. Agent creation
+        5. Agent execution
+
+        Subclasses can override create_agent_instance() or run_agent()
+        to customize behavior while reusing the CLI framework.
+        """
+        import sys
+
+        # Ensure UTF-8 encoding on Windows
+        if sys.platform == "win32":
+            import io
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+        # Parse CLI arguments
+        args = cls.parse_cli_args()
+
+        # Setup workspace
+        workspace = cls.setup_workspace(args)
+
+        # Create agent instance (can be overridden by subclasses)
+        agent = cls.create_agent_instance(workspace, args)
+
+        # Run agent (can be overridden by subclasses)
+        try:
+            cls.run_agent(agent, args)
+        except KeyboardInterrupt:
+            print("\n\nInterrupted. Shutting down...")
+        except Exception as e:
+            print(f"\nError: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # ===========================
     # Generic run() method (works for ALL agents)
     # ===========================
 
