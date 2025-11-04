@@ -80,14 +80,13 @@ def main() -> None:
     executor = TaskExecutorAgent(
         workspace=workspace,
         goal=args.goal,
-        max_rounds=args.max_rounds,
-        model=args.model,
-        temperature=args.temperature,
     )
 
     # Run it
     print(f"[agent] Running goal: {args.goal}")
-    result = executor.run()
+    # Note: model and temperature are controlled by task_executor_config.yaml
+    # But max_rounds can be overridden via run() parameter
+    result = executor.run(max_rounds=args.max_rounds if args.max_rounds != 128 else None)
 
     # Exit with appropriate code
     if result["status"] == "success":
