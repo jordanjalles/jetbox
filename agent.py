@@ -82,10 +82,15 @@ def main() -> None:
         goal=args.goal,
     )
 
+    # Override config settings with command-line flags if provided
+    if args.model:
+        executor.model = args.model
+    if args.temperature != 0.2:  # Only override if different from default
+        executor.temperature = args.temperature
+
     # Run it
     print(f"[agent] Running goal: {args.goal}")
-    # Note: model and temperature are controlled by task_executor_config.yaml
-    # But max_rounds can be overridden via run() parameter
+    # max_rounds can be overridden via run() parameter
     result = executor.run(max_rounds=args.max_rounds if args.max_rounds != 128 else None)
 
     # Exit with appropriate code
