@@ -31,9 +31,17 @@ class TaskExecutorAgent(BaseAgent):
             workspace: Workspace directory (None=.agent_workspaces, Path=specific dir)
             goal: Optional initial goal to set
         """
+        # Resolve workspace path - if None, use .agent_workspaces (absolute path)
+        if workspace:
+            workspace_path = Path(workspace).resolve()
+        else:
+            # IMPORTANT: resolve() makes this an absolute path, not relative
+            # This prevents issues if cwd changes during execution
+            workspace_path = Path(".agent_workspaces").resolve()
+
         super().__init__(
             name="task_executor",
-            workspace=Path(workspace) if workspace else Path(".agent_workspaces"),
+            workspace=workspace_path,
             config_file="task_executor_config.yaml",
         )
 

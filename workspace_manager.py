@@ -60,6 +60,8 @@ class WorkspaceManager:
             self.base_dir = base_dir or Path(".agent_workspaces")
             self.workspace_name = slugify(goal)
             self.workspace_dir = self.base_dir / self.workspace_name
+            print(f"[workspace_manager] ISOLATE MODE: base_dir={self.base_dir}, workspace_name={self.workspace_name}")
+            print(f"[workspace_manager] Creating workspace: {self.workspace_dir}")
             self.workspace_dir.mkdir(parents=True, exist_ok=True)
 
         self.created_files: list[str] = []
