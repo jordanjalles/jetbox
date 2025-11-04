@@ -244,6 +244,10 @@ def main():
                         # No more tool calls, task is complete
                         break
 
+            # Show completion message
+            if not exit_after_initial:
+                print("\n✅ Task completed. Ready for next request.\n")
+
             # Exit if --once flag was provided
             if exit_after_initial:
                 print("\nTask completed. Exiting...")
@@ -325,6 +329,7 @@ def main():
                                 })
                         else:
                             # No more tool calls, orchestrator is done
+                            print("\n✅ Task completed. Ready for next request.\n")
                             break
 
             except KeyboardInterrupt:
