@@ -1496,6 +1496,14 @@ Please retry the tool call using only the valid parameters listed above.
             chatbot_behavior.task_complete_flag = False
             chatbot_behavior.consecutive_empty_rounds = 0
 
+            # Trigger on_goal_set to initialize workspace and subsystems
+            # This is needed for agents like task_executor that need workspace setup
+            agent.trigger_behavior_event(
+                "on_goal_set",
+                goal=user_message,
+                workspace=agent.workspace
+            )
+
             # Execute task using base_agent's run_task_round_loop
             agent.run_task_round_loop(
                 user_message=user_message,
