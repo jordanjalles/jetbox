@@ -163,6 +163,13 @@ def main():
     server_manager = ServerManager(workspace)
     server_manager.start_monitoring()
 
+    # Get ChatbotBehavior instance for task completion detection
+    chatbot_behavior = None
+    for behavior in orchestrator.behaviors:
+        if behavior.get_name() == "chatbot":
+            chatbot_behavior = behavior
+            break
+
     # Define task execution callback for ChatbotBehavior
     def execute_task(user_message: str) -> None:
         """
@@ -177,13 +184,23 @@ def main():
         # Add user message to history
         orchestrator.add_message({"role": "user", "content": user_message})
 
+        # Reset task_complete_flag for new task
+        if chatbot_behavior:
+            chatbot_behavior.task_complete_flag = False
+            chatbot_behavior.consecutive_empty_rounds = 0
+
         # Execute rounds until task complete
         round_num = 0
         max_rounds = 100
-        consecutive_empty_rounds = 0
 
         while True:
             round_num += 1
+
+            # Check if ChatbotBehavior detected task completion (2 consecutive empty rounds)
+            if chatbot_behavior and chatbot_behavior.task_complete_flag:
+                print("[orchestrator] Task complete (detected by ChatbotBehavior), returning to prompt")
+                break
+
             response = orchestrator._execute_round(
                 round_no=round_num,
                 max_rounds=max_rounds,
@@ -210,9 +227,6 @@ def main():
 
                 # Execute tool calls
                 if isinstance(msg, dict) and "tool_calls" in msg:
-                    # Reset empty round counter - orchestrator is doing something
-                    consecutive_empty_rounds = 0
-
                     for tc in msg["tool_calls"]:
                         tool_name = tc["function"]["name"]
                         args = tc["function"]["arguments"]
@@ -233,29 +247,10 @@ def main():
                             "content": json.dumps(result),
                         })
 
-                    # Continue to next round to process tool results
-                    continue
-                else:
-                    # No tool calls - orchestrator is idle
-                    consecutive_empty_rounds += 1
-
-                    # If orchestrator has been idle for 2 rounds, task is complete
-                    # This allows it to think/respond after delegations but prevents infinite loops
-                    if consecutive_empty_rounds >= 2:
-                        print("[orchestrator] Task complete, returning to prompt")
-                        break
-
-                    # Check max rounds
-                    if round_num >= max_rounds:
-                        print("[orchestrator] Max rounds reached")
-                        break
-
-    # Get ChatbotBehavior instance
-    chatbot_behavior = None
-    for behavior in orchestrator.behaviors:
-        if behavior.get_name() == "chatbot":
-            chatbot_behavior = behavior
-            break
+            # Check max rounds
+            if round_num >= max_rounds:
+                print("[orchestrator] Max rounds reached")
+                break
 
     try:
         # Use ChatbotBehavior's multi-task chat loop if available

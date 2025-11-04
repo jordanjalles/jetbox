@@ -1451,18 +1451,20 @@ Please retry the tool call using only the valid parameters listed above.
             return None
 
         # Add assistant message to history
+        had_tool_calls = False
         if "message" in response:
             msg = response["message"]
             self.add_message(msg)
 
             # Execute tool calls if present
             if "tool_calls" in msg and msg["tool_calls"]:
+                had_tool_calls = True
                 completion = self._execute_tool_calls(msg["tool_calls"])
                 if completion:
                     return completion
 
-        # Trigger on_round_end
-        self.trigger_behavior_event("on_round_end", round_number=round_no)
+        # Trigger on_round_end with tool call info for idle detection
+        self.trigger_behavior_event("on_round_end", round_number=round_no, had_tool_calls=had_tool_calls)
 
         # Increment round counter
         self.increment_round()

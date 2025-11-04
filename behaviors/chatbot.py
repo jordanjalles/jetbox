@@ -54,6 +54,9 @@ class ChatbotBehavior(AgentBehavior):
         """Initialize chatbot behavior."""
         self.chat_mode_active = False
         self.conversation_history: list[dict[str, Any]] = []
+        self.consecutive_empty_rounds = 0
+        self.task_complete_flag = False
+        self.pending_nudge = None
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -202,7 +205,49 @@ Guidelines:
             if len(context) > 0:
                 context.insert(1, chat_instructions)
 
+        # Inject pending nudge if set (for idle detection)
+        if self.pending_nudge:
+            nudge_message = {
+                "role": "user",
+                "content": self.pending_nudge
+            }
+            context.append(nudge_message)
+            # Clear nudge after injecting
+            self.pending_nudge = None
+
         return context
+
+    def on_tool_call(self, tool_name: str, args: dict, result: Any, agent: Any, **kwargs) -> None:
+        """
+        Track tool calls to detect when agent becomes idle.
+
+        When agent makes tool calls, it's actively working, so reset empty round counter.
+        """
+        # Agent is doing something - reset idle counter
+        self.consecutive_empty_rounds = 0
+
+    def on_round_end(self, round_number: int, agent: Any = None, had_tool_calls: bool = False, **kwargs) -> None:
+        """
+        Detect consecutive empty rounds (agent is idle).
+
+        After 2 consecutive rounds with no tool calls, agent is idle and should
+        return to user for next task.
+        """
+        if not had_tool_calls:
+            self.consecutive_empty_rounds += 1
+
+            # After 2 consecutive empty rounds, task is complete
+            if self.consecutive_empty_rounds >= 2:
+                self.task_complete_flag = True
+                # Inject nudge for next round
+                self.pending_nudge = (
+                    "💡 TASK COMPLETE: You have been idle for 2 rounds with no actions. "
+                    "The current task is complete. If you have nothing more to do, "
+                    "simply respond with confirmation that the task is done and you're ready for the next request."
+                )
+        else:
+            # Had tool calls - already reset in on_tool_call, but ensure consistency
+            self.consecutive_empty_rounds = 0
 
     def get_instructions(self) -> str:
         """
