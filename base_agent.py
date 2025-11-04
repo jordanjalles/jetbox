@@ -10,7 +10,7 @@ The behavior system provides the primary extensibility mechanism.
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 from pathlib import Path
 import json
 import time
@@ -164,6 +164,8 @@ class BaseAgent:
         self.context_manager = None  # For hierarchical task tracking (TaskExecutor)
         self.workspace_manager = None  # For workspace isolation
         self.perf_stats = None  # For performance tracking
+        self.server_manager = None  # For server management (Orchestrator)
+        self.registry = None  # For agent registry (Orchestrator)
 
         # Phase 4 additions: Behavior system
         self._behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
@@ -642,6 +644,28 @@ Please retry the tool call using only the valid parameters listed above.
         # Performance stats are deprecated with the behavior system
         # Stats are now tracked by StatusDisplayBehavior if enabled
         pass
+
+    def init_server_manager(self) -> None:
+        """
+        Initialize server manager for managing development servers.
+
+        Used by orchestrator for coordinating servers across delegated tasks.
+        """
+        from server_manager import ServerManager
+        if self.server_manager is None:
+            self.server_manager = ServerManager(self.workspace)
+            self.server_manager.start_monitoring()
+
+    def init_registry(self, config_path: str = "agents.yaml") -> None:
+        """
+        Initialize agent registry for delegation.
+
+        Args:
+            config_path: Path to agents.yaml config file
+        """
+        from agent_registry import AgentRegistry
+        if self.registry is None:
+            self.registry = AgentRegistry(config_path=config_path, workspace=self.workspace)
 
     # ===========================
     # Phase 4 additions: Behavior system methods
@@ -1824,3 +1848,54 @@ Please retry the tool call using only the valid parameters listed above.
                 "reason": str(e),
                 "workspace": str(self.workspace) if self.workspace else None,
             }
+
+    def run_task_round_loop(
+        self,
+        user_message: str,
+        max_rounds: int = 100,
+        check_completion_callback: Callable[[], bool] | None = None
+    ) -> None:
+        """
+        Execute round loop for a single task in multi-task mode.
+
+        This is used by orchestrator for multi-task chat mode where each user
+        message is treated as a separate task that runs its own round loop.
+
+        Unlike run(), this method:
+        - Does NOT trigger on_goal_set events
+        - Does NOT return completion dict
+        - Adds user message to history
+        - Runs rounds until completion callback returns True or max rounds
+
+        Args:
+            user_message: User message to add to history and execute
+            max_rounds: Maximum rounds for this task (default: 100)
+            check_completion_callback: Optional callback to check if task complete
+                                      (e.g., ChatbotBehavior.task_complete_flag)
+        """
+        # Add user message to history
+        self.add_message({"role": "user", "content": user_message})
+
+        # Get model and temperature from config
+        model = getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
+        temperature = getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
+
+        # Execute rounds until completion
+        for round_no in range(1, max_rounds + 1):
+            # Check external completion signal (e.g., ChatbotBehavior detected idle)
+            if check_completion_callback and check_completion_callback():
+                print(f"[{self.name}] Task complete (detected by callback)")
+                break
+
+            # Execute one round
+            result = self._execute_round(round_no, max_rounds, model, temperature)
+
+            # Check for goal completion (mark_complete, etc.)
+            if result:
+                # Task completed via tool call (mark_complete, mark_failed, etc.)
+                break
+
+            # Check max rounds
+            if round_no >= max_rounds:
+                print(f"[{self.name}] Max rounds reached for task")
+                break

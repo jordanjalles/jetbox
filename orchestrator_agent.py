@@ -6,7 +6,6 @@ This agent is purely config-driven. All logic is in base_agent.py and behaviors.
 from __future__ import annotations
 from pathlib import Path
 from typing import Any
-import json
 
 from base_agent import BaseAgent
 
@@ -36,6 +35,59 @@ class OrchestratorAgent(BaseAgent):
             config_file="orchestrator_config.yaml",
             exclude_behaviors=exclude_behaviors,
             timeout_seconds=timeout_seconds,
+        )
+
+        # Initialize orchestrator-specific subsystems
+        self.init_server_manager()
+        self.init_registry()
+
+    def dispatch_tool(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
+        """
+        Dispatch tool call with orchestrator context (registry, server_manager).
+
+        Overrides BaseAgent.dispatch_tool() to automatically provide registry
+        and server_manager to behaviors that need them (e.g., DelegationBehavior).
+
+        Args:
+            tool_call: Tool call dict with function name and arguments
+            **extra_context: Additional context (will be merged with orchestrator context)
+
+        Returns:
+            Tool result dict
+        """
+        # Merge orchestrator-specific context with any provided context
+        orchestrator_context = {
+            "registry": self.registry,
+            "server_manager": self.server_manager,
+            **extra_context  # Allow override if needed
+        }
+
+        # Dispatch with merged context
+        return super().dispatch_tool(tool_call, **orchestrator_context)
+
+    def execute_task(self, user_message: str, chatbot_behavior: Any | None = None) -> None:
+        """
+        Execute a single orchestrator task.
+
+        Args:
+            user_message: User message to execute
+            chatbot_behavior: Optional ChatbotBehavior instance for completion detection
+        """
+        # Clean up old server requests
+        self.server_manager.cleanup_old_requests()
+
+        # Reset ChatbotBehavior task completion flags
+        if chatbot_behavior:
+            chatbot_behavior.task_complete_flag = False
+            chatbot_behavior.consecutive_empty_rounds = 0
+
+        # Execute task using base_agent's run_task_round_loop
+        self.run_task_round_loop(
+            user_message=user_message,
+            max_rounds=100,
+            check_completion_callback=lambda: (
+                chatbot_behavior.task_complete_flag if chatbot_behavior else False
+            )
         )
 
     # ===========================
@@ -84,112 +136,15 @@ class OrchestratorAgent(BaseAgent):
             agent: OrchestratorAgent instance
             args: Parsed CLI arguments
         """
-        from server_manager import ServerManager
-        from agent_registry import AgentRegistry
-
         initial_message = args["initial_message"]
         exit_after_initial = args["exit_after_initial"]
 
-        # Initialize ServerManager
-        server_manager = ServerManager(agent.workspace)
-        server_manager.start_monitoring()
-
-        # Initialize agent registry
-        registry = AgentRegistry(config_path="agents.yaml", workspace=agent.workspace)
-
-        # Get ChatbotBehavior instance for task completion detection
+        # Get ChatbotBehavior instance for multi-task mode
         chatbot_behavior = None
         for behavior in agent.behaviors:
             if behavior.get_name() == "chatbot":
                 chatbot_behavior = behavior
                 break
-
-        # Define task execution callback for ChatbotBehavior
-        def execute_task(user_message: str) -> None:
-            """
-            Execute a single orchestrator task.
-
-            This function is called by ChatbotBehavior for each user message.
-            It runs the orchestrator's LLM loop until the task completes.
-            """
-            # Clean up old server requests
-            server_manager.cleanup_old_requests()
-
-            # Add user message to history
-            agent.add_message({"role": "user", "content": user_message})
-
-            # Reset task_complete_flag for new task
-            if chatbot_behavior:
-                chatbot_behavior.task_complete_flag = False
-                chatbot_behavior.consecutive_empty_rounds = 0
-
-            # Execute rounds until task complete
-            round_num = 0
-            max_rounds = 100
-
-            while True:
-                round_num += 1
-
-                # Check if ChatbotBehavior detected task completion (2 consecutive empty rounds)
-                if chatbot_behavior and chatbot_behavior.task_complete_flag:
-                    print("[orchestrator] Task complete (detected by ChatbotBehavior), returning to prompt")
-                    break
-
-                response = agent._execute_round(
-                    round_no=round_num,
-                    max_rounds=max_rounds,
-                    model=agent.config.llm.model,
-                    temperature=agent.config.llm.temperature,
-                )
-
-                # Check if goal completed/failed
-                if response is None:
-                    continue
-
-                # Display response
-                if "message" in response:
-                    msg = response["message"]
-
-                    if isinstance(msg, dict):
-                        if msg.get("content"):
-                            print(f"Orchestrator: {msg['content']}")
-                            print()
-                    elif isinstance(msg, str):
-                        if msg:
-                            print(f"Orchestrator: {msg}")
-                            print()
-
-                    # Execute tool calls
-                    if isinstance(msg, dict) and "tool_calls" in msg:
-                        for tc in msg["tool_calls"]:
-                            tool_name = tc["function"]["name"]
-                            tool_args = tc["function"]["arguments"]
-
-                            # Show delegation events
-                            if tool_name == "clarify_with_user":
-                                print(f"Orchestrator: {tool_args.get('question', '')}\n")
-                            elif tool_name == "consult_architect":
-                                print(f"→ Consulting Architect: {tool_args.get('project_description', '')[:60]}...\n")
-                            elif tool_name == "delegate_to_executor":
-                                print(f"→ Delegating to TaskExecutor: {tool_args.get('task_description', '')[:60]}...\n")
-
-                            # Dispatch tool via behavior system with extra context
-                            result = agent.dispatch_tool(
-                                tc,
-                                registry=registry,
-                                server_manager=server_manager
-                            )
-
-                            # Add tool result
-                            agent.add_message({
-                                "role": "tool",
-                                "content": json.dumps(result),
-                            })
-
-                # Check max rounds
-                if round_num >= max_rounds:
-                    print("[orchestrator] Max rounds reached")
-                    break
 
         try:
             # Use ChatbotBehavior's multi-task chat loop if available
@@ -197,20 +152,20 @@ class OrchestratorAgent(BaseAgent):
                 # Multi-task chat mode
                 chatbot_behavior.run_multi_task_chat_loop(
                     agent=agent,
-                    execute_task_callback=execute_task,
+                    execute_task_callback=lambda msg: agent.execute_task(msg, chatbot_behavior),
                     initial_message=initial_message
                 )
             elif initial_message and exit_after_initial:
                 # Single task mode (--once flag)
                 print(f"User: {initial_message}\n")
-                execute_task(initial_message)
+                agent.execute_task(initial_message, chatbot_behavior)
                 print("\nTask completed. Exiting...")
             else:
                 # Fallback to manual loop if ChatbotBehavior not available
                 print("Warning: ChatbotBehavior not found, using fallback loop")
                 if initial_message:
                     print(f"User: {initial_message}\n")
-                    execute_task(initial_message)
+                    agent.execute_task(initial_message, chatbot_behavior)
                     if exit_after_initial:
                         print("\nTask completed. Exiting...")
                         return
@@ -224,7 +179,7 @@ class OrchestratorAgent(BaseAgent):
                         if user_input.lower() in ["quit", "exit", "q"]:
                             print("\nShutting down...")
                             break
-                        execute_task(user_input)
+                        agent.execute_task(user_input, chatbot_behavior)
                         print("\n✅ Task completed. Ready for next request.\n")
                     except (EOFError, KeyboardInterrupt):
                         print("\nShutting down...")
@@ -237,8 +192,8 @@ class OrchestratorAgent(BaseAgent):
         finally:
             # Clean shutdown
             print("\n[Orchestrator] Stopping all servers...")
-            server_manager.stop_all_servers()
-            server_manager.stop_monitoring()
+            agent.server_manager.stop_all_servers()
+            agent.server_manager.stop_monitoring()
             print("Goodbye!")
 
 
