@@ -114,15 +114,16 @@ def main():
     else:
         initial_message = None
 
-    # Setup workspace
-    # Priority: custom_workspace > isolated (if goal) > current directory
+    # Setup workspace for orchestrator (for state files, not project files)
+    # The orchestrator's workspace is just for its own state/config
+    # Delegated tasks will create their own workspaces in .agent_workspaces
     if custom_workspace:
         workspace = custom_workspace
         if not workspace.exists():
             workspace.mkdir(parents=True, exist_ok=True)
         print(f"[orchestrator_main] Using custom workspace: {workspace}")
     elif initial_message and not force_chat_mode:
-        # Autonomous mode with goal: create isolated workspace
+        # Autonomous mode with goal: create isolated workspace for this specific goal
         import re
         slug = re.sub(r'[^a-z0-9]+', '-', initial_message.lower())
         slug = slug.strip('-')[:60]
@@ -130,9 +131,11 @@ def main():
         workspace.mkdir(parents=True, exist_ok=True)
         print(f"[orchestrator_main] Created isolated workspace: {workspace}")
     else:
-        # Interactive mode or chat mode: use current directory
-        workspace = Path.cwd()
-        print(f"[orchestrator_main] Using current directory as workspace: {workspace}")
+        # Interactive/chat mode: use .agent_workspaces/orchestrator for state
+        # NOT current directory - we don't want orchestrator state polluting root
+        workspace = Path.cwd() / ".agent_workspaces" / "orchestrator"
+        workspace.mkdir(parents=True, exist_ok=True)
+        print(f"[orchestrator_main] Using orchestrator workspace for state: {workspace}")
 
     # Initialize agent registry
     registry = AgentRegistry(config_path="agents.yaml", workspace=workspace)

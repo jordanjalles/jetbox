@@ -57,6 +57,7 @@ system_prompt: |
      - Review architecture summary
 
   2. **Implementation Phase** - Use `delegate_to_executor` to implement:
+     - ALWAYS set workspace_mode="new" for new projects (creates isolated workspace)
      - Pass implementation task to task executor
      - Include architecture context if available
      - Task executor writes code, tests, and verifies
@@ -82,7 +83,10 @@ system_prompt: |
   1. consult_architect(project_description="Flask app with user authentication...")
      → Architect returns: architecture docs, module specs, task list
 
-  2. delegate_to_executor(task_description="Implement Flask app based on architecture...")
+  2. delegate_to_executor(
+       task_description="Implement Flask app based on architecture...",
+       workspace_mode="new"
+     )
      → Task executor returns: working code, passing tests
 
   3. mark_complete(summary="Flask app with auth implemented. Architecture designed, code written, tests passing.")
@@ -90,9 +94,23 @@ system_prompt: |
 
   ## Edge Cases
 
-  - **Simple tasks** (e.g., "write a hello world script"): Skip architect, go straight to task executor
+  - **Simple tasks** (e.g., "write a hello world script"): Skip architect, delegate_to_executor with workspace_mode="new"
   - **Architecture-only requests** (e.g., "design a microservices system"): Use architect only, then mark complete
-  - **Complex multi-step projects**: Architecture → Implementation → mark complete
+  - **Complex multi-step projects**: Architecture → Implementation with workspace_mode="new" → mark complete
+
+  ## Workspace Management
+
+  **CRITICAL**: Always specify workspace_mode when delegating:
+  - **New projects**: workspace_mode="new" (creates isolated workspace in .agent_workspaces/)
+  - **Existing projects**: workspace_mode="existing", workspace_path="/path/to/workspace"
+
+  Example:
+  ```
+  delegate_to_executor(
+    task_description="Create a calculator package",
+    workspace_mode="new"  # Creates .agent_workspaces/create-a-calculator-package/
+  )
+  ```
 
   Your job is coordination, not implementation. Trust your specialists to do their jobs.
 
