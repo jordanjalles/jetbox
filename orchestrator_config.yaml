@@ -111,6 +111,10 @@ behaviors:
   # LoopDetectionBehavior detects repeated actions
   - type: LoopDetectionBehavior
 
+  # WorkspaceManagementBehavior provides workspace strategy detection and discovery tools
+  # (orchestrator only - other agents work within workspaces but don't manage them)
+  - type: WorkspaceManagementBehavior
+
   # NOTE: DelegationBehavior is automatically added based on agents.yaml relationships.
   # The orchestrator can delegate to: architect, task_executor (defined in agents.yaml)
   # This creates tools: consult_architect, delegate_to_executor

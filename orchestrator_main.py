@@ -265,7 +265,10 @@ def main():
                 server_manager.cleanup_old_requests()
 
                 # Add user message
-                orchestrator.add_user_message(user_input)
+                orchestrator.add_message({
+                    "role": "user",
+                    "content": user_input
+                })
 
                 # Keep executing rounds until no more tool calls
                 # This allows orchestrator to:
