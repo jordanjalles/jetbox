@@ -127,7 +127,10 @@ behaviors:
 
   # Utility Behaviors
   # LoopDetectionBehavior detects repeated actions
+  # For orchestrator: nudge with delegation tools if idle
   - type: LoopDetectionBehavior
+    params:
+      delegation_tool_names: ["delegate_to_executor", "consult_architect"]
 
   # WorkspaceManagementBehavior provides workspace strategy detection and discovery tools
   # (orchestrator only - other agents work within workspaces but don't manage them)

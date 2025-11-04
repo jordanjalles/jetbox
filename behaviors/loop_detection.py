@@ -35,7 +35,7 @@ class LoopDetectionBehavior(AgentBehavior):
     - Configurable max_repeats threshold
     """
 
-    def __init__(self, max_repeats: int = 5, max_empty_rounds: int = 3, auto_fail_empty_rounds: int = 6):
+    def __init__(self, max_repeats: int = 5, max_empty_rounds: int = 3, auto_fail_empty_rounds: int = 6, delegation_tool_names: list[str] | None = None):
         """
         Initialize loop detection behavior.
 
@@ -43,10 +43,13 @@ class LoopDetectionBehavior(AgentBehavior):
             max_repeats: Maximum times an action can repeat before warning (default: 5)
             max_empty_rounds: Maximum consecutive rounds without tool calls before intervention (default: 3)
             auto_fail_empty_rounds: Maximum consecutive empty rounds before auto-failing (default: 6)
+            delegation_tool_names: Optional list of delegation tool names to nudge when idle (e.g., ['delegate_to_executor', 'consult_architect'])
+                                   If None, generic idle detection is used. Used for orchestrator-type agents.
         """
         self.max_repeats = max_repeats
         self.max_empty_rounds = max_empty_rounds
         self.auto_fail_empty_rounds = auto_fail_empty_rounds
+        self.delegation_tool_names = set(delegation_tool_names) if delegation_tool_names else None
         self.action_history: list[dict[str, Any]] = []
         self.loop_warnings: list[str] = []
         self.consecutive_empty_rounds = 0
@@ -195,46 +198,42 @@ class LoopDetectionBehavior(AgentBehavior):
         """
         warnings_to_inject = []
 
-        # Get agent for orchestrator-specific checks
+        # Get agent for delegation checks (if delegation_tool_names is configured)
         agent = kwargs.get('agent')
-        is_orchestrator = agent and agent.name == 'orchestrator'
 
-        # ORCHESTRATOR-SPECIFIC: Check for empty rounds before delegation
-        # If orchestrator is stuck and hasn't delegated yet, nudge with delegation options
-        if is_orchestrator and self.consecutive_empty_rounds >= 2 and not self.recovery_prompt_injected:
+        # DELEGATION NUDGE: If agent has delegation tools configured and is stuck, nudge with delegation options
+        # This is used for orchestrator-type agents that should delegate rather than implement
+        if self.delegation_tool_names and self.consecutive_empty_rounds >= 2 and not self.recovery_prompt_injected:
             # Check if any delegation tool has been called
-            delegation_tools = {'delegate_to_executor', 'consult_architect'}
             delegation_called = any(
-                action['tool_name'] in delegation_tools
+                action['tool_name'] in self.delegation_tool_names
                 for action in self.action_history
             )
 
             if not delegation_called:
-                # Orchestrator is stuck before delegating - inject delegation nudge
+                # Agent is stuck before delegating - inject delegation nudge
                 delegation_nudge = [
-                    "🚨 ORCHESTRATOR NOTICE: You have not called any tools for 2 consecutive rounds.",
+                    "🚨 NOTICE: You have not called any tools for 2 consecutive rounds.",
                     "",
-                    "You are the Orchestrator agent. Your job is to DELEGATE work to specialized agents.",
+                    "You are a delegating agent. Your job is to DELEGATE work to specialized agents.",
                     "",
                     "AVAILABLE DELEGATION OPTIONS:",
                 ]
 
-                # Get delegation tool specs and agent blurbs
+                # Get delegation tool specs from agent tools
                 if agent:
                     tools = agent.get_tools()
                     for tool in tools:
                         if isinstance(tool, dict) and 'function' in tool:
                             tool_name = tool['function'].get('name', '')
-                            if tool_name in delegation_tools:
+                            if tool_name in self.delegation_tool_names:
                                 tool_desc = tool['function'].get('description', '')
                                 delegation_nudge.append(f"  • {tool_name}: {tool_desc}")
 
                 delegation_nudge.extend([
                     "",
                     "ACTION REQUIRED:",
-                    "  1. For architecture/design tasks or complex multi-component projects: call consult_architect",
-                    "  2. For focused implementation tasks: call delegate_to_executor",
-                    "  3. If you need to clarify the goal with user: call clarify_with_user",
+                    "Call the appropriate delegation tool to assign work to a specialized agent.",
                     "",
                     "DO NOT try to implement the task yourself - delegate to the appropriate agent NOW."
                 ])
