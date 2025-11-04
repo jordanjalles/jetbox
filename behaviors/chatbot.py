@@ -379,14 +379,14 @@ After set_goal is called, you will automatically transition to execution mode.
 
         return goal_extracted
 
-    def run_orchestrator_chat_loop(
+    def run_multi_task_chat_loop(
         self,
         agent: Any,
         execute_task_callback: Any,
         initial_message: str | None = None
     ) -> None:
         """
-        Run interactive chat loop for orchestrator (multi-task mode).
+        Run interactive chat loop for multi-task execution mode.
 
         Unlike run_chat_loop which extracts a single goal and exits,
         this loop continues indefinitely, allowing multiple tasks in sequence.
@@ -395,16 +395,22 @@ After set_goal is called, you will automatically transition to execution mode.
         via the execute_task_callback, then returns to prompt for next task.
 
         Args:
-            agent: Orchestrator agent instance
+            agent: Agent instance (any agent type)
             execute_task_callback: Function(user_input) that executes a task and returns when done
             initial_message: Optional first message to execute before entering loop
 
         Workflow:
             1. User enters task description
-            2. Callback executes task (delegates, waits for completion)
+            2. Callback executes task (may delegate, run tools, etc.)
             3. Show completion message
             4. Return to prompt for next task
             5. Repeat until user types 'quit'
+
+        This method works with any agent that needs continuous multi-task interaction:
+        - Orchestrator: delegates tasks to sub-agents
+        - TaskExecutor: executes tasks directly
+        - Architect: generates architecture for multiple projects
+        - Custom agents: any agent with task execution logic
         """
         # Execute initial message if provided
         if initial_message:
@@ -412,8 +418,9 @@ After set_goal is called, you will automatically transition to execution mode.
             print("\n✅ Task completed. Ready for next request.\n")
 
         # Interactive loop
+        agent_name = getattr(agent, 'name', 'Agent').upper()
         print("=" * 60)
-        print("ORCHESTRATOR CHAT MODE")
+        print(f"{agent_name} CHAT MODE")
         print("=" * 60)
         print("Enter task descriptions and I'll execute them.")
         print("(Type 'quit' or 'exit' to end session)")

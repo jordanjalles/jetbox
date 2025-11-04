@@ -236,10 +236,10 @@ def main():
             break
 
     try:
-        # Use ChatbotBehavior's orchestrator chat loop if available
+        # Use ChatbotBehavior's multi-task chat loop if available
         if chatbot_behavior and not exit_after_initial:
             # Multi-task chat mode
-            chatbot_behavior.run_orchestrator_chat_loop(
+            chatbot_behavior.run_multi_task_chat_loop(
                 agent=orchestrator,
                 execute_task_callback=execute_task,
                 initial_message=initial_message
