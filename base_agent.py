@@ -1421,6 +1421,9 @@ Please retry the tool call using only the valid parameters listed above.
         """
         Execute the agent (interactive or autonomous mode).
 
+        This method automatically detects ChatbotBehavior and enables multi-task
+        chat mode if present. Otherwise, uses single-goal execution.
+
         Subclasses can override to customize execution logic.
 
         Args:
@@ -1430,8 +1433,18 @@ Please retry the tool call using only the valid parameters listed above.
         initial_message = args["initial_message"]
         exit_after_initial = args["exit_after_initial"]
 
-        if initial_message:
-            # Single task mode
+        # Detect ChatbotBehavior for multi-task chat mode
+        chatbot_behavior = None
+        for behavior in agent.behaviors:
+            if behavior.get_name() == "chatbot":
+                chatbot_behavior = behavior
+                break
+
+        # Multi-task chat mode if ChatbotBehavior present
+        if chatbot_behavior:
+            cls._run_multi_task_chat_mode(agent, chatbot_behavior, initial_message, exit_after_initial)
+        elif initial_message:
+            # Single task mode (no ChatbotBehavior)
             print(f"User: {initial_message}\n")
             agent.trigger_behavior_event("on_goal_set", goal=initial_message, workspace=agent.workspace)
             result = agent.run()
@@ -1448,9 +1461,73 @@ Please retry the tool call using only the valid parameters listed above.
                 print("\nExiting...")
                 return
         else:
-            # Interactive mode without initial message
-            print("Interactive mode not supported for this agent type.")
+            # No ChatbotBehavior and no initial message - can't do anything
+            print("Interactive mode not supported without ChatbotBehavior.")
             print("Usage: python {script} 'goal description'")
+
+    @classmethod
+    def _run_multi_task_chat_mode(
+        cls,
+        agent: BaseAgent,
+        chatbot_behavior: Any,
+        initial_message: str | None,
+        exit_after_initial: bool
+    ) -> None:
+        """
+        Run agent in multi-task chat mode using ChatbotBehavior.
+
+        This enables any agent with ChatbotBehavior to handle multiple tasks
+        in a conversational interface.
+
+        Args:
+            agent: Agent instance
+            chatbot_behavior: ChatbotBehavior instance
+            initial_message: Optional initial message to execute
+            exit_after_initial: Whether to exit after first task
+        """
+        # Define task execution callback
+        def execute_task(user_message: str) -> None:
+            """Execute a single task in multi-task mode."""
+            # Call agent-specific pre-task hook if available
+            if hasattr(agent, 'pre_task_hook'):
+                agent.pre_task_hook()
+
+            # Reset ChatbotBehavior flags for new task
+            chatbot_behavior.task_complete_flag = False
+            chatbot_behavior.consecutive_empty_rounds = 0
+
+            # Execute task using base_agent's run_task_round_loop
+            agent.run_task_round_loop(
+                user_message=user_message,
+                max_rounds=100,
+                check_completion_callback=lambda: chatbot_behavior.task_complete_flag
+            )
+
+        try:
+            # Use ChatbotBehavior's multi-task chat loop
+            if not exit_after_initial:
+                # Multi-task chat mode
+                chatbot_behavior.run_multi_task_chat_loop(
+                    agent=agent,
+                    execute_task_callback=execute_task,
+                    initial_message=initial_message
+                )
+            elif initial_message:
+                # Single task mode (--once flag)
+                print(f"User: {initial_message}\n")
+                execute_task(initial_message)
+                print("\nTask completed. Exiting...")
+            else:
+                # Interactive mode without initial message - use chat loop
+                chatbot_behavior.run_multi_task_chat_loop(
+                    agent=agent,
+                    execute_task_callback=execute_task,
+                    initial_message=None
+                )
+        finally:
+            # Call agent-specific cleanup hook if available
+            if hasattr(agent, 'cleanup_hook'):
+                agent.cleanup_hook()
 
     @classmethod
     def main(cls) -> None:
