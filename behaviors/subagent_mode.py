@@ -371,6 +371,12 @@ IMPORTANT - YOU MUST SIGNAL COMPLETION:
             print("[subagent_mode] Creating new workspace for goal")
             agent.init_workspace_manager(goal_slug, workspace_path=None)
 
+        # Update agent.workspace to point to the actual workspace directory
+        # This ensures file operations without workspace_manager use the correct path
+        if agent.workspace_manager:
+            agent.workspace = agent.workspace_manager.workspace_dir
+            print(f"[subagent_mode] Updated agent.workspace to: {agent.workspace}")
+
         # Initialize performance tracking
         agent.init_perf_stats()
 
