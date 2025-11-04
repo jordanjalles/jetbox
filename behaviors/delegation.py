@@ -292,32 +292,40 @@ class DelegationBehavior(AgentBehavior):
                 f"DO NOT implement code - only create architecture documentation."
             )
 
-        # PROPER WORKSPACE COORDINATION
-        # If calling agent has a workspace, subagent should work in SAME workspace
-        # This ensures orchestrator and subagents coordinate on file locations
+        # WORKSPACE COORDINATION
+        # Respect workspace_mode parameter if provided
         workspace = None
+        workspace_mode = args.get("workspace_mode", None)
 
-        # AUTOMATIC WORKSPACE COORDINATION:
         # Priority order:
-        # 1. Explicit workspace_path provided → use it
-        # 2. Calling agent has workspace attribute → reuse it (FOOLPROOF: works for orchestrator!)
-        # 3. Neither → let subagent create isolated workspace (will be reused on retry via goal slug)
+        # 1. workspace_mode="new" → create isolated workspace (workspace=None)
+        # 2. workspace_mode="existing" + workspace_path → use explicit path
+        # 3. No workspace_mode but workspace_path provided → use explicit path
+        # 4. No workspace_mode, no workspace_path → reuse calling agent's workspace (backward compat)
 
-        if "workspace_path" in args and args["workspace_path"]:
-            # Explicit workspace path overrides everything
+        if workspace_mode == "new":
+            # Create new isolated workspace - pass None so subagent creates its own
+            workspace = None
+            print(f"[delegation] workspace_mode='new': subagent will create isolated workspace")
+        elif workspace_mode == "existing":
+            # Use existing workspace - must have workspace_path
+            if "workspace_path" in args and args["workspace_path"]:
+                workspace = Path(args["workspace_path"])
+                print(f"[delegation] workspace_mode='existing': using workspace_path={workspace}")
+            else:
+                raise ValueError("workspace_mode='existing' requires workspace_path parameter")
+        elif "workspace_path" in args and args["workspace_path"]:
+            # Explicit workspace path without mode (backward compat)
             workspace = Path(args["workspace_path"])
-            print(f"[delegation] Using explicit workspace path: {workspace}")
+            print(f"[delegation] Using explicit workspace_path: {workspace}")
         elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
-            # AUTOMATIC COORDINATION: Reuse calling agent's workspace
-            # This is FOOLPROOF - works even if workspace_manager isn't initialized yet
-            # (e.g., orchestrator doesn't have a goal, so workspace_manager is None)
+            # No workspace_mode specified - reuse calling agent's workspace (backward compat)
             workspace = calling_agent.workspace
-            print(f"[delegation] Reusing calling agent's workspace: {workspace}")
+            print(f"[delegation] No workspace_mode: reusing calling agent's workspace: {workspace}")
         else:
             # No workspace context - let subagent create its own
-            # (will be reused on retry because same goal → same slug → same workspace path)
             workspace = None
-            print(f"[delegation] Subagent will create isolated workspace based on goal")
+            print(f"[delegation] No workspace context: subagent will create isolated workspace")
 
         # Instantiate target agent
         try:
