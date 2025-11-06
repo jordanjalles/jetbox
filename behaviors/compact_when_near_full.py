@@ -212,22 +212,3 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         except Exception as e:
             # If summarization fails, return a basic summary
             return f"[Summarization failed: {e}] Previous work included {len(messages)} message exchanges with tool calls and results."
-
-    def get_instructions(self) -> str:
-        """
-        Return workflow instructions for this behavior.
-
-        Returns:
-            Instructions for completing work
-        """
-        return """
-WORKFLOW:
-Your goal is shown at the start of the conversation. Simply complete the work using the available tools.
-
-- Use write_file to create/modify files
-- Use run_bash to run commands (tests, linters, etc.)
-- Use read_file to check existing files
-- Use list_dir to explore directories
-
-Work directly on the goal - no need to decompose into subtasks.
-"""
