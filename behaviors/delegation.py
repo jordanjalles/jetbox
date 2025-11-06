@@ -770,26 +770,6 @@ class DelegationBehavior(AgentBehavior):
                 "error": f"Failed to import {agent_class_name} from {module_name}: {e}"
             }
 
-    def _list_files_in_workspace(self, workspace) -> list[str]:
-        """
-        List files created in a workspace directory.
-
-        Args:
-            workspace: Path object or None
-
-        Returns:
-            List of file names (excluding hidden files)
-        """
-        files_created = []
-        if workspace and workspace.exists():
-            try:
-                for item in workspace.iterdir():
-                    if item.is_file() and not item.name.startswith('.'):
-                        files_created.append(item.name)
-            except Exception:
-                pass
-        return files_created
-
     def _build_direct_delegation_result(
         self,
         target_agent_name: str,
@@ -928,9 +908,17 @@ The delegated task did not complete. Consider:
             if not summary:
                 summary = f"Task execution {status}. No summary provided by subagent."
 
-            # Get workspace and list files
+            # Get workspace and list files (inline simple listing)
             subagent_workspace = target_agent.workspace if hasattr(target_agent, 'workspace') else None
-            files_created = self._list_files_in_workspace(subagent_workspace)
+            files_created = []
+            if subagent_workspace and subagent_workspace.exists():
+                try:
+                    files_created = [
+                        item.name for item in subagent_workspace.iterdir()
+                        if item.is_file() and not item.name.startswith('.')
+                    ]
+                except Exception:
+                    pass
 
             # Build result
             result = self._build_direct_delegation_result(
