@@ -23,9 +23,6 @@ behavior_defaults:
     max_siblings: 8           # Max subtasks per level
     keep_recent: 12           # Message exchanges to keep
 
-  SubAgentContextBehavior:
-    # No parameters needed - uses global settings
-
   DirectoryToolsBehavior:
     # No parameters needed
 
