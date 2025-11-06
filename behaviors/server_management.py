@@ -12,7 +12,6 @@ NOT used by:
 - Architect: Only designs systems, doesn't run code
 """
 from typing import Any
-from pathlib import Path
 from behaviors.base import AgentBehavior
 
 

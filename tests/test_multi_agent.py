@@ -5,7 +5,6 @@ Tests agent instantiation, registry, and basic operations.
 """
 from pathlib import Path
 import tempfile
-import shutil
 
 from agent_registry import AgentRegistry
 from orchestrator_agent import OrchestratorAgent

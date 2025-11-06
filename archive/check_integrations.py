@@ -9,7 +9,6 @@ import ast
 import re
 from pathlib import Path
 from typing import Set, Dict, List
-from collections import defaultdict
 
 
 def extract_imports(file_path: Path) -> Set[str]:
@@ -244,18 +243,18 @@ def main():
         print(f"   Dispatched in agents: {len(tool_check['dispatched_tools'])}")
 
         if tool_check['not_advertised']:
-            print(f"\n   ⚠ Tools not advertised to LLM:")
+            print("\n   ⚠ Tools not advertised to LLM:")
             for tool in tool_check['not_advertised']:
                 print(f"      - {tool}")
         else:
-            print(f"\n   ✓ All tools advertised to LLM")
+            print("\n   ✓ All tools advertised to LLM")
 
         if tool_check['not_dispatched']:
-            print(f"\n   ⚠ Tools not in dispatch map:")
+            print("\n   ⚠ Tools not in dispatch map:")
             for tool in tool_check['not_dispatched']:
                 print(f"      - {tool}")
         else:
-            print(f"\n   ✓ All tools in dispatch map")
+            print("\n   ✓ All tools in dispatch map")
 
     print()
 
@@ -269,11 +268,11 @@ def main():
         print(f"      Imported in: {', '.join(info['imported_in']) or 'NOWHERE ⚠'}")
 
         if info['unused']:
-            print(f"      ⚠ Unused functions:")
+            print("      ⚠ Unused functions:")
             for fn in info['unused']:
                 print(f"         - {fn}")
         else:
-            print(f"      ✓ All expected functions used")
+            print("      ✓ All expected functions used")
 
     print()
 
@@ -283,7 +282,7 @@ def main():
     unused = find_defined_but_unused_modules()
 
     if unused['unused_modules']:
-        print(f"   ⚠ Modules defined but never imported:")
+        print("   ⚠ Modules defined but never imported:")
         for module in sorted(unused['unused_modules']):
             print(f"      - {module}.py")
     else:

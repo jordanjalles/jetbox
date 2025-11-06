@@ -10,7 +10,7 @@ Tests:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from behaviors.hierarchical_context import HierarchicalContextBehavior
 
 

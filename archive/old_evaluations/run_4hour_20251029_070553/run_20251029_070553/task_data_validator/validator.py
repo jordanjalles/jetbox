@@ -4,7 +4,6 @@ This module provides simple validation helpers for email, phone number and age.
 """
 
 import re
-from datetime import datetime
 
 # Regular expression for a basic email validation
 EMAIL_REGEX = re.compile(

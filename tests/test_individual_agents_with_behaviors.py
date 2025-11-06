@@ -15,7 +15,6 @@ import pytest
 from pathlib import Path
 import tempfile
 import shutil
-import json
 
 from task_executor_agent import TaskExecutorAgent
 from orchestrator_agent import OrchestratorAgent
@@ -81,7 +80,7 @@ class TestTaskExecutorWithBehaviors:
         content = hello_file.read_text()
         assert "Hello World" in content, f"Expected 'Hello World' in file, got: {content}"
 
-        print(f"\n✓ SUCCESS: File created with correct content")
+        print("\n✓ SUCCESS: File created with correct content")
         print(f"  Content: {content.strip()}")
         print("="*80)
 
@@ -125,7 +124,7 @@ class TestOrchestratorWithBehaviors:
         assert "compact_when_near_full" in behavior_names
         assert "loop_detection" in behavior_names
 
-        print(f"\n✓ SUCCESS: Orchestrator initialized with behaviors")
+        print("\n✓ SUCCESS: Orchestrator initialized with behaviors")
         print(f"  Behaviors: {', '.join(behavior_names)}")
         print("\nNOTE: Full orchestrator testing requires DelegationBehavior (not yet implemented)")
         print("="*80)
@@ -187,7 +186,7 @@ class TestArchitectWithBehaviors:
 
         assert len(all_files) > 0, f"No architecture documents or modules found in {arch_dir}"
 
-        print(f"\n✓ SUCCESS: Architecture artifacts created")
+        print("\n✓ SUCCESS: Architecture artifacts created")
         print(f"  Architecture docs: {len(arch_files)}")
         print(f"  Module specs: {len(module_files)}")
         print(f"  Total artifacts: {len(all_files)}")

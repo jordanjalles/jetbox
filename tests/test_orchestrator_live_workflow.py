@@ -16,7 +16,7 @@ from pathlib import Path
 def run_orchestrator_task(task_description: str):
     """Run orchestrator with a task and return the result."""
     print(f"\n{'='*70}")
-    print(f"DELEGATING TASK TO ORCHESTRATOR")
+    print("DELEGATING TASK TO ORCHESTRATOR")
     print(f"{'='*70}")
     print(f"Task: {task_description}")
     print()

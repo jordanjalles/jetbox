@@ -22,14 +22,14 @@ def test_error_handling_logic():
     error_msg = "error parsing tool call: raw='<<<{BROKEN JSON with [ mismatched } brackets>>>', err=invalid character ']' after object key:value pair (status code: -1)"
     llm_error = ResponseError(error_msg)
 
-    print(f"\n1. Simulated Ollama error:")
+    print("\n1. Simulated Ollama error:")
     print(f"   {error_msg[:100]}...")
 
     # Check if this is a ResponseError with parsing error
     is_response_error = isinstance(llm_error, ResponseError)
     has_parsing_error = "error parsing tool call" in str(llm_error)
 
-    print(f"\n2. Error detection:")
+    print("\n2. Error detection:")
     print(f"   Is ResponseError: {is_response_error}")
     print(f"   Has 'error parsing tool call': {has_parsing_error}")
 
@@ -37,14 +37,14 @@ def test_error_handling_logic():
     from llm_utils import extract_tool_call_from_parse_error
     extracted = extract_tool_call_from_parse_error(str(llm_error))
 
-    print(f"\n3. Extraction attempt:")
+    print("\n3. Extraction attempt:")
     print(f"   Extracted: {extracted}")
 
     # OLD BEHAVIOR (before fix): Would raise llm_error -> CRASH
     # NEW BEHAVIOR (after fix): Create error response for LLM
 
     if not extracted:
-        print(f"\n4. Creating error response (NEW BEHAVIOR):")
+        print("\n4. Creating error response (NEW BEHAVIOR):")
 
         # This is what the fixed code does
         response = {
@@ -57,7 +57,7 @@ def test_error_handling_logic():
             "prompt_eval_count": 0,
         }
 
-        print(f"   ✅ Response created successfully")
+        print("   ✅ Response created successfully")
         print(f"   Message role: {response['message']['role']}")
         print(f"   Message preview: {response['message']['content'][:80]}...")
         print(f"   Tool calls: {response['message']['tool_calls']}")
@@ -68,14 +68,14 @@ def test_error_handling_logic():
         assert response['message']['tool_calls'] == []
         assert response['eval_count'] == 0
 
-        print(f"\n5. ✅ TEST PASSED")
-        print(f"   Agent would NOT crash")
-        print(f"   Agent would send error feedback to LLM")
-        print(f"   LLM can see the error and retry with better JSON")
+        print("\n5. ✅ TEST PASSED")
+        print("   Agent would NOT crash")
+        print("   Agent would send error feedback to LLM")
+        print("   LLM can see the error and retry with better JSON")
 
         return True
     else:
-        print(f"\n4. ❌ TEST FAILED - extraction should have failed for this case")
+        print("\n4. ❌ TEST FAILED - extraction should have failed for this case")
         return False
 
 

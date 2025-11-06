@@ -8,10 +8,7 @@ This module tests that behaviors:
 4. Can be substituted/swapped
 """
 
-import pytest
-from pathlib import Path
-import tempfile
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 # Import all behaviors
 from behaviors import (

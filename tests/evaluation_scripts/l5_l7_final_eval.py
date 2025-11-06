@@ -205,13 +205,13 @@ def main():
     total_successes = [r for r in results if r["status"] == "success"]
     overall_success_rate = len(total_successes) / len(results) * 100
 
-    print(f"\nOVERALL:")
+    print("\nOVERALL:")
     print(f"  Success Rate: {overall_success_rate:.1f}% ({len(total_successes)}/{len(results)})")
     print(f"  Total Time:   {overall_duration/60:.1f} minutes")
     print(f"  Avg Test:     {overall_duration/len(results):.1f}s")
 
     # Time analysis
-    print(f"\nTIME BREAKDOWN:")
+    print("\nTIME BREAKDOWN:")
     durations = [r["duration"] for r in results]
     print(f"  Min:    {min(durations):.1f}s")
     print(f"  Max:    {max(durations):.1f}s")
@@ -224,7 +224,7 @@ def main():
         for r in long_tests:
             print(f"    - {r['level']} P{r['problem_idx']+1} R{r['run_idx']+1}: {r['duration']:.1f}s ({r['status']})")
     else:
-        print(f"\n  ✓ No tests exceeded 5 minutes (previous issue: 40 minute stuck loops)")
+        print("\n  ✓ No tests exceeded 5 minutes (previous issue: 40 minute stuck loops)")
 
     print(f"\nDetailed results saved to: {output_file}")
     print("="*80)

@@ -37,7 +37,6 @@ def create_app(config_object=Config):
     login_manager.init_app(app)
 
     # Import models so that they are registered with SQLAlchemy
-    import models
 
     # Register blueprints
     from auth import bp as auth_bp

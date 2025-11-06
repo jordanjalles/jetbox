@@ -56,7 +56,7 @@ class SemanticValidator:
                     elif isinstance(node, ast.ImportFrom):
                         if node.module:
                             symbols["imports"].add(node.module)
-            except Exception as e:
+            except Exception:
                 # Skip files with syntax errors for now
                 pass
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         print(f"Missing classes: {result['missing']['classes']}")
         print(f"\nFound functions: {result['found']['functions']}")
         print(f"Missing functions: {result['missing']['functions']}")
-        print(f"\nWorkspace summary:")
+        print("\nWorkspace summary:")
         print(f"  Files: {result['summary']['file_names']}")
         print(f"  All classes: {result['summary']['classes']}")
         print(f"  All functions: {result['summary']['functions'][:10]}...")  # First 10

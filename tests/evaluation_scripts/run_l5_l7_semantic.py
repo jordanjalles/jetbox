@@ -307,7 +307,7 @@ def main():
     print("\n" + "="*70)
     print("COMPARISON")
     print("="*70)
-    print(f"Strict file validation: 0/27 (0%)")
+    print("Strict file validation: 0/27 (0%)")
     print(f"Semantic validation: {total_success}/{total_tasks} ({pass_rate:.1f}%)")
     print(f"Improvement: +{pass_rate:.1f} percentage points")
 

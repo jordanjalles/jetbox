@@ -326,7 +326,7 @@ def main():
         f.write(report)
 
     print(f"\nReport generated: {report_path}")
-    print(f"\nQuick stats:")
+    print("\nQuick stats:")
     print(f"  Total runs: {analysis['total_tests']}")
     print(f"  Passed: {analysis['total_passed']}")
     print(f"  Pass rate: {analysis['total_passed']/analysis['total_tests']*100:.1f}%")

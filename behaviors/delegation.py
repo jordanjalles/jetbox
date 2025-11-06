@@ -20,7 +20,7 @@ Example:
         - consult_architect(project_description, requirements, constraints)
         - delegate_to_executor(task_description, workspace_mode, workspace_path)
 
-This behavior does NOT handle being delegated to - use SubAgentModeBehavior for that.
+This behavior does NOT handle being delegated to - that's core BaseAgent functionality.
 """
 
 from typing import Any
@@ -33,7 +33,7 @@ class DelegationBehavior(AgentBehavior):
 
     Automatically creates delegation tools for each agent in can_delegate_to list.
     This is a delegator-only behavior - it does NOT provide mark_complete/mark_failed.
-    Use SubAgentModeBehavior for agents that can BE delegated to.
+    Being delegated to is core BaseAgent functionality (all agents support it).
     """
 
     def __init__(self, agent_relationships: dict[str, Any]):
@@ -289,9 +289,6 @@ class DelegationBehavior(AgentBehavior):
             Delegation result dict
         """
         from pathlib import Path
-        import subprocess
-        import sys
-        import json
 
         # Get agent config from registry
         if not registry or target_agent_name not in registry.config.get("agents", {}):
@@ -330,6 +327,269 @@ class DelegationBehavior(AgentBehavior):
             registry
         )
 
+    def _resolve_workspace_for_delegation(
+        self,
+        args: dict[str, Any],
+        calling_agent: Any
+    ) -> tuple[str | None, str]:
+        """
+        Resolve workspace path from delegation parameters.
+
+        This method implements the workspace resolution priority order:
+        1. workspace_mode="new" → None (create isolated workspace)
+        2. workspace_mode="existing" + workspace_path → explicit path
+        3. workspace_mode="existing" without path → calling agent's workspace
+        4. workspace_path only (no mode) → explicit path
+        5. No params but calling agent has workspace → calling agent's workspace
+        6. No context → None (create isolated workspace)
+
+        Args:
+            args: Tool arguments containing workspace_mode and workspace_path
+            calling_agent: The agent initiating delegation
+
+        Returns:
+            Tuple of (workspace_path, log_message)
+            workspace_path is None for new workspaces, str/Path for existing
+
+        Raises:
+            ValueError: If workspace_mode="existing" but no workspace available
+        """
+        from pathlib import Path
+
+        workspace_mode = args.get("workspace_mode", "")
+        workspace_path = args.get("workspace_path", "")
+
+        if workspace_mode == "new":
+            return None, "[delegation] workspace_mode='new': subagent will create isolated workspace"
+
+        elif workspace_mode == "existing":
+            # Use explicit path if provided, otherwise use calling agent's workspace
+            if workspace_path:
+                return str(workspace_path), f"[delegation] workspace_mode='existing': using workspace_path={workspace_path}"
+            elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
+                return str(calling_agent.workspace), f"[delegation] workspace_mode='existing' without path: using calling agent's workspace: {calling_agent.workspace}"
+            else:
+                raise ValueError("workspace_mode='existing' requires either workspace_path parameter or calling agent must have workspace")
+
+        elif workspace_path:
+            # Explicit workspace path without mode (backward compat)
+            return str(workspace_path), f"[delegation] Using explicit workspace_path: {workspace_path}"
+
+        elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
+            # No workspace_mode specified - reuse calling agent's workspace (backward compat)
+            return str(calling_agent.workspace), f"[delegation] No workspace_mode: reusing calling agent's workspace: {calling_agent.workspace}"
+
+        else:
+            # No workspace context - let subagent create its own
+            return None, "[delegation] No workspace context: subagent will create isolated workspace"
+
+    def _extract_goal_description(self, args: dict[str, Any]) -> str | None:
+        """
+        Extract goal/task description from args using multiple common parameter names.
+
+        Args:
+            args: Tool arguments
+
+        Returns:
+            Goal description string, or None if not found
+        """
+        for key in ["task_description", "project_description", "goal", "description", "query"]:
+            if key in args:
+                return args[key]
+        return None
+
+    def _build_subprocess_command(
+        self,
+        agent_file: str,
+        workspace_path: str | None,
+        context: str,
+        goal_description: str
+    ) -> list[str]:
+        """
+        Build subprocess command with workspace, context, and goal parameters.
+
+        Args:
+            agent_file: Python file for target agent
+            workspace_path: Resolved workspace path (None for new workspace)
+            context: Optional context string
+            goal_description: Task/goal description
+
+        Returns:
+            Command list for subprocess.run()
+        """
+        import sys
+
+        cmd = [sys.executable, agent_file]
+
+        # Add workspace parameter if resolved (None = new workspace, no --workspace flag)
+        if workspace_path is not None:
+            cmd.extend(["--workspace", workspace_path])
+
+        # Add context parameter if provided
+        if context:
+            cmd.extend(["--context", context])
+
+        # Add goal/task description as positional argument
+        cmd.append(goal_description)
+
+        return cmd
+
+    def _print_delegation_header(
+        self,
+        target_agent_name: str,
+        goal_description: str,
+        workspace_path: str | None
+    ) -> None:
+        """
+        Print delegation start header with task info.
+
+        Args:
+            target_agent_name: Name of target agent
+            goal_description: Task description
+            workspace_path: Workspace path (if any)
+        """
+        print("\n" + "=" * 60)
+        print(f"DELEGATING TO {target_agent_name.upper()}")
+        print("=" * 60)
+        print(f"Task: {goal_description[:100]}...")
+        if workspace_path:
+            print(f"Workspace: {workspace_path}")
+        print("=" * 60 + "\n")
+
+    def _read_agent_messages(self, parent_name: str) -> list[dict[str, Any]]:
+        """
+        Read messages from subagent's messages_to_{parent}.jsonl file.
+
+        Args:
+            parent_name: Name of calling/parent agent
+
+        Returns:
+            List of message dicts from subagent
+        """
+        import json
+        from pathlib import Path
+
+        messages = []
+        msg_file = Path(f".agent_context/messages_to_{parent_name}.jsonl")
+
+        if msg_file.exists():
+            try:
+                with open(msg_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            messages.append(json.loads(line))
+                # Clear the file after reading
+                msg_file.unlink()
+            except Exception as e:
+                print(f"[delegation] Warning: Failed to read agent messages: {e}")
+
+        return messages
+
+    def _display_agent_messages(
+        self,
+        target_agent_name: str,
+        messages: list[dict[str, Any]]
+    ) -> None:
+        """
+        Display messages from subagent.
+
+        Args:
+            target_agent_name: Name of target agent
+            messages: List of message dicts
+        """
+        if messages:
+            print(f"Messages from {target_agent_name}:")
+            for msg in messages:
+                severity = msg.get("severity", "info").upper()
+                content = msg.get("message", "")
+                print(f"  [{severity}] {content}")
+            print()
+
+    def _verify_subprocess_completion(self, returncode: int) -> bool:
+        """
+        Verify subprocess completion by checking exit code and state.json.
+
+        Args:
+            returncode: Process exit code
+
+        Returns:
+            True if task completed successfully, False otherwise
+        """
+        import json
+        from pathlib import Path
+
+        if returncode != 0:
+            return False
+
+        # Double-check with state.json
+        state_file = Path(".agent_context/state.json")
+        if state_file.exists():
+            try:
+                with open(state_file, encoding="utf-8") as f:
+                    state = json.load(f)
+                    # Verify all tasks completed
+                    if state.get("goal", {}).get("tasks"):
+                        all_completed = all(
+                            t.get("status") == "completed"
+                            for t in state["goal"]["tasks"]
+                        )
+                        if not all_completed:
+                            print("[delegation] Warning: Exit code 0 but not all tasks completed")
+                            return False
+            except Exception as e:
+                print(f"[delegation] Warning: Could not verify state.json: {e}")
+
+        return True
+
+    def _build_subprocess_result(
+        self,
+        target_agent_name: str,
+        task_completed: bool,
+        returncode: int,
+        messages: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Build delegation result dict with success/failure message.
+
+        Args:
+            target_agent_name: Name of target agent
+            task_completed: Whether task completed successfully
+            returncode: Process exit code
+            messages: Messages from subagent
+
+        Returns:
+            Result dict with success, message, agent, and messages
+        """
+        if task_completed:
+            result_msg = f"{target_agent_name} completed task successfully"
+
+            # Include agent messages
+            if messages:
+                result_msg += f"\n\nMessages from {target_agent_name}:"
+                for msg in messages:
+                    result_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
+
+            return {
+                "success": True,
+                "message": result_msg,
+                "agent": target_agent_name,
+                "messages": messages,
+            }
+        else:
+            error_msg = f"{target_agent_name} failed (exit code {returncode})"
+
+            if messages:
+                error_msg += f"\n\nMessages from {target_agent_name}:"
+                for msg in messages:
+                    error_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
+
+            return {
+                "success": False,
+                "message": error_msg,
+                "agent": target_agent_name,
+                "messages": messages,
+            }
+
     def _generic_subprocess_delegation(
         self,
         target_agent_name: str,
@@ -360,54 +620,25 @@ class DelegationBehavior(AgentBehavior):
             Delegation result dict with success, message, and metadata
         """
         import subprocess
-        import sys
-        import json
-        from pathlib import Path
 
-        # Extract task/goal description from args
-        # Try multiple common parameter names
-        goal_description = None
-        for key in ["task_description", "project_description", "goal", "description", "query"]:
-            if key in args:
-                goal_description = args[key]
-                break
-
+        # Extract goal description
+        goal_description = self._extract_goal_description(args)
         if not goal_description:
             return {
                 "success": False,
                 "error": f"No task description found in args. Tried: task_description, project_description, goal, description, query. Got: {list(args.keys())}"
             }
 
-        # Handle workspace parameters
-        workspace_mode = args.get("workspace_mode", "")
-        workspace_path = args.get("workspace_path", "")
+        # Resolve workspace
+        workspace_path, log_msg = self._resolve_workspace_for_delegation(args, calling_agent)
+        print(log_msg)
 
         # Build subprocess command
-        cmd = [sys.executable, agent_file]
-
-        # Add workspace parameter if provided
-        if workspace_mode == "existing" and workspace_path:
-            cmd.extend(["--workspace", workspace_path])
-        elif workspace_mode == "new":
-            # Don't pass workspace - let agent create its own
-            pass
-
-        # Add context parameter if provided
         context = args.get("context", "")
-        if context:
-            cmd.extend(["--context", context])
-
-        # Add goal/task description as positional argument
-        cmd.append(goal_description)
+        cmd = self._build_subprocess_command(agent_file, workspace_path, context, goal_description)
 
         # Print delegation header
-        print("\n" + "=" * 60)
-        print(f"DELEGATING TO {target_agent_name.upper()}")
-        print("=" * 60)
-        print(f"Task: {goal_description[:100]}...")
-        if workspace_path:
-            print(f"Workspace: {workspace_path}")
-        print("=" * 60 + "\n")
+        self._print_delegation_header(target_agent_name, goal_description, workspace_path)
 
         try:
             # Get timeout from agent (default 600 if not set)
@@ -421,86 +652,26 @@ class DelegationBehavior(AgentBehavior):
                 timeout=timeout,
             )
 
+            # Print completion header
             print("\n" + "=" * 60)
             print(f"{target_agent_name.upper()} COMPLETED")
             print("=" * 60 + "\n")
 
-            # Read messages from agent if any
-            messages_from_agent = []
-            # Auto-detect parent agent name from calling agent (supports multi-level delegation)
+            # Read and display messages from agent
             parent_name = calling_agent.name if calling_agent and hasattr(calling_agent, 'name') else "orchestrator"
-            msg_file = Path(f".agent_context/messages_to_{parent_name}.jsonl")
-            if msg_file.exists():
-                try:
-                    with open(msg_file, "r", encoding="utf-8") as f:
-                        for line in f:
-                            if line.strip():
-                                messages_from_agent.append(json.loads(line))
-                    # Clear the file after reading
-                    msg_file.unlink()
-                except Exception as e:
-                    print(f"[delegation] Warning: Failed to read agent messages: {e}")
+            messages_from_agent = self._read_agent_messages(parent_name)
+            self._display_agent_messages(target_agent_name, messages_from_agent)
 
-            # Display messages
-            if messages_from_agent:
-                print(f"Messages from {target_agent_name}:")
-                for msg in messages_from_agent:
-                    severity = msg.get("severity", "info").upper()
-                    content = msg.get("message", "")
-                    print(f"  [{severity}] {content}")
-                print()
+            # Verify completion
+            task_completed = self._verify_subprocess_completion(proc.returncode)
 
-            # Verify completion by checking exit code and state.json
-            task_completed = proc.returncode == 0
-
-            # Double-check with state.json
-            if proc.returncode == 0:
-                state_file = Path(".agent_context/state.json")
-                if state_file.exists():
-                    try:
-                        with open(state_file, encoding="utf-8") as f:
-                            state = json.load(f)
-                            # Verify all tasks completed
-                            if state.get("goal", {}).get("tasks"):
-                                all_completed = all(
-                                    t.get("status") == "completed"
-                                    for t in state["goal"]["tasks"]
-                                )
-                                if not all_completed:
-                                    task_completed = False
-                                    print(f"[delegation] Warning: Exit code 0 but not all tasks completed")
-                    except Exception as e:
-                        print(f"[delegation] Warning: Could not verify state.json: {e}")
-
-            if task_completed:
-                result_msg = f"{target_agent_name} completed task successfully"
-
-                # Include agent messages
-                if messages_from_agent:
-                    result_msg += f"\n\nMessages from {target_agent_name}:"
-                    for msg in messages_from_agent:
-                        result_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
-
-                return {
-                    "success": True,
-                    "message": result_msg,
-                    "agent": target_agent_name,
-                    "messages": messages_from_agent,
-                }
-            else:
-                error_msg = f"{target_agent_name} failed (exit code {proc.returncode})"
-
-                if messages_from_agent:
-                    error_msg += f"\n\nMessages from {target_agent_name}:"
-                    for msg in messages_from_agent:
-                        error_msg += f"\n  [{msg.get('severity', 'info')}] {msg.get('message', '')}"
-
-                return {
-                    "success": False,
-                    "message": error_msg,
-                    "agent": target_agent_name,
-                    "messages": messages_from_agent,
-                }
+            # Build and return result
+            return self._build_subprocess_result(
+                target_agent_name,
+                task_completed,
+                proc.returncode,
+                messages_from_agent
+            )
 
         except subprocess.TimeoutExpired:
             timeout_minutes = timeout / 60
@@ -554,6 +725,132 @@ class DelegationBehavior(AgentBehavior):
         except Exception:
             return None
 
+    def _import_agent_class(self, target_agent_name: str) -> tuple[Any, dict[str, Any] | None]:
+        """
+        Import agent class dynamically from agent relationships.
+
+        Args:
+            target_agent_name: Name of target agent
+
+        Returns:
+            Tuple of (agent_class, error_dict)
+            If successful, returns (class, None)
+            If failed, returns (None, error_dict)
+        """
+        # Get agent info from relationships
+        agent_info = self.agent_relationships.get(target_agent_name, {})
+        if not agent_info:
+            return None, {
+                "success": False,
+                "error": f"Unknown target agent: {target_agent_name}"
+            }
+
+        agent_class_name = agent_info.get("class")
+        if not agent_class_name:
+            return None, {
+                "success": False,
+                "error": f"No class defined for agent: {target_agent_name}"
+            }
+
+        # Import agent class dynamically
+        try:
+            # Derive module name from class name (no hardcoded mapping)
+            # Uses same logic as AgentRegistry._class_to_module()
+            module_name = self._class_name_to_file(agent_class_name).replace(".py", "")
+
+            # Import the class
+            import importlib
+            module = importlib.import_module(module_name)
+            agent_class = getattr(module, agent_class_name)
+
+            return agent_class, None
+
+        except Exception as e:
+            return None, {
+                "success": False,
+                "error": f"Failed to import {agent_class_name} from {module_name}: {e}"
+            }
+
+    def _list_files_in_workspace(self, workspace) -> list[str]:
+        """
+        List files created in a workspace directory.
+
+        Args:
+            workspace: Path object or None
+
+        Returns:
+            List of file names (excluding hidden files)
+        """
+        files_created = []
+        if workspace and workspace.exists():
+            try:
+                for item in workspace.iterdir():
+                    if item.is_file() and not item.name.startswith('.'):
+                        files_created.append(item.name)
+            except Exception:
+                pass
+        return files_created
+
+    def _build_direct_delegation_result(
+        self,
+        target_agent_name: str,
+        status: str,
+        success: bool,
+        summary: str,
+        workspace,
+        files_created: list[str],
+        goal_description: str
+    ) -> dict[str, Any]:
+        """
+        Build result dict for direct (in-process) delegation.
+
+        Args:
+            target_agent_name: Name of target agent
+            status: Execution status
+            success: Whether task succeeded
+            summary: Summary from subagent
+            workspace: Workspace path
+            files_created: List of created files
+            goal_description: Original goal/task
+
+        Returns:
+            Result dict with success, status, message, and metadata
+        """
+        if success:
+            message = f"""Task delegated to {target_agent_name} completed successfully.
+
+SUMMARY:
+{summary}
+
+WORKSPACE: {workspace}
+FILES CREATED: {', '.join(files_created) if files_created else 'none'}
+
+This delegation phase is complete. Review the summary and determine what to do next based on your overall goal."""
+        else:
+            message = f"""Task delegated to {target_agent_name} did not complete successfully (status: {status}).
+
+SUMMARY:
+{summary}
+
+WORKSPACE: {workspace}
+FILES CREATED: {', '.join(files_created) if files_created else 'none'}
+
+The delegated task did not complete. Consider:
+- Breaking down into simpler subtasks
+- Providing more specific requirements
+- Delegating again with adjusted parameters"""
+
+        return {
+            "success": success,
+            "status": status,
+            "message": message,
+            "target_agent": target_agent_name,
+            "goal": goal_description,
+            "workspace": str(workspace),
+            "files_created": files_created,
+            "summary": summary,
+        }
+
     def _delegate_to_agent(
         self,
         target_agent_name: str,
@@ -578,99 +875,37 @@ class DelegationBehavior(AgentBehavior):
             Delegation result dict
         """
         from pathlib import Path
+        import os
 
-        # Get agent info from relationships
-        agent_info = self.agent_relationships.get(target_agent_name, {})
-        if not agent_info:
-            return {
-                "success": False,
-                "error": f"Unknown target agent: {target_agent_name}"
-            }
+        # Import agent class
+        agent_class, error = self._import_agent_class(target_agent_name)
+        if error:
+            return error
 
-        agent_class_name = agent_info.get("class")
-        if not agent_class_name:
-            return {
-                "success": False,
-                "error": f"No class defined for agent: {target_agent_name}"
-            }
-
-        # Import agent class dynamically
-        try:
-            # Derive module name from class name (no hardcoded mapping)
-            # Uses same logic as AgentRegistry._class_to_module()
-            module_name = self._class_name_to_file(agent_class_name).replace(".py", "")
-
-            # Import the class
-            import importlib
-            module = importlib.import_module(module_name)
-            agent_class = getattr(module, agent_class_name)
-
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to import {agent_class_name} from {module_name}: {e}"
-            }
-
-        # Extract goal/task description from args
-        # Different tools use different parameter names
-        goal_description = None
-        for key in ["task_description", "project_description", "goal", "query"]:
-            if key in args:
-                goal_description = args[key]
-                break
-
+        # Extract goal description
+        goal_description = self._extract_goal_description(args)
         if not goal_description:
             return {
                 "success": False,
                 "error": f"No goal/task description found in args: {list(args.keys())}"
             }
 
-        # WORKSPACE COORDINATION
-        # Respect workspace_mode parameter if provided
-        workspace = None
-        workspace_mode = args.get("workspace_mode", None)
+        # Resolve workspace
+        workspace_path, log_msg = self._resolve_workspace_for_delegation(args, calling_agent)
+        print(log_msg)
 
-        # Priority order:
-        # 1. workspace_mode="new" → create isolated workspace (workspace=None)
-        # 2. workspace_mode="existing" + workspace_path → use explicit path
-        # 3. No workspace_mode but workspace_path provided → use explicit path
-        # 4. No workspace_mode, no workspace_path → reuse calling agent's workspace (backward compat)
+        # Convert to Path object if not None (for agent instantiation)
+        workspace = Path(workspace_path) if workspace_path is not None else None
 
-        if workspace_mode == "new":
-            # Create new isolated workspace - pass None so subagent creates its own
-            workspace = None
-            print(f"[delegation] workspace_mode='new': subagent will create isolated workspace")
-        elif workspace_mode == "existing":
-            # Use existing workspace - must have workspace_path
-            if "workspace_path" in args and args["workspace_path"]:
-                workspace = Path(args["workspace_path"])
-                print(f"[delegation] workspace_mode='existing': using workspace_path={workspace}")
-            else:
-                raise ValueError("workspace_mode='existing' requires workspace_path parameter")
-        elif "workspace_path" in args and args["workspace_path"]:
-            # Explicit workspace path without mode (backward compat)
-            workspace = Path(args["workspace_path"])
-            print(f"[delegation] Using explicit workspace_path: {workspace}")
-        elif hasattr(calling_agent, 'workspace') and calling_agent.workspace:
-            # No workspace_mode specified - reuse calling agent's workspace (backward compat)
-            workspace = calling_agent.workspace
-            print(f"[delegation] No workspace_mode: reusing calling agent's workspace: {workspace}")
-        else:
-            # No workspace context - let subagent create its own
-            workspace = None
-            print(f"[delegation] No workspace context: subagent will create isolated workspace")
-
-        # Instantiate target agent
+        # Instantiate and execute target agent
         try:
             print(f"\n[delegation] Delegating to {target_agent_name}: {goal_description[:60]}...")
 
             # Temporarily clear OLLAMA_MODEL env var so delegated agent uses its own config
-            # The calling agent's model choice shouldn't override the delegated agent's config
-            import os
             saved_model_override = os.environ.get("OLLAMA_MODEL")
             if saved_model_override:
                 del os.environ["OLLAMA_MODEL"]
-                print(f"[delegation] Cleared OLLAMA_MODEL override for delegated agent")
+                print("[delegation] Cleared OLLAMA_MODEL override for delegated agent")
 
             try:
                 target_agent = agent_class(
@@ -682,70 +917,32 @@ class DelegationBehavior(AgentBehavior):
                 if saved_model_override:
                     os.environ["OLLAMA_MODEL"] = saved_model_override
 
-            # EXECUTE THE AGENT SYNCHRONOUSLY
+            # Execute the agent synchronously
             print(f"[delegation] Executing {target_agent_name} with max_rounds=50...")
             execution_result = target_agent.run(max_rounds=50)
 
-            # Extract execution status and summary from subagent's completion signal
+            # Extract execution status and summary
             status = execution_result.get('status', 'unknown')
             success = (status == 'success')
-
-            # Get subagent workspace
-            subagent_workspace = target_agent.workspace if hasattr(target_agent, 'workspace') else None
-
-            # EXTRACT SUMMARY FROM SUBAGENT'S mark_complete/mark_failed CALL
-            # The agent.run() returns summary/reason from SubAgentModeBehavior completion
             summary = execution_result.get('summary') or execution_result.get('reason')
 
             if not summary:
-                # Fallback if no summary provided (shouldn't happen with SubAgentModeBehavior)
                 summary = f"Task execution {status}. No summary provided by subagent."
 
-            # LIST FILES CREATED BY SUBAGENT
-            files_created = []
-            if subagent_workspace and subagent_workspace.exists():
-                try:
-                    for item in subagent_workspace.iterdir():
-                        if item.is_file() and not item.name.startswith('.'):
-                            files_created.append(item.name)
-                except Exception:
-                    pass
+            # Get workspace and list files
+            subagent_workspace = target_agent.workspace if hasattr(target_agent, 'workspace') else None
+            files_created = self._list_files_in_workspace(subagent_workspace)
 
-            # BUILD CLEAR, ACTIONABLE RESULT MESSAGE
-            if success:
-                message = f"""Task delegated to {target_agent_name} completed successfully.
-
-SUMMARY:
-{summary}
-
-WORKSPACE: {subagent_workspace}
-FILES CREATED: {', '.join(files_created) if files_created else 'none'}
-
-This delegation phase is complete. Review the summary and determine what to do next based on your overall goal."""
-            else:
-                message = f"""Task delegated to {target_agent_name} did not complete successfully (status: {status}).
-
-SUMMARY:
-{summary}
-
-WORKSPACE: {subagent_workspace}
-FILES CREATED: {', '.join(files_created) if files_created else 'none'}
-
-The delegated task did not complete. Consider:
-- Breaking down into simpler subtasks
-- Providing more specific requirements
-- Delegating again with adjusted parameters"""
-
-            result = {
-                "success": success,
-                "status": status,
-                "message": message,  # Clear, actionable summary for LLM
-                "target_agent": target_agent_name,
-                "goal": goal_description,
-                "workspace": str(subagent_workspace),
-                "files_created": files_created,
-                "summary": summary,
-            }
+            # Build result
+            result = self._build_direct_delegation_result(
+                target_agent_name,
+                status,
+                success,
+                summary,
+                subagent_workspace,
+                files_created,
+                goal_description
+            )
 
             # Track delegation
             self.track_delegation(target_agent_name, goal_description, result)

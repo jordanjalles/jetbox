@@ -94,7 +94,7 @@ def main():
         servers = manager.list_servers()
 
         if servers["count"] > 0:
-            print(f"\n✅ SUCCESS! Server was started:")
+            print("\n✅ SUCCESS! Server was started:")
             for srv in servers["servers"]:
                 print(f"   Server ID: {srv['server_id']}")
                 print(f"   PID: {srv['pid']}")
@@ -110,11 +110,11 @@ def main():
                 result = sock.connect_ex(('localhost', 9988))
                 sock.close()
                 if result == 0:
-                    print(f"\n   ✅ Server is accepting connections on port 9988!")
+                    print("\n   ✅ Server is accepting connections on port 9988!")
                 else:
-                    print(f"\n   ⚠ Server running but not accessible on port 9988")
+                    print("\n   ⚠ Server running but not accessible on port 9988")
             except Exception:
-                print(f"\n   ⚠ Could not test connection")
+                print("\n   ⚠ Could not test connection")
 
         else:
             print("\n⚠ No servers started (agent may have timed out)")
@@ -122,7 +122,7 @@ def main():
 
             req_file = context_dir / "server_requests.jsonl"
             if req_file.exists():
-                print(f"\n   ✓ Server requests were made:")
+                print("\n   ✓ Server requests were made:")
                 with open(req_file, 'r') as f:
                     for line in f:
                         print(f"     {line.strip()}")

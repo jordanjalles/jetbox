@@ -40,7 +40,7 @@ def test_task_executor_behaviors():
 
         print(f"✓ TaskExecutor has _behaviors: {len(agent._behaviors)} behaviors loaded")
         print(f"✓ TaskExecutor has behaviors: {len(agent.behaviors)} behaviors loaded")
-        print(f"✓ _behaviors and behaviors point to same list")
+        print("✓ _behaviors and behaviors point to same list")
 
         # Verify behavior loading works
         behavior_names = [b.get_name() for b in agent._behaviors]

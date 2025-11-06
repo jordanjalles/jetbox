@@ -21,7 +21,7 @@ def test_simple_task():
 
     goal = "Create hello.py with a function greet(name) that returns 'Hello, {name}!'"
     print(f"\nGoal: {goal}")
-    print(f"Expected: Agent should complete in < 10 rounds and call mark_subtask_complete\n")
+    print("Expected: Agent should complete in < 10 rounds and call mark_subtask_complete\n")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         workspace = Path(tmpdir)

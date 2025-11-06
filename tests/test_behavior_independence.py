@@ -9,11 +9,9 @@ This module tests that behaviors:
 5. Have no cross-behavior dependencies
 """
 
-import pytest
 import inspect
 import ast
 from pathlib import Path
-from typing import get_type_hints
 
 # Import all behaviors
 from behaviors import (
@@ -104,7 +102,7 @@ class TestDependencyInspection:
                         if module_name in behavior_imports:
                             violations.append(f"{behavior_file} imports from {node.module}")
 
-        assert len(violations) == 0, f"Cross-behavior imports found:\n" + "\n".join(violations)
+        assert len(violations) == 0, "Cross-behavior imports found:\n" + "\n".join(violations)
 
     def test_no_hardcoded_behavior_references(self):
         """Behaviors don't have hardcoded references to other behavior names."""
@@ -520,6 +518,6 @@ def test_behavior_independence_summary():
         assert callable(behavior.on_goal_complete)
 
     print(f"\n✓ Independence verified for {len(behaviors)} behaviors")
-    print(f"✓ All behaviors extend AgentBehavior")
-    print(f"✓ All behaviors have unique names")
-    print(f"✓ All behaviors implement required interface")
+    print("✓ All behaviors extend AgentBehavior")
+    print("✓ All behaviors have unique names")
+    print("✓ All behaviors implement required interface")

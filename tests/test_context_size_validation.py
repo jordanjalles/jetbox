@@ -167,11 +167,11 @@ def test_hierarchical_context_isolation():
     success = large_bounded and small_bounded
 
     if success:
-        print(f"✓ PASS - Context bounded regardless of history size")
+        print("✓ PASS - Context bounded regardless of history size")
         print(f"  Large history context: {large_history_size} (≤{max_expected})")
         print(f"  Small history context: {small_history_size} (≤{max_expected})")
     else:
-        print(f"✗ FAIL - Context not properly bounded")
+        print("✗ FAIL - Context not properly bounded")
         if not large_bounded:
             print(f"  Large history: {large_history_size} > {max_expected}")
         if not small_bounded:
@@ -235,13 +235,13 @@ def test_orchestrator_compaction():
     success = compaction_happened and under_limit
 
     if success:
-        print(f"✓ PASS - Compaction working")
+        print("✓ PASS - Compaction working")
         print(f"  Original: {len(messages)} messages")
         print(f"  Compacted: {total_messages} messages")
         print(f"  Tokens: {estimated_tokens}/{max_tokens} ({estimated_tokens/max_tokens*100:.1f}%)")
     else:
         if not compaction_happened:
-            print(f"✗ FAIL - Compaction not triggered")
+            print("✗ FAIL - Compaction not triggered")
         if not under_limit:
             print(f"✗ FAIL - Exceeded token limit: {estimated_tokens}/{max_tokens}")
 
@@ -292,9 +292,9 @@ def test_orchestrator_no_compaction_when_small():
     print(f"Estimated tokens: {estimated_tokens} (under 80% threshold)")
 
     if success:
-        print(f"✓ PASS - No unnecessary compaction")
+        print("✓ PASS - No unnecessary compaction")
     else:
-        print(f"✗ FAIL - Compaction triggered unnecessarily")
+        print("✗ FAIL - Compaction triggered unnecessarily")
 
     return {
         "test": "orchestrator_no_compaction",

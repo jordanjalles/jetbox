@@ -14,7 +14,7 @@ complex use‑cases.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Protocol, Any
+from typing import Dict, List, Protocol, Any
 
 
 class Observer(Protocol):

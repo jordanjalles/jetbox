@@ -283,7 +283,7 @@ class AgentBehavior(ABC):
 
     # Event handlers
 
-    def on_goal_start(self, goal: str, **kwargs: Any) -> None:
+    def onGoalStart(self, goal: str, **kwargs: Any) -> None:
         """
         Called when goal starts.
 
@@ -302,7 +302,7 @@ class AgentBehavior(ABC):
 
         Example:
             ```python
-            def on_goal_start(self, goal, **kwargs):
+            def onGoalStart(self, goal, **kwargs):
                 self.start_time = time.time()
                 self.action_count = 0
                 print(f"Starting goal: {goal}")
@@ -347,7 +347,7 @@ class AgentBehavior(ABC):
         """
         pass
 
-    def on_round_end(self, round_number: int, **kwargs: Any) -> None:
+    def onRoundEnd(self, round_number: int, **kwargs: Any) -> None:
         """
         Called at end of each round.
 
@@ -366,7 +366,7 @@ class AgentBehavior(ABC):
 
         Example:
             ```python
-            def on_round_end(self, round_number, **kwargs):
+            def onRoundEnd(self, round_number, **kwargs):
                 if round_number % 5 == 0:
                     print(f"Round {round_number}: {self.action_count} actions")
                 self.persist_state()
@@ -400,7 +400,7 @@ class AgentBehavior(ABC):
         """
         pass
 
-    def on_goal_complete(self, success: bool, **kwargs: Any) -> None:
+    def onGoalComplete(self, success: bool, **kwargs: Any) -> None:
         """
         Called when goal completes.
 
@@ -420,7 +420,7 @@ class AgentBehavior(ABC):
 
         Example:
             ```python
-            def on_goal_complete(self, success, **kwargs):
+            def onGoalComplete(self, success, **kwargs):
                 status = "SUCCESS" if success else "FAILED"
                 print(f"Goal {status}: {self.action_count} actions in {elapsed}s")
                 self.generate_summary(success)

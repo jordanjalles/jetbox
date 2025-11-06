@@ -5,7 +5,7 @@ a subtask mid-round would cause the next subtask to inherit the previous
 subtask's round count.
 """
 
-from context_manager import ContextManager, Subtask, Task
+from context_manager import Subtask
 
 
 def test_rounds_reset_between_subtasks():

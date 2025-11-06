@@ -204,10 +204,10 @@ class AgentRegistry:
                     "agent": to_agent,
                 }
 
-        # Trigger on_goal_set event (all agents support this via SubAgentModeBehavior)
+        # Trigger onGoalSet event (all agents support this as core functionality)
         # This is generic - works for any agent type
         target.trigger_behavior_event(
-            "on_goal_set",
+            "onGoalSet",
             goal=task_description,
             workspace=workspace_path,
         )

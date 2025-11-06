@@ -9,7 +9,6 @@ Strategies:
 """
 
 import gzip
-import json
 import shutil
 from pathlib import Path
 from typing import Any

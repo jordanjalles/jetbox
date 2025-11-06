@@ -162,7 +162,7 @@ class ArchitectAgent(BaseAgent):
             self.context_strategy = context_strategy or AppendUntilFullStrategy(max_tokens=131072)
             print(f"[architect] Using legacy strategy mode: {self.context_strategy.get_name()}")
         else:
-            print(f"[architect] Using behavior system")
+            print("[architect] Using behavior system")
 
         # Initialize context manager
         self.context_manager = ContextManager()
@@ -216,11 +216,11 @@ class ArchitectAgent(BaseAgent):
                 task_management_tools.set_workspace(self.workspace_manager)
                 task_enhancement = TaskManagementEnhancement(workspace_manager=self.workspace_manager)
                 self.enhancements.append(task_enhancement)
-                print(f"[architect] Added task management enhancement (existing task breakdown found)")
+                print("[architect] Added task management enhancement (existing task breakdown found)")
             else:
                 # No task breakdown yet - will add enhancement after creating it
                 self.workspace_manager = None
-                print(f"[architect] No task breakdown yet (will add enhancement after creation)")
+                print("[architect] No task breakdown yet (will add enhancement after creation)")
 
     def dispatch_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
         """

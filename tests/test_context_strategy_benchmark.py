@@ -208,9 +208,9 @@ def run_benchmark():
             # Winner analysis
             if hierarchical.get('success') and append.get('success'):
                 if hierarchical['rounds'] < append['rounds']:
-                    print(f"  🏆 Hierarchical completed in fewer rounds")
+                    print("  🏆 Hierarchical completed in fewer rounds")
                 elif append['rounds'] < hierarchical['rounds']:
-                    print(f"  🏆 Append completed in fewer rounds")
+                    print("  🏆 Append completed in fewer rounds")
 
                 if hierarchical['final_context_tokens'] < append['final_context_tokens']:
                     print(f"  💾 Hierarchical uses less context ({hierarchical['final_context_tokens']} vs {append['final_context_tokens']})")

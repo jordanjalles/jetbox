@@ -24,8 +24,6 @@ from typing import List, Dict, Any
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
 from task_executor_agent import TaskExecutorAgent
-from orchestrator_agent import OrchestratorAgent
-from architect_agent import ArchitectAgent
 
 
 @dataclass
@@ -337,7 +335,7 @@ class ComprehensiveEvaluator:
         print(f"{'='*80}")
         print(f"Results: {successful}/{total_tests} passed ({report['summary']['success_rate']*100:.1f}%)")
         print(f"Duration: {total_duration:.1f}s")
-        print(f"Reports written to:")
+        print("Reports written to:")
         print(f"  - {json_path}")
         print(f"  - {text_path}")
 
@@ -452,12 +450,12 @@ class ComprehensiveEvaluator:
                     f.write(f"  - {warning}\n")
 
             if test['inefficiencies']:
-                f.write(f"- **Inefficiencies**:\n")
+                f.write("- **Inefficiencies**:\n")
                 for ineff in test['inefficiencies']:
                     f.write(f"  - {ineff}\n")
 
             if test['suggestions']:
-                f.write(f"- **Suggestions**:\n")
+                f.write("- **Suggestions**:\n")
                 for sugg in test['suggestions']:
                     f.write(f"  - {sugg}\n")
 

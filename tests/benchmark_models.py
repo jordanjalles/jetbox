@@ -3,7 +3,6 @@
 
 import json
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime
@@ -170,7 +169,7 @@ def main():
         json.dump(summary_gptoss, f, indent=2)
 
     print(f"\n{'='*80}")
-    print(f"gpt-oss:20b RESULTS")
+    print("gpt-oss:20b RESULTS")
     print(f"{'='*80}")
     print(f"Pass Rate: {summary_gptoss['pass_rate']:.1f}%")
     print(f"Avg Duration: {summary_gptoss['avg_duration']:.1f}s")
@@ -185,7 +184,7 @@ def main():
         json.dump(summary_qwen3, f, indent=2)
 
     print(f"\n{'='*80}")
-    print(f"qwen3:14b RESULTS")
+    print("qwen3:14b RESULTS")
     print(f"{'='*80}")
     print(f"Pass Rate: {summary_qwen3['pass_rate']:.1f}%")
     print(f"Avg Duration: {summary_qwen3['avg_duration']:.1f}s")
@@ -206,7 +205,7 @@ def main():
         json.dump(comparison, f, indent=2)
 
     print(f"\n{'='*80}")
-    print(f"Results saved to:")
+    print("Results saved to:")
     print(f"  - benchmark_gptoss_{timestamp}.json")
     print(f"  - benchmark_qwen3_{timestamp}.json")
     print(f"  - benchmark_comparison_{timestamp}.json")

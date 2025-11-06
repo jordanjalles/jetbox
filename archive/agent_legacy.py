@@ -8,7 +8,6 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
-from threading import Thread
 
 from ollama import Client
 from ollama._types import ResponseError
@@ -82,7 +81,6 @@ def send_message_to_orchestrator(message: str, severity: str = "info") -> None:
         message: Message content
         severity: "info", "warning", or "error"
     """
-    import time
     from datetime import datetime
 
     msg_file = Path(".agent_context/messages_to_orchestrator.jsonl")
@@ -603,7 +601,7 @@ def agent_decide_escalation(
     if config.escalation.strategy == "agent_decides":
         if not can_decompose:
             # No choice - must zoom out
-            log(f"[escalation] At max depth/width, forced zoom out")
+            log("[escalation] At max depth/width, forced zoom out")
             return "zoom_out"
 
         # Build escalation prompt (NO GIVE-UP OPTION)
@@ -730,12 +728,12 @@ def generate_failure_report(goal: str, ctx: ContextManager, reason: str) -> str:
     Path("reports").mkdir(exist_ok=True)
 
     lines = []
-    lines.append(f"# Agent Failure Report")
-    lines.append(f"")
+    lines.append("# Agent Failure Report")
+    lines.append("")
     lines.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append(f"**Goal:** {goal}")
     lines.append(f"**Failure Reason:** {reason}")
-    lines.append(f"")
+    lines.append("")
 
     if not ctx.state.goal:
         lines.append("No goal state available.")
@@ -744,12 +742,12 @@ def generate_failure_report(goal: str, ctx: ContextManager, reason: str) -> str:
 
     # Overall summary
     lines.append("## Summary")
-    lines.append(f"")
+    lines.append("")
     total_tasks = len(ctx.state.goal.tasks)
     completed_tasks = sum(1 for t in ctx.state.goal.tasks if t.status == "completed")
     lines.append(f"- **Tasks Completed:** {completed_tasks}/{total_tasks}")
     lines.append(f"- **Current Task Index:** {ctx.state.current_task_idx}")
-    lines.append(f"")
+    lines.append("")
 
     # Task breakdown
     lines.append("## Task Breakdown")
@@ -760,27 +758,27 @@ def generate_failure_report(goal: str, ctx: ContextManager, reason: str) -> str:
         marker = "**[CURRENT]**" if is_current else ""
 
         lines.append(f"### Task {i+1}: {task.description} {marker}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"- **Status:** {task.status}")
         if hasattr(task, 'approach_attempts') and task.approach_attempts > 0:
             lines.append(f"- **Approach Attempts:** {task.approach_attempts}")
         if hasattr(task, 'failed_approaches') and task.failed_approaches:
-            lines.append(f"- **Failed Approaches:**")
+            lines.append("- **Failed Approaches:**")
             for fa in task.failed_approaches:
                 lines.append(f"  - {fa}")
-        lines.append(f"")
+        lines.append("")
 
         # Subtask breakdown
         if task.subtasks:
             total_subtasks = len(task.subtasks)
             completed_subtasks = sum(1 for st in task.subtasks if st.status == "completed")
             lines.append(f"**Subtasks:** {completed_subtasks}/{total_subtasks} completed")
-            lines.append(f"")
+            lines.append("")
 
             for j, subtask in enumerate(task.subtasks):
                 _write_subtask_report(lines, subtask, indent=0)
 
-        lines.append(f"")
+        lines.append("")
 
     # Blockers and issues
     lines.append("## Identified Blockers")
@@ -802,7 +800,7 @@ def generate_failure_report(goal: str, ctx: ContextManager, reason: str) -> str:
     else:
         lines.append("No specific blockers identified.")
 
-    lines.append(f"")
+    lines.append("")
 
     # Progress achieved
     lines.append("## Progress Achieved")
@@ -820,7 +818,7 @@ def generate_failure_report(goal: str, ctx: ContextManager, reason: str) -> str:
     else:
         lines.append("No measurable progress recorded.")
 
-    lines.append(f"")
+    lines.append("")
 
     # Recommendations
     lines.append("## Recommendations")
@@ -946,7 +944,7 @@ def reconsider_approach_at_root(task: Any, ctx: ContextManager) -> bool:
     print(f"\n{'='*70}")
     print(f"🔄 RECONSIDERING APPROACH (Attempt {task.approach_attempts}/{config.escalation.max_approach_retries})")
     print(f"Task: {task.description}")
-    print(f"\nPrevious failed approaches:")
+    print("\nPrevious failed approaches:")
     for i, summary in enumerate(task.failed_approaches, 1):
         print(f"  {i}. {summary}")
     print(f"{'='*70}\n")
@@ -1566,12 +1564,12 @@ def main() -> None:
     if workspace_path:
         # Edit mode: work in specified existing directory
         _workspace = WorkspaceManager(goal, workspace_path=workspace_path)
-        log(f"Mode: EDIT (working in existing directory)")
+        log("Mode: EDIT (working in existing directory)")
         log(f"Workspace: {_workspace.workspace_dir}")
     else:
         # Isolate mode: create isolated directory for this goal
         _workspace = WorkspaceManager(goal)
-        log(f"Mode: ISOLATE (isolated workspace)")
+        log("Mode: ISOLATE (isolated workspace)")
         log(f"Workspace: {_workspace.workspace_dir}")
 
     # Configure tools module with workspace and ledger
@@ -1726,7 +1724,7 @@ def main() -> None:
 
                         if zoom_target == "root":
                             # Zoom all the way to root and reconsider approach
-                            log(f"[zoom] Zooming to root to reconsider approach")
+                            log("[zoom] Zooming to root to reconsider approach")
                             retry_success = reconsider_approach_at_root(current_task, _ctx)
 
                             if retry_success:
@@ -1894,9 +1892,9 @@ def main() -> None:
             log(f"ROUND {round_no}: {str(e)}")
 
             print(f"\n{'='*70}")
-            print(f"❌ OLLAMA TIMEOUT")
+            print("❌ OLLAMA TIMEOUT")
             print(f"Ollama stopped responding after {llm_duration:.1f}s")
-            print(f"This usually means Ollama has hung or crashed.")
+            print("This usually means Ollama has hung or crashed.")
             print(f"{'='*70}\n")
 
             # Generate failure report and exit
@@ -1973,7 +1971,7 @@ def main() -> None:
 
                     # Check if force_escalate flag is set
                     if isinstance(tool_result, dict) and tool_result.get("force_escalate"):
-                        log(f"Force escalation triggered for blocked action")
+                        log("Force escalation triggered for blocked action")
                         # Trigger escalation immediately
                         current_task = _ctx._get_current_task()
                         if current_task:

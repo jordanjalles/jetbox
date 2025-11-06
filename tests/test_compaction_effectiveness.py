@@ -161,14 +161,14 @@ def main():
             print(f"  Reduction: {result['reduction_tokens']:,} tokens ({result['reduction_percent']:.1f}%)")
 
             if result['triggered_emergency']:
-                print(f"  🚨 Emergency mode triggered (>100% capacity)")
+                print("  🚨 Emergency mode triggered (>100% capacity)")
 
             if result['after_percent'] > 100:
-                print(f"  ⚠️  STILL OVER LIMIT after compaction!")
+                print("  ⚠️  STILL OVER LIMIT after compaction!")
             elif result['after_percent'] > 75:
-                print(f"  ⚠️  Still near limit after compaction")
+                print("  ⚠️  Still near limit after compaction")
             else:
-                print(f"  ✓ Successfully reduced to safe level")
+                print("  ✓ Successfully reduced to safe level")
 
         except Exception as e:
             print(f"  ❌ Error: {e}")

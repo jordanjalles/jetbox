@@ -43,7 +43,7 @@ def main():
     for behavior in architect._behaviors:
         if behavior.get_name() == "loop_detection":
             print(f"Actions tracked: {len(behavior.action_history)}")
-            print(f"Last 5 actions:")
+            print("Last 5 actions:")
             for action in behavior.action_history[-5:]:
                 print(f"  - {action['tool_name']}: success={action['success']}")
             print(f"Consecutive empty rounds: {behavior.consecutive_empty_rounds}")

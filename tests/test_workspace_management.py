@@ -1,6 +1,5 @@
 """Test WorkspaceManagementBehavior functionality."""
 import tempfile
-import shutil
 from pathlib import Path
 from behaviors.workspace_management import WorkspaceManagementBehavior
 
@@ -41,7 +40,7 @@ def test_workspace_management_behavior():
         assert result["success"] is True
         assert result["count"] == 1
         assert result["workspaces"][0]["name"] == "test-workspace-2"
-        print(f"✓ Search for 'workspace-2' found 1 match")
+        print("✓ Search for 'workspace-2' found 1 match")
 
         # Test 3: get_workspace_info
         print("\nTest 3: get_workspace_info")
@@ -60,14 +59,14 @@ def test_workspace_management_behavior():
         assert result["success"] is True
         assert result["workspace"]["notes"] is not None
         assert "Task 1 completed" in result["workspace"]["notes"]
-        print(f"✓ Notes loaded successfully")
+        print("✓ Notes loaded successfully")
 
         # Test 5: Nonexistent workspace
         print("\nTest 5: Nonexistent workspace")
         result = behavior._get_workspace_info("nonexistent")
         assert result["success"] is False
         assert "not found" in result["error"]
-        print(f"✓ Nonexistent workspace returns error")
+        print("✓ Nonexistent workspace returns error")
 
         # Test 6: Empty workspaces directory
         print("\nTest 6: Empty workspaces directory")
@@ -77,7 +76,7 @@ def test_workspace_management_behavior():
         result = empty_behavior._list_workspaces()
         assert result["success"] is True
         assert len(result["workspaces"]) == 0
-        print(f"✓ Empty directory returns empty list")
+        print("✓ Empty directory returns empty list")
 
     print("\n✅ All workspace management tests passed!")
 

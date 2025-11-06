@@ -14,7 +14,6 @@ import shutil
 
 from task_executor_agent import TaskExecutorAgent
 from context_strategies import JetboxNotesEnhancement, AppendUntilFullStrategy
-import jetbox_notes
 
 
 @pytest.fixture

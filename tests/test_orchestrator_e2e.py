@@ -16,9 +16,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from orchestrator_agent import OrchestratorAgent
 from task_executor_agent import TaskExecutorAgent
-from agent_config import config
 
 
 def test_simple_delegation():
@@ -48,7 +46,7 @@ def test_simple_delegation():
             print(f"  Content: {hello_py.read_text()}")
             success = True
         else:
-            print(f"✗ File not created")
+            print("✗ File not created")
 
         return {"test": "simple_delegation", "success": success, "result": result}
 
@@ -82,7 +80,7 @@ def test_workspace_iteration():
             notes_content = notes_file.read_text()
             print(f"  Notes preview: {notes_content[:200]}...")
         else:
-            print(f"✗ Jetbox notes not found")
+            print("✗ Jetbox notes not found")
             return {"test": "workspace_iteration", "success": False}
 
         # Phase 2: Iterate on same workspace
@@ -104,7 +102,7 @@ def test_workspace_iteration():
             has_add = "def add" in content
             has_multiply = "def multiply" in content
 
-            print(f"✓ calculator.py exists")
+            print("✓ calculator.py exists")
             print(f"  {'✓' if has_add else '✗'} Has add function")
             print(f"  {'✓' if has_multiply else '✗'} Has multiply function")
 
@@ -115,7 +113,7 @@ def test_workspace_iteration():
 
             success = has_add and has_multiply and notes_updated
         else:
-            print(f"✗ calculator.py not found")
+            print("✗ calculator.py not found")
             success = False
 
         return {

@@ -88,9 +88,9 @@ def run_task(task_def, workspace):
 
                 if validation_result.returncode == 0:
                     validation_passed = True
-                    print(f"  ✓ Validation passed")
+                    print("  ✓ Validation passed")
                 else:
-                    print(f"  ✗ Validation failed")
+                    print("  ✗ Validation failed")
                     if validation_result.stderr:
                         print(f"    Error: {validation_result.stderr[:200]}")
             except Exception as e:

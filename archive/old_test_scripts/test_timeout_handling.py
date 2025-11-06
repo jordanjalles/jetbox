@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test goal wall-clock timeout handling."""
 
-import time
 from pathlib import Path
 from task_executor_agent import TaskExecutorAgent
 

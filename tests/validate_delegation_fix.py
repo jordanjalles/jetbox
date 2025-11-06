@@ -54,7 +54,7 @@ def test_delegation_no_error():
                 break
 
         if delegation_behavior:
-            print(f"✅ Orchestrator has DelegationBehavior")
+            print("✅ Orchestrator has DelegationBehavior")
 
             # Test the delegation directly
             print("\n[5/5] Testing delegation tool directly...")
@@ -76,7 +76,7 @@ def test_delegation_no_error():
 
             except TypeError as e:
                 if "use_behaviors" in str(e):
-                    print(f"❌ FAILED: use_behaviors TypeError still present!")
+                    print("❌ FAILED: use_behaviors TypeError still present!")
                     print(f"   Error: {e}")
                     return False
                 else:

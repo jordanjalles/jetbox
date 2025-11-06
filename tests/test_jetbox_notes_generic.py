@@ -71,9 +71,9 @@ def test_timeout_summary_with_action_history():
     # Call create_timeout_summary with action_history (NO hierarchical context)
     print("\nCalling create_timeout_summary with:")
     print(f"  - goal: {goal.description}")
-    print(f"  - elapsed_seconds: 120.5")
+    print("  - elapsed_seconds: 120.5")
     print(f"  - action_history: {len(action_history)} actions")
-    print(f"  - NO task tree, NO subtasks, NO hierarchical context")
+    print("  - NO task tree, NO subtasks, NO hierarchical context")
 
     jetbox_notes.create_timeout_summary(
         goal=goal,
@@ -120,8 +120,8 @@ def test_timeout_summary_without_action_history():
     # Call create_timeout_summary with NO action_history
     print("\nCalling create_timeout_summary with:")
     print(f"  - goal: {goal.description}")
-    print(f"  - elapsed_seconds: 60.0")
-    print(f"  - action_history: None (fallback mode)")
+    print("  - elapsed_seconds: 60.0")
+    print("  - action_history: None (fallback mode)")
 
     jetbox_notes.create_timeout_summary(
         goal=goal,
@@ -207,7 +207,7 @@ def test_backward_compatibility_with_hierarchical():
     # Call with BOTH hierarchical goal AND action_history
     print("\nCalling create_timeout_summary with:")
     print(f"  - goal: {goal.description} (hierarchical Goal object)")
-    print(f"  - elapsed_seconds: 180.0")
+    print("  - elapsed_seconds: 180.0")
     print(f"  - action_history: {len(action_history)} actions")
     print(f"  - Hierarchical structure: {len(goal.tasks)} tasks, {sum(len(t.subtasks) for t in goal.tasks)} subtasks")
 

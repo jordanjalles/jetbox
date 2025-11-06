@@ -16,7 +16,6 @@ Expected outcome:
 - Task breakdown properly managed
 - Workspace notes generated with LLM summaries
 """
-import os
 import sys
 from pathlib import Path
 import json
@@ -156,7 +155,7 @@ def main():
     print("3. Workspace Notes:")
     notes = check_workspace_notes(workspace_dir)
     if notes["exists"]:
-        print(f"   - File exists: True")
+        print("   - File exists: True")
         print(f"   - Content length: {notes['length']} chars")
         print(f"   - Has sections: {notes['has_sections']}")
         print(f"   - Has bullets: {notes['has_bullets']}")
@@ -165,7 +164,7 @@ def main():
         notes_file = workspace_dir / "workspace_task_notes.md"
         with open(notes_file) as f:
             preview = f.read(500)
-        print(f"\n   Preview:")
+        print("\n   Preview:")
         for line in preview.split('\n')[:10]:
             print(f"   | {line}")
     else:

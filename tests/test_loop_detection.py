@@ -23,7 +23,7 @@ def test_loop_detection():
         else:
             print("  No loop detected yet")
 
-    print(f"\n✅ Loop detection test complete")
+    print("\n✅ Loop detection test complete")
     print(f"Action history length: {len(strategy.action_history)}")
     print(f"Loop warnings: {strategy.loop_warnings}")
 

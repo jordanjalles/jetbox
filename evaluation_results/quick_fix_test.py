@@ -29,8 +29,8 @@ try:
 
     # Check behaviors were loaded
     behavior_count = len(agent._behaviors)
-    print(f"✓ TaskExecutor created successfully")
-    print(f"  - _behaviors attribute: OK")
+    print("✓ TaskExecutor created successfully")
+    print("  - _behaviors attribute: OK")
     print(f"  - Behaviors loaded: {behavior_count}")
     print(f"  - Behavior names: {[b.get_name() for b in agent._behaviors]}")
 
@@ -50,8 +50,8 @@ try:
     assert isinstance(agent._behaviors, list), "_behaviors should be a list"
 
     behavior_count = len(agent._behaviors)
-    print(f"✓ Orchestrator created successfully")
-    print(f"  - _behaviors attribute: OK")
+    print("✓ Orchestrator created successfully")
+    print("  - _behaviors attribute: OK")
     print(f"  - Behaviors loaded: {behavior_count}")
     print(f"  - Workspace: {agent.workspace}")
 
@@ -72,7 +72,7 @@ try:
 
     assert hasattr(agent, '_behaviors'), "Missing _behaviors attribute"
 
-    print(f"✓ Orchestrator (with workspace) created successfully")
+    print("✓ Orchestrator (with workspace) created successfully")
     print(f"  - Workspace: {agent.workspace}")
 
 except Exception as e:
@@ -90,8 +90,8 @@ try:
     assert hasattr(agent, '_behaviors'), "Missing _behaviors attribute"
 
     behavior_count = len(agent._behaviors)
-    print(f"✓ Architect created successfully")
-    print(f"  - _behaviors attribute: OK")
+    print("✓ Architect created successfully")
+    print("  - _behaviors attribute: OK")
     print(f"  - Behaviors loaded: {behavior_count}")
     print(f"  - Workspace: {agent.workspace}")
 
@@ -112,7 +112,7 @@ try:
 
     assert hasattr(agent, '_behaviors'), "Missing _behaviors attribute"
 
-    print(f"✓ Architect (with workspace) created successfully")
+    print("✓ Architect (with workspace) created successfully")
     print(f"  - Workspace: {agent.workspace}")
 
 except Exception as e:

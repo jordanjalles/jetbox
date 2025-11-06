@@ -38,7 +38,7 @@ def test_server_lifecycle():
         print(f"   Result: {status}")
         assert status.get("success"), f"Failed to check server: {status}"
         assert status["status"] == "running", f"Server not running: {status}"
-        print(f"   ✓ Server is running")
+        print("   ✓ Server is running")
 
         # Test 3: List servers
         print("\n3. Listing servers...")
@@ -71,7 +71,7 @@ def test_server_lifecycle():
         time.sleep(0.5)
         servers_after = manager.list_servers()
         assert servers_after["count"] == 0, f"Expected 0 servers, got {servers_after['count']}"
-        print(f"   ✓ Server list is empty")
+        print("   ✓ Server list is empty")
 
         print("\n✓ All tests passed!")
 

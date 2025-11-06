@@ -134,7 +134,7 @@ class CompactWhenNearFullBehavior(AgentBehavior):
 
                 # HARD LIMIT: If still over max_tokens, aggressively drop messages
                 if new_tokens > self.max_tokens:
-                    print(f"[compact_when_near_full] ⚠️  STILL OVER LIMIT after compaction - dropping oldest messages")
+                    print("[compact_when_near_full] ⚠️  STILL OVER LIMIT after compaction - dropping oldest messages")
                     # Keep system + goal + last 5 messages only
                     system_and_goal = context_base[:messages_start_idx]
                     recent_msgs = context_base[-5:] if len(context_base) > 5 else context_base[messages_start_idx:]

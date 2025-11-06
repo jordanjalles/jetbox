@@ -3,11 +3,8 @@ Integration test for Orchestrator → Architect → TaskExecutor workflow.
 
 This test verifies that the workspace nesting fix works in the full delegation chain.
 """
-import pytest
 from pathlib import Path
 import tempfile
-import shutil
-from workspace_manager import WorkspaceManager
 from architect_agent import ArchitectAgent
 from task_executor_agent import TaskExecutorAgent
 
@@ -80,7 +77,7 @@ None
 - Python 3.11+
 """)
 
-        print(f"[INTEGRATION] Architect created:")
+        print("[INTEGRATION] Architect created:")
         print(f"  - {api_client_spec.relative_to(workspace_base)}")
         print(f"  - {auth_handler_spec.relative_to(workspace_base)}")
 

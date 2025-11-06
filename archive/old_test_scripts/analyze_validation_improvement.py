@@ -25,7 +25,7 @@ print("-" * 70)
 
 validators_needed = [
     "calculator",
-    "file_processor", 
+    "file_processor",
     "todo_list",
     "stack",
     "lru_cache"
@@ -37,16 +37,16 @@ needs_validation = []
 for task_name in sorted(tasks_by_name.keys()):
     hier = tasks_by_name[task_name]["hierarchical"]
     append = tasks_by_name[task_name]["append_until_full"]
-    
+
     validator = task_name.split("_", 1)[1]  # L3_calculator -> calculator
-    
+
     hier_passed = hier.get("validation_passed", 0)
     hier_failed = hier.get("validation_failed", 0)
     append_passed = append.get("validation_passed", 0) if append else 0
     append_failed = append.get("validation_failed", 0) if append else 0
-    
+
     total_checks = hier_passed + hier_failed + append_passed + append_failed
-    
+
     if total_checks > 0:
         has_validation.append(task_name)
         print(f"✓ {task_name:20s} - Has validation ({total_checks} checks)")
@@ -63,7 +63,7 @@ print("="*70)
 print(f"\nTasks with validation: {len(has_validation)}/10")
 print(f"Tasks needing validation: {len(needs_validation)}/10")
 
-print(f"\nValidators added in fix:")
+print("\nValidators added in fix:")
 for v in validators_needed:
     task = f"L?_{v}"
     status = "✓" if any(v in t for t in needs_validation) else "⚠️"
@@ -78,5 +78,5 @@ print(f"\nTasks that will get validation: {fixed_count}/{len(needs_validation)}"
 print(f"Overall validation coverage: {len(has_validation)}/10 → {len(has_validation) + fixed_count}/10")
 print(f"Improvement: {(len(has_validation) + fixed_count)/10*100:.0f}% (from {len(has_validation)/10*100:.0f}%)")
 
-print(f"\nNOTE: To see actual validation results, need to re-run evaluation")
+print("\nNOTE: To see actual validation results, need to re-run evaluation")
 print("with fixed validators, or manually validate workspaces if they still exist.")

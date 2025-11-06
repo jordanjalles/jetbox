@@ -9,8 +9,6 @@ Run with: PYTHONPATH=. python tests/test_architect_orchestrator_e2e.py
 """
 from pathlib import Path
 import tempfile
-import shutil
-import json
 
 from agent_registry import AgentRegistry
 from orchestrator_main import execute_orchestrator_tool
@@ -58,7 +56,7 @@ def test_architect_integration_basic():
         artifacts = result["artifacts"]
         workspace_path = Path(result["workspace"])
 
-        print(f"\n✅ Consultation successful!")
+        print("\n✅ Consultation successful!")
         print(f"Workspace: {workspace_path}")
         print(f"Artifacts: {artifacts}")
 

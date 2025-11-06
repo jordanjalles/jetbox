@@ -6,7 +6,6 @@ import os
 import subprocess
 import time
 from datetime import datetime
-from pathlib import Path
 
 # L3-L7 tasks
 TASKS = [
@@ -141,7 +140,7 @@ def run_task(task: dict, model: str, iteration: int) -> dict:
 
     except subprocess.TimeoutExpired:
         duration = time.time() - start_time
-        print(f"  Status: ✗ TIMEOUT")
+        print("  Status: ✗ TIMEOUT")
         print(f"  Duration: {duration:.1f}s")
 
         return {

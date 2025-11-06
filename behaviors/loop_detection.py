@@ -129,7 +129,7 @@ class LoopDetectionBehavior(AgentBehavior):
             if warning not in self.loop_warnings:
                 self.loop_warnings.append(warning)
 
-    def on_round_end(self, round_number: int, **kwargs: Any) -> None:
+    def onRoundEnd(self, round_number: int, **kwargs: Any) -> None:
         """
         Called at end of each round to detect empty rounds.
 
@@ -164,8 +164,8 @@ class LoopDetectionBehavior(AgentBehavior):
             if self.consecutive_empty_rounds >= self.auto_fail_empty_rounds:
                 print(f"[loop_detection] ❌ AUTO-FAIL: {self.consecutive_empty_rounds} consecutive "
                       f"empty rounds exceeded threshold ({self.auto_fail_empty_rounds})")
-                print(f"[loop_detection] Recovery prompts were injected but LLM did not respond with tool calls.")
-                print(f"[loop_detection] Agent is stuck - forcing failure to prevent infinite loop.")
+                print("[loop_detection] Recovery prompts were injected but LLM did not respond with tool calls.")
+                print("[loop_detection] Agent is stuck - forcing failure to prevent infinite loop.")
 
                 # Force agent to fail by raising an exception
                 # This will be caught by the agent's run loop and trigger mark_failed
@@ -180,6 +180,173 @@ class LoopDetectionBehavior(AgentBehavior):
 
         # Update last count for next round
         self.last_round_action_count = current_action_count
+
+    def _build_delegation_nudge(self, agent: Any) -> list[str]:
+        """
+        Build delegation nudge message for stuck delegating agents.
+
+        Args:
+            agent: Agent instance
+
+        Returns:
+            List of message lines
+        """
+        delegation_nudge = [
+            "🚨 NOTICE: You have not called any tools for 2 consecutive rounds.",
+            "",
+            "You are a delegating agent. Your job is to DELEGATE work to specialized agents.",
+            "",
+            "AVAILABLE DELEGATION OPTIONS:",
+        ]
+
+        # Get delegation tool specs from agent tools
+        if agent:
+            tools = agent.get_tools()
+            for tool in tools:
+                if isinstance(tool, dict) and 'function' in tool:
+                    tool_name = tool['function'].get('name', '')
+                    if tool_name in self.delegation_tool_names:
+                        tool_desc = tool['function'].get('description', '')
+                        delegation_nudge.append(f"  • {tool_name}: {tool_desc}")
+
+        delegation_nudge.extend([
+            "",
+            "ACTION REQUIRED:",
+            "Call the appropriate delegation tool to assign work to a specialized agent.",
+            "",
+            "DO NOT try to implement the task yourself - delegate to the appropriate agent NOW."
+        ])
+
+        return delegation_nudge
+
+    def _detect_goal(self, agent: Any, context_manager: Any) -> tuple[str, bool]:
+        """
+        Try multiple sources to detect agent's goal and execution mode.
+
+        Args:
+            agent: Agent instance
+            context_manager: Context manager instance
+
+        Returns:
+            Tuple of (goal_description, has_goal)
+        """
+        goal_desc = None
+        has_goal = False
+
+        # Source 1: context_manager
+        if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
+            goal_desc = context_manager.state.goal.description
+            has_goal = True
+
+        # Source 2: Core goal tracking (all agents)
+        if not goal_desc and agent and hasattr(agent, 'goal') and agent.goal:
+            goal_desc = agent.goal
+            has_goal = True
+
+        # Fallback
+        if not goal_desc:
+            goal_desc = "your assigned goal (check earlier messages)"
+
+        return goal_desc, has_goal
+
+    def _get_agent_tools_info(self, agent: Any) -> tuple[list[str], list[str], str]:
+        """
+        Extract tool information from agent.
+
+        Args:
+            agent: Agent instance
+
+        Returns:
+            Tuple of (tool_names, completion_tools, tools_list_str)
+        """
+        tool_names = []
+        completion_tools = []
+
+        if agent:
+            tools = agent.get_tools()
+            for tool in tools:
+                if isinstance(tool, dict) and 'function' in tool:
+                    tool_name = tool['function'].get('name', 'unknown')
+                    tool_names.append(tool_name)
+
+                    # Track completion tools
+                    if tool_name in ['mark_complete', 'mark_failed', 'mark_goal_complete']:
+                        completion_tools.append(tool_name)
+
+        tools_list = ", ".join(tool_names) if tool_names else "(none available)"
+        return tool_names, completion_tools, tools_list
+
+    def _build_empty_round_recovery(
+        self,
+        consecutive_empty_rounds: int,
+        goal_desc: str,
+        tools_list: str,
+        completion_tools: list[str]
+    ) -> list[str]:
+        """
+        Build recovery prompt for empty rounds.
+
+        Args:
+            consecutive_empty_rounds: Number of consecutive empty rounds
+            goal_desc: Goal description
+            tools_list: Comma-separated tool names
+            completion_tools: List of completion tool names
+
+        Returns:
+            List of message lines
+        """
+        urgency_level = "CRITICAL" if consecutive_empty_rounds >= 10 else "WARNING"
+        recovery = [
+            f"🚨 {urgency_level}: {consecutive_empty_rounds} consecutive empty rounds - NO TOOLS CALLED!",
+            "",
+            "GOAL:",
+            f"  {goal_desc}",
+            "",
+            "YOUR TOOLS:",
+            f"  {tools_list}",
+            "",
+            "ACTION REQUIRED NOW:",
+        ]
+
+        # Emphasize completion tools if available
+        if completion_tools:
+            recovery.append(f"  • If work is DONE: call {' or '.join(completion_tools)}")
+            recovery.append("  • If work is BLOCKED: call mark_failed(reason=\"...\")")
+            recovery.append("  • If work CONTINUES: call the next tool needed")
+        else:
+            recovery.append("  • Call the appropriate tool to continue")
+
+        recovery.extend([
+            "",
+            "YOU CANNOT PROCEED WITHOUT CALLING A TOOL.",
+            "Look at the tool list above and call one NOW."
+        ])
+
+        return recovery
+
+    def _build_loop_warnings(self) -> list[str] | None:
+        """
+        Build loop detection warning message.
+
+        Returns:
+            List of message lines, or None if no warnings
+        """
+        if not self.loop_warnings:
+            return None
+
+        warnings_text = ["⚠️  LOOP DETECTION WARNING:"]
+        warnings_text.append("You appear to be repeating actions:")
+        for warning in self.loop_warnings[-3:]:  # Last 3 warnings
+            warnings_text.append(f"  • {warning}")
+        warnings_text.append("")
+        warnings_text.append("Consider trying a COMPLETELY DIFFERENT approach:")
+        warnings_text.append("  1. Read error messages more carefully")
+        warnings_text.append("  2. Check if assumptions are wrong")
+        warnings_text.append("  3. Try a fundamentally different strategy")
+        warnings_text.append("  4. If core task is complete, call mark_complete() even if tests fail")
+        warnings_text.append("  5. If truly blocked, call mark_failed() with detailed reason")
+
+        return warnings_text
 
     def enhance_context(
         self,
@@ -197,12 +364,9 @@ class LoopDetectionBehavior(AgentBehavior):
             Modified context with warnings/recovery prompts (if any)
         """
         warnings_to_inject = []
-
-        # Get agent for delegation checks (if delegation_tool_names is configured)
         agent = kwargs.get('agent')
 
-        # DELEGATION NUDGE: If agent has delegation tools configured and is stuck, nudge with delegation options
-        # This is used for orchestrator-type agents that should delegate rather than implement
+        # DELEGATION NUDGE: For orchestrator-type agents that should delegate rather than implement
         if self.delegation_tool_names and self.consecutive_empty_rounds >= 2 and not self.recovery_prompt_injected:
             # Check if any delegation tool has been called
             delegation_called = any(
@@ -212,68 +376,16 @@ class LoopDetectionBehavior(AgentBehavior):
 
             if not delegation_called:
                 # Agent is stuck before delegating - inject delegation nudge
-                delegation_nudge = [
-                    "🚨 NOTICE: You have not called any tools for 2 consecutive rounds.",
-                    "",
-                    "You are a delegating agent. Your job is to DELEGATE work to specialized agents.",
-                    "",
-                    "AVAILABLE DELEGATION OPTIONS:",
-                ]
-
-                # Get delegation tool specs from agent tools
-                if agent:
-                    tools = agent.get_tools()
-                    for tool in tools:
-                        if isinstance(tool, dict) and 'function' in tool:
-                            tool_name = tool['function'].get('name', '')
-                            if tool_name in self.delegation_tool_names:
-                                tool_desc = tool['function'].get('description', '')
-                                delegation_nudge.append(f"  • {tool_name}: {tool_desc}")
-
-                delegation_nudge.extend([
-                    "",
-                    "ACTION REQUIRED:",
-                    "Call the appropriate delegation tool to assign work to a specialized agent.",
-                    "",
-                    "DO NOT try to implement the task yourself - delegate to the appropriate agent NOW."
-                ])
-
+                delegation_nudge = self._build_delegation_nudge(agent)
                 warnings_to_inject.append("\n".join(delegation_nudge))
                 self.recovery_prompt_injected = True
 
-        # Check for empty rounds - highest priority intervention (general agents)
-        # Re-inject every 5 rounds if empty rounds continue
+        # EMPTY ROUND RECOVERY: For general agents
         else:
-            # Determine if agent is in execute mode (has a goal) vs chatbot mode (no goal)
-            agent = kwargs.get('agent')
             context_manager = kwargs.get('context_manager')
 
-            # Try multiple sources for goal to detect execute mode
-            goal_desc = None
-            has_goal = False
-
-            # Source 1: context_manager
-            if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
-                goal_desc = context_manager.state.goal.description
-                has_goal = True
-
-            # Source 2: SubAgentModeBehavior (for delegated agents)
-            if not goal_desc and agent and hasattr(agent, '_behaviors'):
-                for behavior in agent._behaviors:
-                    if behavior.get_name() in ['subagent_mode', 'subagent_context']:
-                        if hasattr(behavior, 'goal') and behavior.goal:
-                            goal_desc = behavior.goal
-                            has_goal = True
-                            break
-
-            # Source 3: Agent has goal attribute directly
-            if not goal_desc and agent and hasattr(agent, 'goal') and agent.goal:
-                goal_desc = agent.goal
-                has_goal = True
-
-            # Fallback
-            if not goal_desc:
-                goal_desc = "your assigned goal (check earlier messages)"
+            # Detect goal and execution mode
+            goal_desc, has_goal = self._detect_goal(agent, context_manager)
 
             # CRITICAL: In execute mode (has_goal=True), inject after 1 empty round
             # In chatbot mode (has_goal=False), inject after max_empty_rounds (default 3)
@@ -286,70 +398,25 @@ class LoopDetectionBehavior(AgentBehavior):
                 )
 
                 if should_inject:
-                    # Get available tools (short names only for clarity)
-                    tool_names = []
-                    completion_tools = []
-                    if agent:
-                        tools = agent.get_tools()
-                        for tool in tools:
-                            if isinstance(tool, dict) and 'function' in tool:
-                                tool_name = tool['function'].get('name', 'unknown')
-                                tool_names.append(tool_name)
+                    # Get tool information
+                    tool_names, completion_tools, tools_list = self._get_agent_tools_info(agent)
 
-                                # Track completion tools
-                                if tool_name in ['mark_complete', 'mark_failed', 'mark_goal_complete']:
-                                    completion_tools.append(tool_name)
-
-                    tools_list = ", ".join(tool_names) if tool_names else "(none available)"
-
-                    # Build recovery prompt - aggressive and concise
-                    urgency_level = "CRITICAL" if self.consecutive_empty_rounds >= 10 else "WARNING"
-                    recovery = [
-                        f"🚨 {urgency_level}: {self.consecutive_empty_rounds} consecutive empty rounds - NO TOOLS CALLED!",
-                        "",
-                        "GOAL:",
-                        f"  {goal_desc}",
-                        "",
-                        "YOUR TOOLS:",
-                        f"  {tools_list}",
-                        "",
-                        "ACTION REQUIRED NOW:",
-                    ]
-
-                    # Emphasize completion tools if available
-                    if completion_tools:
-                        recovery.append(f"  • If work is DONE: call {' or '.join(completion_tools)}")
-                        recovery.append(f"  • If work is BLOCKED: call mark_failed(reason=\"...\")")
-                        recovery.append(f"  • If work CONTINUES: call the next tool needed")
-                    else:
-                        recovery.append("  • Call the appropriate tool to continue")
-
-                    recovery.extend([
-                        "",
-                        "YOU CANNOT PROCEED WITHOUT CALLING A TOOL.",
-                        "Look at the tool list above and call one NOW."
-                    ])
+                    # Build recovery prompt
+                    recovery = self._build_empty_round_recovery(
+                        self.consecutive_empty_rounds,
+                        goal_desc,
+                        tools_list,
+                        completion_tools
+                    )
 
                     warnings_to_inject.append("\n".join(recovery))
                     self.recovery_prompt_injected = True
                     print(f"[loop_detection] Injecting empty round recovery (round {self.consecutive_empty_rounds})")
 
-            # Check for action loops (existing logic)
-            if self.loop_warnings:
-                # Build warning message
-                warnings_text = ["⚠️  LOOP DETECTION WARNING:"]
-                warnings_text.append("You appear to be repeating actions:")
-                for warning in self.loop_warnings[-3:]:  # Last 3 warnings
-                    warnings_text.append(f"  • {warning}")
-                warnings_text.append("")
-                warnings_text.append("Consider trying a COMPLETELY DIFFERENT approach:")
-                warnings_text.append("  1. Read error messages more carefully")
-                warnings_text.append("  2. Check if assumptions are wrong")
-                warnings_text.append("  3. Try a fundamentally different strategy")
-                warnings_text.append("  4. If core task is complete, call mark_complete() even if tests fail")
-                warnings_text.append("  5. If truly blocked, call mark_failed() with detailed reason")
-
-                warnings_to_inject.append("\n".join(warnings_text))
+            # Check for action loops
+            loop_warnings = self._build_loop_warnings()
+            if loop_warnings:
+                warnings_to_inject.append("\n".join(loop_warnings))
 
         # Inject warnings if any
         if warnings_to_inject:

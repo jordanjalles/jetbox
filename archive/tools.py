@@ -23,7 +23,6 @@ Migration example:
 """
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -383,7 +382,7 @@ def mark_complete(summary: str = "", context_manager=None) -> dict[str, Any]:
     _ledger_append("DELEGATED_TASK", f"completed: {summary}")
 
     print(f"\n{'='*70}")
-    print(f"✓ DELEGATED TASK COMPLETE")
+    print("✓ DELEGATED TASK COMPLETE")
     print(f"{'='*70}")
     print(f"Summary: {summary}")
     print(f"{'='*70}\n")
@@ -414,7 +413,7 @@ def mark_failed(reason: str = "", context_manager=None) -> dict[str, Any]:
     _ledger_append("DELEGATED_TASK", f"failed: {reason}")
 
     print(f"\n{'='*70}")
-    print(f"✗ DELEGATED TASK FAILED")
+    print("✗ DELEGATED TASK FAILED")
     print(f"{'='*70}")
     print(f"Reason: {reason}")
     print(f"{'='*70}\n")
@@ -491,7 +490,7 @@ def decompose_task(subtasks: list[str], context_manager=None) -> dict[str, Any]:
 
         _ledger_append("DECOMPOSE", f"Created task with {len(subtasks)} subtasks")
         print(f"\n{'='*70}")
-        print(f"🔀 TASK DECOMPOSED")
+        print("🔀 TASK DECOMPOSED")
         print(f"Created 1 task with {len(subtasks)} subtasks:")
         for i, desc in enumerate(subtasks, 1):
             print(f"  {i}. {desc}")
@@ -521,7 +520,7 @@ def decompose_task(subtasks: list[str], context_manager=None) -> dict[str, Any]:
         context_manager._save_state()
         _ledger_append("DECOMPOSE", f"Added {len(subtasks)} subtasks to current task")
         print(f"\n{'='*70}")
-        print(f"🔀 SUBTASKS ADDED")
+        print("🔀 SUBTASKS ADDED")
         print(f"Added {len(subtasks)} subtasks to current task")
         print(f"{'='*70}\n")
 

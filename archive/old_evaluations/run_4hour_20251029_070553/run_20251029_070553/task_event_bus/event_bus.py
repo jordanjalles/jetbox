@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 # Type alias for event handlers.  They can be sync or async callables.
 EventHandler = Callable[[Any], Awaitable[None] | None]
@@ -62,7 +62,7 @@ class Subscription:
             return True
         try:
             return bool(self.filter(payload))
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception:  # pragma: no cover - defensive
             # If filter raises, we treat it as non-match.
             return False
 

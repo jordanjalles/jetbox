@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
@@ -199,7 +198,7 @@ def train_jepa(
         device: Device to use
         save_every: Save checkpoint every N epochs
     """
-    print(f"🚀 Training JEPA text encoder")
+    print("🚀 Training JEPA text encoder")
     print(f"Data: {data_file}")
     print(f"Latent dim: {latent_dim}")
     print(f"Batch size: {batch_size}")
@@ -237,7 +236,7 @@ def train_jepa(
         num_workers=0,
     )
 
-    print(f"\n📊 Dataset:")
+    print("\n📊 Dataset:")
     print(f"  Total samples: {len(dataset)}")
     print(f"  Train: {len(train_dataset)}")
     print(f"  Val: {len(val_dataset)}")
@@ -253,7 +252,7 @@ def train_jepa(
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    print(f"\n🔧 Model:")
+    print("\n🔧 Model:")
     print(f"  Total parameters: {total_params:,}")
     print(f"  Trainable parameters: {trainable_params:,}")
 
@@ -265,7 +264,7 @@ def train_jepa(
     best_val_loss = float("inf")
     training_history = []
 
-    print(f"\n🏃 Training...")
+    print("\n🏃 Training...")
 
     for epoch in range(1, num_epochs + 1):
         # Train
@@ -337,7 +336,7 @@ def train_jepa(
         final_checkpoint,
     )
 
-    print(f"\n✅ Training complete!")
+    print("\n✅ Training complete!")
     print(f"Best val loss: {best_val_loss:.4f}")
     print(f"Final checkpoint: {final_checkpoint}")
 

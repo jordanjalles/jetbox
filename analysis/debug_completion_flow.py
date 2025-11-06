@@ -145,7 +145,7 @@ def run_debug_task():
             # Show tool calls
             tool_calls = msg.get('tool_calls', [])
             if tool_calls:
-                print(f"  Tool calls:")
+                print("  Tool calls:")
                 for tc in tool_calls:
                     tool_name = tc['function']['name']
                     args = tc['function'].get('arguments', {})
@@ -162,7 +162,7 @@ def run_debug_task():
 
                 analysis = analyze_llm_response(msg.get("content", ""), tool_calls, subtask_desc)
 
-                print(f"\nCOMPLETION ANALYSIS:")
+                print("\nCOMPLETION ANALYSIS:")
                 print(f"  Has completion signal: {analysis['has_completion_signal']}")
                 print(f"  Should nudge: {analysis['should_nudge']}")
                 print(f"  Reason: {analysis['reason']}")
@@ -186,7 +186,7 @@ def run_debug_task():
                         result_with_nudge = result.copy() if isinstance(result, dict) else {"result": result}
                         result_with_nudge["_nudge"] = analysis["nudge_message"]
                         result = result_with_nudge
-                        print(f"\n  ⚠️ NUDGE ADDED TO TOOL RESULT")
+                        print("\n  ⚠️ NUDGE ADDED TO TOOL RESULT")
 
                     # Add tool result to messages
                     tool_result_str = json.dumps(result)
@@ -214,11 +214,11 @@ def run_debug_task():
             # Check if test.py was created
             test_file = agent.workspace_manager.workspace_dir / "test.py"
             if test_file.exists():
-                print(f"\n✓ test.py exists")
+                print("\n✓ test.py exists")
                 with open(test_file) as f:
                     content = f.read()
                     if 'def add' in content:
-                        print(f"✓ add() function found")
+                        print("✓ add() function found")
 
         # Final trace
         trace_messages(agent)

@@ -29,7 +29,7 @@ def test_config_loads():
     # Find the file tool behaviors
     behavior_types = [b["type"] for b in behaviors]
 
-    print(f"✓ Config loaded successfully")
+    print("✓ Config loaded successfully")
     print(f"✓ Found {len(behavior_types)} behaviors")
     print(f"  Behavior types: {', '.join(behavior_types)}")
 
@@ -38,18 +38,18 @@ def test_config_loads():
     assert "ReadFileToolsBehavior" in behavior_types, "Should have ReadFileToolsBehavior"
     assert "WriteFileToolsBehavior" in behavior_types, "Should have WriteFileToolsBehavior"
 
-    print(f"✓ All three split behaviors found in config")
+    print("✓ All three split behaviors found in config")
 
     # Verify old FileToolsBehavior is not present
     assert "FileToolsBehavior" not in behavior_types, "Old FileToolsBehavior should not be in config"
-    print(f"✓ Old FileToolsBehavior not present (correctly removed)")
+    print("✓ Old FileToolsBehavior not present (correctly removed)")
 
     # Test instantiation
     dir_behavior = DirectoryToolsBehavior()
     read_behavior = ReadFileToolsBehavior()
     write_behavior = WriteFileToolsBehavior()
 
-    print(f"✓ All behaviors instantiate successfully")
+    print("✓ All behaviors instantiate successfully")
 
     # Check tools
     dir_tools = dir_behavior.get_tools()
@@ -60,7 +60,7 @@ def test_config_loads():
     assert len(read_tools) == 1 and read_tools[0]["function"]["name"] == "read_file"
     assert len(write_tools) == 1 and write_tools[0]["function"]["name"] == "write_file"
 
-    print(f"✓ All tools defined correctly")
+    print("✓ All tools defined correctly")
     print("\n✅ Configuration loads successfully with split behaviors!")
 
 if __name__ == "__main__":

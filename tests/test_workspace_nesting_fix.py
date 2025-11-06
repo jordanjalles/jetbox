@@ -4,12 +4,9 @@ Test for workspace nesting fix.
 This test verifies that when Orchestrator delegates to Architect and then to TaskExecutor,
 the workspace is reused correctly without creating nested workspaces.
 """
-import pytest
 from pathlib import Path
-import shutil
 import tempfile
 from task_executor_agent import TaskExecutorAgent
-from architect_agent import ArchitectAgent
 from workspace_manager import WorkspaceManager
 
 

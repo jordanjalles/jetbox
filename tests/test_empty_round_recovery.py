@@ -29,7 +29,7 @@ def test_empty_round_recovery():
         goal="Design architecture for a full-stack Flask application with user authentication, posts, and comments using SQLite"
     )
 
-    print(f"Created architect with complex architecture goal")
+    print("Created architect with complex architecture goal")
     print(f"Workspace: {workspace}")
     print()
 

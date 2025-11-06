@@ -162,7 +162,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'='*70}")
-    print(f"L5-L7 x5 EVALUATION")
+    print("L5-L7 x5 EVALUATION")
     print(f"Output directory: {output_dir}")
     print(f"Started: {datetime.now().isoformat()}")
     print(f"{'='*70}")
@@ -195,7 +195,7 @@ def main():
     generate_report(results, total_elapsed, report_file)
 
     print(f"\n{'='*70}")
-    print(f"EVALUATION COMPLETE")
+    print("EVALUATION COMPLETE")
     print(f"Total time: {total_elapsed:.1f}s ({total_elapsed/60:.1f}m)")
     print(f"Results: {results_file}")
     print(f"Report: {report_file}")

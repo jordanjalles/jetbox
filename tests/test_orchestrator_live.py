@@ -6,7 +6,6 @@ from pathlib import Path
 from agent_registry import AgentRegistry
 from agent_config import config
 from orchestrator_main import execute_orchestrator_tool
-import time
 
 
 def test_live_orchestrator():

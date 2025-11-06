@@ -17,7 +17,6 @@ from pathlib import Path
 
 from ollama import chat
 
-
 # Question templates for different reasoning types
 QUESTION_TEMPLATES = {
     "arithmetic": [
@@ -306,7 +305,7 @@ def generate_dataset(
     consistent_count = sum(1 for s in dataset if s.get("is_consistent", True))
     inconsistent_count = len(dataset) - consistent_count
 
-    print(f"\nStatistics:")
+    print("\nStatistics:")
     print(f"  Consistent: {consistent_count}")
     print(f"  Inconsistent: {inconsistent_count}")
     print(f"  Inconsistent %: {inconsistent_count / len(dataset) * 100:.1f}%")
@@ -317,7 +316,7 @@ def generate_dataset(
         cat = sample["category"]
         category_counts[cat] = category_counts.get(cat, 0) + 1
 
-    print(f"\nCategory breakdown:")
+    print("\nCategory breakdown:")
     for cat, count in sorted(category_counts.items()):
         print(f"  {cat}: {count}")
 

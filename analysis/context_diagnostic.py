@@ -110,7 +110,7 @@ def analyze_context_log() -> None:
             entries.append(json.loads(line))
 
     print(f"\n{'='*70}")
-    print(f"CONTEXT LEAKAGE ANALYSIS")
+    print("CONTEXT LEAKAGE ANALYSIS")
     print(f"{'='*70}\n")
 
     # Track subtask transitions
@@ -131,7 +131,7 @@ def analyze_context_log() -> None:
             if msg_history > 0:
                 print(f"  ⚠️  LEAK DETECTED: Message history should be 0 after transition, but is {msg_history}")
             else:
-                print(f"  ✓ Clean transition: Message history correctly cleared")
+                print("  ✓ Clean transition: Message history correctly cleared")
             print()
 
         last_subtask = subtask

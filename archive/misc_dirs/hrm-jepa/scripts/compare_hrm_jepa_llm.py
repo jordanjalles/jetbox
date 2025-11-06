@@ -68,7 +68,7 @@ def run_comparison(
         model: Ollama model to use
         system_prompt: Optional system prompt
     """
-    print(f"🚀 Starting HRM-JEPA-LLM vs Baseline comparison")
+    print("🚀 Starting HRM-JEPA-LLM vs Baseline comparison")
     print(f"Model: {model}")
     print(f"Output: {output_dir}")
     print("-" * 60)
@@ -164,7 +164,7 @@ def run_comparison(
             r["baseline_llm"]["duration_ms"] for r in successful
         ) / len(successful)
 
-        print(f"\nAverage Duration:")
+        print("\nAverage Duration:")
         print(f"  HRM-JEPA-LLM: {avg_hrm_duration:.1f}ms")
         print(f"  Baseline:     {avg_baseline_duration:.1f}ms")
         print(f"  Overhead:     {avg_hrm_duration - avg_baseline_duration:.1f}ms")
@@ -183,7 +183,7 @@ def run_comparison(
     # HRM status
     if successful:
         hrm_status = successful[0]["hrm_status"]
-        print(f"\nHRM Status:")
+        print("\nHRM Status:")
         print(f"  Working Memory Steps: {hrm_status['working_memory']['task_steps']}")
         print(
             f"  Abstract Core Updates: {hrm_status['abstract_core']['update_count']}"

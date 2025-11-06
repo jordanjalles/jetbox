@@ -155,9 +155,8 @@ system_prompt: |
 
 behaviors:
   # Execution Mode
-  # NOTE: SubAgentModeBehavior is auto-added (architect is in orchestrator's can_delegate_to)
-  # This makes the agent delegatable via CLI or tool calls
-  # NOTE: ChatbotBehavior provides interactive chat mode when no goal provided
+  # NOTE: All agents now have core goal/completion functionality built into BaseAgent
+  # ChatbotBehavior provides interactive chat mode when no goal provided
   - type: ChatbotBehavior
 
   # Context Management

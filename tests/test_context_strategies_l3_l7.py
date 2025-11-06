@@ -325,13 +325,13 @@ def print_summary(results):
                 }
 
         print(f"\n{strategy.upper()}")
-        print(f"  Overall:")
+        print("  Overall:")
         print(f"    Full success: {full_success}/{total_tasks} ({full_success/total_tasks*100:.1f}%)")
         print(f"    Avg score:    {avg_score:.3f}")
         print(f"    Avg time:     {avg_time:.1f}s")
         print(f"    Avg rounds:   {avg_rounds:.1f}")
 
-        print(f"  By level:")
+        print("  By level:")
         for level, stats in sorted(by_level.items()):
             print(f"    L{level}: {stats['success']}/{stats['count']} success, {stats['avg_score']:.3f} avg score")
 

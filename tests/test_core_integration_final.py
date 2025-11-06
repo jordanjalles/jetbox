@@ -9,10 +9,6 @@ Tests that all refactors work correctly:
 5. Global behavior defaults
 """
 import pytest
-from pathlib import Path
-import tempfile
-import yaml
-from base_agent import BaseAgent
 from task_executor_agent import TaskExecutorAgent
 from orchestrator_agent import OrchestratorAgent
 from architect_agent import ArchitectAgent

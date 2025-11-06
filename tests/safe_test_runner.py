@@ -90,7 +90,7 @@ def safe_run_test_suite(script_path: str, description: str):
 
         print("-"*70)
         if process.returncode == 0:
-            print(f"\n✓ Test completed successfully")
+            print("\n✓ Test completed successfully")
         else:
             print(f"\n⚠️  Test completed with exit code {process.returncode}")
 

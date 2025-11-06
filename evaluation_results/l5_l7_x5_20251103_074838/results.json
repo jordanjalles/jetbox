@@ -1,0 +1,156 @@
+{
+  "timestamp": "20251103_074838",
+  "total_elapsed": 4072.1702094078064,
+  "results": [
+    {
+      "test_id": "L5_run1",
+      "level": "L5",
+      "run": 1,
+      "goal": "Create a Flask REST API with CRUD endpoints for a User model (fields: id, name, email). Use in-memory storage. Include POST /users, GET /users, GET /users/<id>, PUT /users/<id>, DELETE /users/<id>. Write pytest tests for all endpoints.",
+      "status": "FAILED",
+      "elapsed": 181.18913865089417,
+      "returncode": 1,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L5_run1.log"
+    },
+    {
+      "test_id": "L5_run2",
+      "level": "L5",
+      "run": 2,
+      "goal": "Build a simple blog API with Post model (id, title, content, author). Use Flask and in-memory list storage. Include CRUD endpoints and pytest tests.",
+      "status": "FAILED",
+      "elapsed": 175.01187539100647,
+      "returncode": 1,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L5_run2.log"
+    },
+    {
+      "test_id": "L5_run3",
+      "level": "L5",
+      "run": 3,
+      "goal": "Create a Flask API for a Todo list with Todo model (id, text, completed). Use in-memory storage. Include CRUD operations and unit tests with pytest.",
+      "status": "FAILED",
+      "elapsed": 247.86053156852722,
+      "returncode": 1,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L5_run3.log"
+    },
+    {
+      "test_id": "L5_run4",
+      "level": "L5",
+      "run": 4,
+      "goal": "Build a Flask REST API for a Product catalog (id, name, price, description). Use in-memory list. Include all CRUD endpoints and comprehensive pytest tests.",
+      "status": "FAILED",
+      "elapsed": 135.2069525718689,
+      "returncode": 1,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L5_run4.log"
+    },
+    {
+      "test_id": "L5_run5",
+      "level": "L5",
+      "run": 5,
+      "goal": "Create a Flask API for managing Books (id, title, author, year). Use in-memory storage. Include CRUD endpoints, error handling, and pytest tests.",
+      "status": "TIMEOUT",
+      "elapsed": 299.99695444107056,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L5_run5.log"
+    },
+    {
+      "test_id": "L6_run1",
+      "level": "L6",
+      "run": 1,
+      "goal": "Build a Flask blog API with User and Post models. Include user registration/login with JWT tokens, post CRUD operations, and SQLite database. Write pytest tests for auth and posts.",
+      "status": "TIMEOUT",
+      "elapsed": 299.99823093414307,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L6_run1.log"
+    },
+    {
+      "test_id": "L6_run2",
+      "level": "L6",
+      "run": 2,
+      "goal": "Create a Flask e-commerce API with Product and Order models. Include JWT authentication, product catalog, order management, SQLite storage, and unit tests.",
+      "status": "TIMEOUT",
+      "elapsed": 299.9997909069061,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L6_run2.log"
+    },
+    {
+      "test_id": "L6_run3",
+      "level": "L6",
+      "run": 3,
+      "goal": "Build a Flask forum API with User, Thread, and Reply models. Include authentication with JWT, thread/reply CRUD, SQLite database, and comprehensive tests.",
+      "status": "TIMEOUT",
+      "elapsed": 299.9987094402313,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L6_run3.log"
+    },
+    {
+      "test_id": "L6_run4",
+      "level": "L6",
+      "run": 4,
+      "goal": "Create a Flask library API with User and Book models. Include JWT auth, book checkout/return, due dates, SQLite storage, and pytest tests.",
+      "status": "TIMEOUT",
+      "elapsed": 300.00095677375793,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L6_run4.log"
+    },
+    {
+      "test_id": "L6_run5",
+      "level": "L6",
+      "run": 5,
+      "goal": "Build a Flask ticket system with User and Ticket models. Include JWT authentication, ticket creation/assignment, status tracking, SQLite, and tests.",
+      "status": "TIMEOUT",
+      "elapsed": 299.99763584136963,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L6_run5.log"
+    },
+    {
+      "test_id": "L7_run1",
+      "level": "L7",
+      "run": 1,
+      "goal": "Build a task management system with: 1) User authentication (register/login), 2) Projects with multiple tasks, 3) Task assignment to users, 4) Status tracking (todo/in-progress/done), 5) SQLite database, 6) Flask REST API, 7) Unit tests for all endpoints. Make it production-ready.",
+      "status": "TIMEOUT",
+      "elapsed": 302.213978767395,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L7_run1.log"
+    },
+    {
+      "test_id": "L7_run2",
+      "level": "L7",
+      "run": 2,
+      "goal": "Create a blogging platform with: 1) User authentication (JWT), 2) Posts with rich content, 3) Comments and replies, 4) Like/upvote system, 5) Categories and tags, 6) SQLite database, 7) Flask REST API, 8) Comprehensive unit tests. Make it production-ready.",
+      "status": "TIMEOUT",
+      "elapsed": 299.9974195957184,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L7_run2.log"
+    },
+    {
+      "test_id": "L7_run3",
+      "level": "L7",
+      "run": 3,
+      "goal": "Build an inventory management system with: 1) User authentication, 2) Products with categories, 3) Stock tracking and updates, 4) Order management, 5) Supplier management, 6) SQLite database, 7) Flask REST API, 8) Complete test suite. Production-ready.",
+      "status": "TIMEOUT",
+      "elapsed": 299.9999198913574,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L7_run3.log"
+    },
+    {
+      "test_id": "L7_run4",
+      "level": "L7",
+      "run": 4,
+      "goal": "Create a customer support system with: 1) User authentication (agents and customers), 2) Ticket creation and assignment, 3) Comments and status updates, 4) Priority levels, 5) Department routing, 6) SQLite database, 7) Flask REST API, 8) Full unit tests. Production-ready.",
+      "status": "TIMEOUT",
+      "elapsed": 299.9992904663086,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L7_run4.log"
+    },
+    {
+      "test_id": "L7_run5",
+      "level": "L7",
+      "run": 5,
+      "goal": "Build a project collaboration tool with: 1) User authentication, 2) Workspaces and projects, 3) Tasks with assignments, 4) File attachments, 5) Activity logs, 6) SQLite database, 7) Flask REST API, 8) Comprehensive tests. Production-ready.",
+      "status": "TIMEOUT",
+      "elapsed": 300.00020146369934,
+      "returncode": 124,
+      "log_file": "evaluation_results/l5_l7_x5_20251103_074838/L7_run5.log"
+    }
+  ]
+}

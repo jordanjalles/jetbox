@@ -32,7 +32,6 @@ from behaviors.server_tools import ServerToolsBehavior
 from behaviors.architect_tools import ArchitectToolsBehavior
 from behaviors.task_management import TaskManagementBehavior
 from behaviors.compact_when_near_full import CompactWhenNearFullBehavior
-from behaviors.subagent_mode import SubAgentContextBehavior  # Backward compatibility alias
 from behaviors.loop_detection import LoopDetectionBehavior
 from behaviors.workspace_task_notes import WorkspaceTaskNotesBehavior
 from behaviors.status_display import StatusDisplayBehavior
@@ -48,7 +47,6 @@ __all__ = [
     "ArchitectToolsBehavior",
     "TaskManagementBehavior",
     "CompactWhenNearFullBehavior",
-    "SubAgentContextBehavior",
     "LoopDetectionBehavior",
     "WorkspaceTaskNotesBehavior",
     "StatusDisplayBehavior",

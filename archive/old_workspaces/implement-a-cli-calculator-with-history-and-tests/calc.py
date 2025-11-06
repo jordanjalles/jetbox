@@ -13,7 +13,6 @@ The history command prints all previous calculations.
 
 import argparse
 import sys
-import os
 from pathlib import Path
 
 HISTORY_FILE = Path("calc_history.txt")

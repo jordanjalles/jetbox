@@ -4,7 +4,6 @@ Diagnostic test to understand why agent doesn't call mark_goal_complete.
 This test runs a simple goal and captures all LLM responses and tool calls
 to see what the agent is doing in each round.
 """
-import sys
 from pathlib import Path
 from task_executor_agent import TaskExecutorAgent
 
@@ -49,7 +48,7 @@ agent = TaskExecutorAgent(
 )
 
 print(f"\nGoal: {agent.context_manager.state.goal.description}")
-print(f"Max rounds: 5")
+print("Max rounds: 5")
 print(f"Tools available: {len(agent.get_tools())}")
 print()
 
@@ -73,13 +72,13 @@ print(f"\nFiles created: {len(files)}")
 for f in files:
     print(f"  - {f.name}: {f.read_text()[:50]}...")
 
-print(f"\n" + "="*70)
+print("\n" + "="*70)
 print("TOOL CALLS HISTORY")
 print("="*70)
 for call in tool_calls_history:
     print(f"Round {call['round']}: {call['tool']} - {call['args']}")
 
-print(f"\n" + "="*70)
+print("\n" + "="*70)
 print("ANALYSIS")
 print("="*70)
 

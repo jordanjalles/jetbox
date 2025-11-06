@@ -3,7 +3,6 @@ Test the Architect agent basic functionality.
 """
 from pathlib import Path
 import tempfile
-import shutil
 import json
 
 from architect_agent import ArchitectAgent

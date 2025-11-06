@@ -66,7 +66,7 @@ class StatusDisplayBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "status_display"
 
-    def on_goal_start(self, goal: str, **kwargs: Any) -> None:
+    def onGoalStart(self, goal: str, **kwargs: Any) -> None:
         """
         Called when goal starts.
 
@@ -123,7 +123,7 @@ class StatusDisplayBehavior(AgentBehavior):
         # Update activity
         self.display.set_activity(f"called tool: {tool_name}")
 
-    def on_round_end(self, round_number: int, **kwargs: Any) -> None:
+    def onRoundEnd(self, round_number: int, **kwargs: Any) -> None:
         """
         Called at end of each round.
 
@@ -173,7 +173,7 @@ class StatusDisplayBehavior(AgentBehavior):
 
         print(f"\n[status_display] Goal timed out after {elapsed_seconds:.1f}s")
 
-    def on_goal_complete(self, success: bool, **kwargs: Any) -> None:
+    def onGoalComplete(self, success: bool, **kwargs: Any) -> None:
         """
         Called when goal completes.
 

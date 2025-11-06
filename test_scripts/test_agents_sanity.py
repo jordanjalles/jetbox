@@ -23,7 +23,7 @@ def test_task_executor():
             goal=None
         )
 
-        print(f"✅ TaskExecutor created successfully")
+        print("✅ TaskExecutor created successfully")
         print(f"   - Name: {agent.name}")
         print(f"   - Workspace: {agent.workspace}")
         print(f"   - Behaviors: {[b.get_name() for b in agent.behaviors]}")
@@ -50,7 +50,7 @@ def test_architect():
             goal=None
         )
 
-        print(f"✅ Architect created successfully")
+        print("✅ Architect created successfully")
         print(f"   - Name: {agent.name}")
         print(f"   - Workspace: {agent.workspace}")
         print(f"   - Behaviors: {[b.get_name() for b in agent.behaviors]}")
@@ -77,7 +77,7 @@ def test_orchestrator_with_chatbot():
             exclude_behaviors=[]
         )
 
-        print(f"✅ Orchestrator created successfully")
+        print("✅ Orchestrator created successfully")
         print(f"   - Name: {agent.name}")
         print(f"   - Workspace: {agent.workspace}")
         print(f"   - Behaviors: {[b.get_name() for b in agent.behaviors]}")
@@ -111,7 +111,7 @@ def test_orchestrator_without_chatbot():
             exclude_behaviors=["ChatbotBehavior"]
         )
 
-        print(f"✅ Orchestrator created successfully")
+        print("✅ Orchestrator created successfully")
         print(f"   - Name: {agent.name}")
         print(f"   - Workspace: {agent.workspace}")
         print(f"   - Behaviors: {[b.get_name() for b in agent.behaviors]}")

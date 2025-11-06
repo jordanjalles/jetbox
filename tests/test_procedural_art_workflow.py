@@ -7,7 +7,6 @@ This demonstrates what WOULD happen with an actual LLM when a user requests:
 """
 from pathlib import Path
 import tempfile
-import json
 
 from agent_registry import AgentRegistry
 from orchestrator_main import execute_orchestrator_tool
@@ -29,11 +28,11 @@ def test_procedural_art_workflow_simulation():
 
         # Step 1: User request arrives at orchestrator
         user_request = "web app that renders procedural art with gpu acceleration and user interactive live settings"
-        print(f"\n[User Request]")
+        print("\n[User Request]")
         print(f"  '{user_request}'")
 
         # Step 2: Orchestrator assesses complexity
-        print(f"\n[Orchestrator Complexity Assessment]")
+        print("\n[Orchestrator Complexity Assessment]")
         print("  Analysis:")
         print("    ✓ Multi-component system detected:")
         print("      - Web UI (frontend)")
@@ -47,7 +46,7 @@ def test_procedural_art_workflow_simulation():
         print("  Decision: CONSULT ARCHITECT (too complex for direct delegation)")
 
         # Step 3: Orchestrator calls consult_architect
-        print(f"\n[Orchestrator → Architect]")
+        print("\n[Orchestrator → Architect]")
         print("  Tool call: consult_architect")
 
         tool_call = {
@@ -67,10 +66,10 @@ def test_procedural_art_workflow_simulation():
         workspace_path = Path(result["workspace"])
 
         print(f"  Workspace created: {workspace_path.name}")
-        print(f"  Architect consultation initiated...")
+        print("  Architect consultation initiated...")
 
         # Step 4: What Architect WOULD do (with LLM)
-        print(f"\n[Architect Working] (simulated - requires LLM)")
+        print("\n[Architect Working] (simulated - requires LLM)")
         print("  Round 1: Analyze requirements")
         print("    - Identify core modules: renderer, UI, settings manager")
         print("    - Consider technology options")
@@ -97,11 +96,11 @@ def test_procedural_art_workflow_simulation():
             "task_breakdown": "architecture/task-breakdown.json"
         }
 
-        print(f"\n[Architect → Orchestrator] (return)")
+        print("\n[Architect → Orchestrator] (return)")
         print(f"  Artifacts created: {len(expected_artifacts['docs'])} docs, {len(expected_artifacts['modules'])} modules, task breakdown")
 
         # Step 5: Orchestrator reads task breakdown
-        print(f"\n[Orchestrator Reads Task Breakdown]")
+        print("\n[Orchestrator Reads Task Breakdown]")
         simulated_task_breakdown = {
             "generated_at": "2025-10-31T12:00:00",
             "total_tasks": 3,
@@ -143,7 +142,7 @@ def test_procedural_art_workflow_simulation():
                 print(f"      Dependencies: {', '.join(task['dependencies'])}")
 
         # Step 6-8: Orchestrator delegates each task to TaskExecutor
-        print(f"\n[Orchestrator → TaskExecutor] (for each task)")
+        print("\n[Orchestrator → TaskExecutor] (for each task)")
         for task in simulated_task_breakdown["tasks"]:
             print(f"\n  Task {task['id']}: {task['description']}")
 
@@ -160,14 +159,14 @@ def test_procedural_art_workflow_simulation():
                 }
             }
 
-            print(f"    Tool call: delegate_to_executor")
+            print("    Tool call: delegate_to_executor")
             print(f"    Workspace: {workspace_path.name}")
             print(f"    Context: architecture/modules/{task['module']}.md")
             print(f"    Expected: TaskExecutor implements {task['module']} module")
-            print(f"    (Subprocess would run here with actual LLM)")
+            print("    (Subprocess would run here with actual LLM)")
 
         # Step 9: Final result
-        print(f"\n[Orchestrator → User] (final response)")
+        print("\n[Orchestrator → User] (final response)")
         print("  'Project complete! Your procedural art web app is ready.'")
         print(f"  'All files in: {workspace_path.name}/'")
         print()

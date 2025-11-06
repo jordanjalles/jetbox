@@ -14,7 +14,7 @@ Key features:
 - Works with any agent type (TaskExecutor, Orchestrator, Architect)
 
 COMPOSITION:
-- This behavior does NOT handle execution mode (use SubAgentModeBehavior)
+- This behavior does NOT handle execution mode (core BaseAgent functionality)
 - This behavior does NOT handle delegation (use DelegationBehavior)
 - This behavior ONLY manages interactive chat mode and goal extraction
 
@@ -45,7 +45,7 @@ class ChatbotBehavior(AgentBehavior):
     - Supports multi-turn conversations to refine requirements
 
     This behavior is COMPOSABLE:
-    - Does NOT handle execution (delegate to SubAgentModeBehavior)
+    - Does NOT handle execution (core BaseAgent functionality)
     - Does NOT handle delegation (delegate to DelegationBehavior)
     - ONLY manages chat mode and goal extraction
     """
@@ -81,12 +81,10 @@ class ChatbotBehavior(AgentBehavior):
                     # Goal already set - don't provide chatbot tools
                     return []
 
-            # Check if SubAgentModeBehavior has set a goal (for delegated agents)
-            for behavior in self.agent._behaviors:
-                if behavior.get_name() in ['subagent_mode', 'subagent_context']:
-                    if hasattr(behavior, 'goal') and behavior.goal:
-                        # Goal set by delegation - don't provide chatbot tools
-                        return []
+            # Check if agent.goal is set (core agent functionality)
+            if hasattr(self.agent, 'goal') and self.agent.goal:
+                # Goal set - don't provide chatbot tools
+                return []
 
         # No goal set - provide set_goal tool for chat mode
         return [
@@ -162,12 +160,12 @@ class ChatbotBehavior(AgentBehavior):
             # Transition from chat mode to execution mode
             self.chat_mode_active = False
 
-            # Trigger on_goal_set event (SubAgentModeBehavior will handle initialization)
+            # Trigger onGoalSet event (BaseAgent will handle core initialization)
             if agent:
-                # Fire on_goal_set event to all behaviors
+                # Fire onGoalSet event to all behaviors
                 for behavior in agent.behaviors:
-                    if hasattr(behavior, 'on_goal_set'):
-                        behavior.on_goal_set(
+                    if hasattr(behavior, 'onGoalSet'):
+                        behavior.onGoalSet(
                             agent=agent,
                             goal=goal,
                             workspace=None,  # Create new workspace
@@ -248,7 +246,7 @@ Guidelines:
         # Agent is doing something - reset idle counter
         self.consecutive_empty_rounds = 0
 
-    def on_round_end(self, round_number: int, agent: Any = None, had_tool_calls: bool = False, **kwargs) -> None:
+    def onRoundEnd(self, round_number: int, agent: Any = None, had_tool_calls: bool = False, **kwargs) -> None:
         """
         Detect consecutive empty rounds (agent is idle).
 
@@ -290,12 +288,10 @@ Guidelines:
                     # Goal already set - don't provide chat instructions
                     return ""
 
-            # Check if SubAgentModeBehavior has set a goal (for delegated agents)
-            for behavior in self.agent._behaviors:
-                if behavior.get_name() in ['subagent_mode', 'subagent_context']:
-                    if hasattr(behavior, 'goal') and behavior.goal:
-                        # Goal set by delegation - don't provide chat instructions
-                        return ""
+            # Check if agent.goal is set (core agent functionality)
+            if hasattr(self.agent, 'goal') and self.agent.goal:
+                # Goal set - don't provide chat instructions
+                return ""
 
         # No goal set - provide chat mode instructions
         return """
@@ -323,7 +319,7 @@ Agent: [calls set_goal(goal="Create a web scraper for CNN and BBC news articles"
 After set_goal is called, you will automatically transition to execution mode.
 """
 
-    def on_agent_start(self, agent: Any, **kwargs: Any) -> None:
+    def onAgentStart(self, agent: Any, **kwargs: Any) -> None:
         """
         Handle agent start event.
 
@@ -340,13 +336,9 @@ After set_goal is called, you will automatically transition to execution mode.
             if hasattr(agent.context_manager, 'state') and agent.context_manager.state.goal:
                 has_goal = True
 
-        # Check if SubAgentModeBehavior has set a goal (for delegated agents)
-        if not has_goal and hasattr(agent, '_behaviors'):
-            for behavior in agent._behaviors:
-                if behavior.get_name() in ['subagent_mode', 'subagent_context']:
-                    if hasattr(behavior, 'goal') and behavior.goal:
-                        has_goal = True
-                        break
+        # Check if agent.goal is set (core agent functionality)
+        if not has_goal and hasattr(agent, 'goal') and agent.goal:
+            has_goal = True
 
         # Activate chat mode if no goal
         if not has_goal:

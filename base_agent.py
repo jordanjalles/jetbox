@@ -128,13 +128,10 @@ class BaseAgent:
                     raise ValueError(f"Invalid config file {config_file}:\n{error_msg}")
                 agent_config = validated_config
             except ImportError:
-                # Validation not available, skip
-                pass
+                # Validation not available, fall back to normal loading
+                with open(config_path) as f:
+                    agent_config = yaml.safe_load(f) or {}
         else:
-            with open(config_path) as f:
-                agent_config = yaml.safe_load(f) or {}
-
-        if not agent_config:
             with open(config_path) as f:
                 agent_config = yaml.safe_load(f) or {}
 
@@ -174,6 +171,14 @@ class BaseAgent:
         self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
         self.config_blurb: str | None = None  # Agent blurb loaded from config (if any)
         self.exclude_behaviors: list[str] = exclude_behaviors or []  # Behaviors to exclude from loading
+
+        # Core goal tracking (moved from SubAgentModeBehavior)
+        self.goal: str | None = None  # Current goal description
+        self.is_subagent: bool = False  # True if agent was invoked by parent agent
+        self.enable_completion_nudging: bool = True  # Enable completion signal detection
+        self.min_rounds_before_nudge: int = 3  # Min rounds before checking completion signals
+        self.pending_nudge: str | None = None  # Completion nudge to inject next round
+        self.goal_start_time: float | None = None  # Wall-clock time when goal started
 
         # Timeout handling
         self.consecutive_timeouts = 0
@@ -227,14 +232,55 @@ class BaseAgent:
         """
         Return tool definitions for this agent.
 
-        Default implementation: Returns behavior tools (always enabled in new architecture).
+        Default implementation: Returns behavior tools + core completion tools.
         Override this method if you need custom tool handling.
 
         Returns:
             List of tool definitions in Ollama format
         """
-        # New architecture: always use behavior tools
-        return self.get_behavior_tools()
+        # Core completion tools (always available to ALL agents)
+        core_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_complete",
+                    "description": "Mark the task/goal as complete and report success. REQUIRED when work is finished.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "summary": {
+                                "type": "string",
+                                "description": "Brief summary of what was accomplished (2-4 sentences)"
+                            }
+                        },
+                        "required": ["summary"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_failed",
+                    "description": "Mark the task/goal as failed and report reason. Use when you cannot complete the task.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "reason": {
+                                "type": "string",
+                                "description": "Explanation of why the task could not be completed"
+                            }
+                        },
+                        "required": ["reason"]
+                    }
+                }
+            }
+        ]
+
+        # Behavior tools
+        behavior_tools = self.get_behavior_tools()
+
+        # Combine core tools + behavior tools
+        return core_tools + behavior_tools
 
     def get_system_prompt(self) -> str:
         """
@@ -279,10 +325,96 @@ class BaseAgent:
             *self.state.messages
         ]
 
+        # Inject goal context if goal is set (core agent functionality)
+        if self.goal:
+            context = self._inject_goal_context(context)
+
         # Let behaviors enhance context
         context = self.enhance_context_with_behaviors(context)
 
         return context
+
+    def _inject_goal_context(self, context: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        Inject goal information into context after system prompt.
+
+        Args:
+            context: Current context (system prompt + messages)
+
+        Returns:
+            Modified context with goal info injected
+        """
+        # Build goal context parts
+        context_parts = []
+
+        # Use different header based on delegation status
+        if self.is_subagent:
+            context_parts.append(f"DELEGATED GOAL: {self.goal}")
+            context_parts.append("")
+            context_parts.append("You are working on a task delegated by a parent agent.")
+        else:
+            context_parts.append(f"GOAL: {self.goal}")
+            context_parts.append("")
+            context_parts.append("You are working on a standalone task.")
+
+        context_parts.append("When complete, call mark_complete(summary) with what you accomplished.")
+        context_parts.append("If you cannot complete it, call mark_failed(reason) explaining why.")
+
+        # Insert after system prompt (index 1)
+        goal_message = {"role": "user", "content": "\n".join(context_parts)}
+        context.insert(1, goal_message)
+
+        # Inject completion nudge if pending
+        if self.pending_nudge:
+            context.append({"role": "user", "content": self.pending_nudge})
+            self.pending_nudge = None  # Clear after injection
+
+        return context
+
+    def _check_completion_signals(self, response: dict[str, Any], tool_calls: list[dict[str, Any]]) -> None:
+        """
+        Check for completion signals in LLM response and set pending nudge.
+
+        This detects when the LLM says things like "task complete" without
+        calling mark_complete, and sets up a nudge for the next round.
+
+        Args:
+            response: LLM response dict
+            tool_calls: List of tool calls from this round
+        """
+        from completion_detector import analyze_llm_response
+
+        # Extract LLM response text
+        llm_response = ""
+        if "message" in response:
+            msg = response["message"]
+            if isinstance(msg, dict):
+                llm_response = msg.get("content", "")
+            elif hasattr(msg, "content"):
+                llm_response = msg.content
+
+        # Skip if no response to analyze
+        if not llm_response:
+            return
+
+        # Analyze for completion signals
+        analysis = analyze_llm_response(
+            llm_response,
+            tool_calls,
+            current_subtask=self.goal
+        )
+
+        # Set pending nudge if completion signal detected
+        if analysis["should_nudge"]:
+            matched = analysis["matched_phrases"][0] if analysis["matched_phrases"] else "completion signal"
+
+            # Compose goal-specific nudge
+            self.pending_nudge = (
+                f"💡 REMINDER: You mentioned '{matched}'. "
+                f"If '{self.goal}' is complete, please call mark_complete(summary='...') with what you accomplished."
+            )
+
+            print(f"[{self.name}] 💡 Completion signal detected: '{matched[:50]}' - will nudge next round")
 
     # ===========================
     # Shared functionality
@@ -548,8 +680,8 @@ Please retry the tool call using only the valid parameters listed above.
         """
         Dispatch a tool call to the appropriate handler.
 
-        Default implementation: Always dispatches to behavior system (new architecture).
-        Override this method if you need custom tool dispatch.
+        Default implementation: Handles core tools (mark_complete/mark_failed) then
+        dispatches to behavior system.
 
         Args:
             tool_call: Tool call dict with function name and arguments
@@ -564,8 +696,56 @@ Please retry the tool call using only the valid parameters listed above.
             # Invalid parameters detected - return feedback to LLM
             return validation_result
 
-        # New architecture: always use behavior dispatch
+        # Handle core completion tools (mark_complete, mark_failed)
+        tool_name = tool_call.get("function", {}).get("name")
+        if tool_name in ["mark_complete", "mark_failed"]:
+            return self._dispatch_completion_tool(tool_call)
+
+        # Dispatch to behavior system for other tools
         return self.dispatch_tool_to_behavior(tool_call, **extra_context)
+
+    def _dispatch_completion_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
+        """
+        Dispatch core completion tools (mark_complete, mark_failed).
+
+        Args:
+            tool_call: Tool call dict
+
+        Returns:
+            Tool result dict
+        """
+        tool_name = tool_call["function"]["name"]
+        args = tool_call["function"].get("arguments", {})
+
+        if tool_name == "mark_complete":
+            summary = args.get('summary', 'Task completed')
+
+            # Mark goal as complete in context manager if available
+            if self.context_manager and hasattr(self.context_manager, 'state') and self.context_manager.state.goal:
+                self.context_manager.state.goal.status = "success"
+
+            return {
+                "success": True,
+                "result": f"Task marked complete: {summary}",
+                "summary": summary,
+                "status": "goal_complete"
+            }
+
+        elif tool_name == "mark_failed":
+            reason = args.get('reason', 'Task failed')
+
+            # Mark goal as failed in context manager if available
+            if self.context_manager and hasattr(self.context_manager, 'state') and self.context_manager.state.goal:
+                self.context_manager.state.goal.status = "failed"
+
+            return {
+                "success": False,
+                "result": f"Task marked failed: {reason}",
+                "reason": reason,
+                "status": "goal_failed"
+            }
+
+        return {"error": f"Unknown completion tool: {tool_name}"}
 
     def persist_state(self) -> None:
         """Save agent state to disk."""
@@ -702,7 +882,7 @@ Please retry the tool call using only the valid parameters listed above.
         Internal method to load behaviors from config dict.
 
         Also loads system_prompt and blurb if present.
-        Auto-adds DelegationBehavior and SubAgentModeBehavior based on agents.yaml.
+        Auto-adds DelegationBehavior based on agents.yaml.
 
         Behavior parameters are merged from global defaults (agent_config.yaml)
         and agent-specific overrides (this config dict).
@@ -725,9 +905,6 @@ Please retry the tool call using only the valid parameters listed above.
 
         # Auto-add DelegationBehavior if this agent can delegate
         self._auto_add_delegation_behavior()
-
-        # Auto-add SubAgentContextBehavior if this agent is a subagent
-        self._auto_add_subagent_context_behavior()
 
         # Load behaviors
         if "behaviors" not in config:
@@ -805,76 +982,93 @@ Please retry the tool call using only the valid parameters listed above.
             print(f"[{self.name}] Warning: Failed to load global behavior defaults: {e}")
             return {}
 
+    def _load_target_agent_config(self, target_agent: str, agents: dict) -> dict:
+        """
+        Load configuration for a target agent from its config file.
+
+        Args:
+            target_agent: Name of target agent
+            agents: Agents dict from agents.yaml
+
+        Returns:
+            Agent info dict with delegation_tool and blurb (if available)
+        """
+        import yaml
+
+        agent_info = agents.get(target_agent, {})
+        agent_config_file = Path(f"{target_agent}_config.yaml")
+
+        if not agent_config_file.exists():
+            return agent_info
+
+        try:
+            with open(agent_config_file) as f:
+                target_config = yaml.safe_load(f)
+
+            # Add delegation_tool if present
+            if target_config and "delegation_tool" in target_config:
+                agent_info["delegation_tool"] = target_config["delegation_tool"]
+
+            # Add blurb if present
+            if target_config and "blurb" in target_config:
+                agent_info["blurb"] = target_config["blurb"]
+
+        except Exception as e:
+            print(f"[{self.name}] Warning: Failed to load {agent_config_file}: {e}")
+
+        return agent_info
+
     def _auto_add_delegation_behavior(self) -> None:
         """
         Auto-add DelegationBehavior if this agent can delegate to others.
 
         DelegationBehavior is delegator-only - provides tools for delegating TO other agents.
-        For being delegated to, use SubAgentModeBehavior (added to ALL agents).
+        For being delegated to, use core goal tracking (available in ALL agents).
 
         Reads agents.yaml to check if this agent has can_delegate_to list.
         If yes, adds DelegationBehavior with delegation tools (consult_X, delegate_to_X).
         """
         import yaml
 
+        # Early return: agents.yaml must exist
         agents_yaml = Path("agents.yaml")
         if not agents_yaml.exists():
             return
 
+        # Early return: DelegationBehavior already added
+        if any(b.get_name() == "delegation" for b in self._behaviors):
+            return
+
         try:
+            # Load agents config
             with open(agents_yaml) as f:
                 agents_config = yaml.safe_load(f)
 
+            # Early return: invalid config structure
             if not agents_config or "agents" not in agents_config:
                 return
 
             agents = agents_config["agents"]
 
-            # Find this agent's config
+            # Early return: agent not found in config
             agent_config = agents.get(self.name)
             if not agent_config:
                 return
 
-            # Check if agent can delegate to others
+            # Early return: no delegation capability
             can_delegate_to = agent_config.get("can_delegate_to", [])
             if not can_delegate_to:
-                return  # No delegation capability
+                return
 
-            # Check if DelegationBehavior already added
-            has_delegation = any(b.get_name() == "delegation" for b in self._behaviors)
-            if has_delegation:
-                return  # Already added
+            # Build agent relationships dict
+            agent_relationships = {"can_delegate_to": can_delegate_to}
 
-            # Build agent relationships dict for DelegationBehavior
-            agent_relationships = {
-                "can_delegate_to": can_delegate_to
-            }
-
-            # Load delegation_tool and blurb from individual agent config files
+            # Load config for each target agent
             for target_agent in can_delegate_to:
-                agent_info = agents.get(target_agent, {})
-
-                # Try to load target agent's config file for delegation_tool and blurb
-                agent_config_file = Path(f"{target_agent}_config.yaml")
-                if agent_config_file.exists():
-                    try:
-                        with open(agent_config_file) as f:
-                            target_config = yaml.safe_load(f)
-
-                        # Add delegation_tool if present in config
-                        if target_config and "delegation_tool" in target_config:
-                            agent_info["delegation_tool"] = target_config["delegation_tool"]
-
-                        # Add blurb if present in config
-                        if target_config and "blurb" in target_config:
-                            agent_info["blurb"] = target_config["blurb"]
-
-                    except Exception as e:
-                        print(f"[{self.name}] Warning: Failed to load {agent_config_file}: {e}")
-
+                agent_info = self._load_target_agent_config(target_agent, agents)
                 agent_relationships[target_agent] = agent_info
 
-            # Create and add DelegationBehavior (delegator-only)
+            # Create and add DelegationBehavior
             from behaviors.delegation import DelegationBehavior
             delegation_behavior = DelegationBehavior(agent_relationships=agent_relationships)
             self.add_behavior(delegation_behavior)
@@ -883,40 +1077,6 @@ Please retry the tool call using only the valid parameters listed above.
         except Exception as e:
             print(f"[{self.name}] Failed to auto-add DelegationBehavior: {e}")
 
-    def _auto_add_subagent_context_behavior(self) -> None:
-        """
-        Auto-add SubAgentModeBehavior to ALL agents.
-
-        SubAgentModeBehavior makes agents delegatable - they can receive work via:
-        1. CLI: python agent.py "goal"
-        2. Tool call: parent_agent.delegate_task(agent, goal)
-
-        ALL agents get this behavior because ALL agents can be delegated to.
-        This is different from DelegationBehavior which is only for agents that can delegate TO others.
-        """
-        # Check if SubAgentModeBehavior or SubAgentContextBehavior already added
-        has_subagent_mode = any(
-            b.get_name() in ["subagent_mode", "subagent_context"] for b in self._behaviors
-        )
-
-        if has_subagent_mode:
-            return  # Already added
-
-        # Add SubAgentModeBehavior to ALL agents
-        try:
-            from behaviors.subagent_mode import SubAgentModeBehavior
-            behavior = SubAgentModeBehavior(is_subagent=True)
-            self.add_behavior(behavior)
-            print(f"[{self.name}] Auto-added SubAgentModeBehavior (agent is delegatable)")
-        except ImportError:
-            # Fall back to old name for backward compatibility
-            try:
-                from behaviors.subagent_context import SubAgentContextBehavior
-                behavior = SubAgentContextBehavior()
-                self.add_behavior(behavior)
-                print(f"[{self.name}] Auto-added SubAgentContextBehavior (agent is delegatable)")
-            except ImportError as e:
-                print(f"[{self.name}] Failed to add SubAgentModeBehavior: {e}")
 
     def _import_behavior_class(self, behavior_type: str):
         """
@@ -945,8 +1105,7 @@ Please retry the tool call using only the valid parameters listed above.
         Examples:
             FileToolsBehavior -> file_tools
             LoopDetectionBehavior -> loop_detection
-            SubAgentContextBehavior -> subagent_context (backward compat)
-            SubAgentModeBehavior -> subagent_mode (new name)
+            (SubAgentModeBehavior is now core functionality in BaseAgent)
             ChatbotBehavior -> chatbot
             ArchitectToolsBehavior -> architect_tools
 
@@ -1186,6 +1345,11 @@ Please retry the tool call using only the valid parameters listed above.
             event_name: Event method name (e.g., "on_goal_start")
             **kwargs: Event-specific arguments
         """
+        # Core agent initialization for onGoalSet (runs BEFORE behaviors)
+        if event_name == "onGoalSet":
+            self._handle_goal_set(**kwargs)
+
+        # Trigger event on all behaviors
         for behavior in self._behaviors:
             try:
                 event_method = getattr(behavior, event_name, None)
@@ -1193,6 +1357,48 @@ Please retry the tool call using only the valid parameters listed above.
                     event_method(agent=self, **kwargs)
             except Exception as e:
                 print(f"[{self.name}] Behavior {behavior.get_name()} {event_name} error: {e}")
+
+    def _handle_goal_set(self, goal: str, **kwargs) -> None:
+        """
+        Core agent initialization when goal is set.
+
+        This initializes workspace manager, performance tracking, and goal timing.
+        Runs BEFORE behaviors receive the onGoalSet event.
+
+        Args:
+            goal: Goal description
+            **kwargs: Additional context (workspace, workspace_manager, etc.)
+        """
+        import time
+
+        # Store goal for context injection
+        self.goal = goal
+
+        # Initialize workspace manager
+        workspace_param = kwargs.get('workspace')
+        goal_slug = goal.lower()[:50].replace(" ", "-").replace("/", "-")
+
+        if workspace_param:
+            # Reuse mode: use existing workspace directory
+            print(f"[{self.name}] Reusing workspace: {workspace_param}")
+            self.init_workspace_manager(goal_slug, workspace_path=workspace_param)
+        else:
+            # Create new mode: create isolated workspace
+            print(f"[{self.name}] Creating new workspace for goal")
+            self.init_workspace_manager(goal_slug, workspace_path=None)
+
+        # Update agent.workspace to point to the actual workspace directory
+        if self.workspace_manager:
+            self.workspace = self.workspace_manager.workspace_dir
+            print(f"[{self.name}] Updated agent.workspace to: {self.workspace}")
+
+        # Initialize performance tracking
+        self.init_perf_stats()
+
+        # Start wall-clock timer for goal
+        self.goal_start_time = time.time()
+
+        print(f"[{self.name}] Goal set: {goal}")
 
     def _save_partial_progress(self) -> dict:
         """
@@ -1464,7 +1670,7 @@ Please retry the tool call using only the valid parameters listed above.
         elif initial_message:
             # Single task mode (no ChatbotBehavior)
             print(f"User: {initial_message}\n")
-            agent.trigger_behavior_event("on_goal_set", goal=initial_message, workspace=agent.workspace)
+            agent.trigger_behavior_event("onGoalSet", goal=initial_message, workspace=agent.workspace)
             result = agent.run()
 
             # Print result
@@ -1517,10 +1723,10 @@ Please retry the tool call using only the valid parameters listed above.
             chatbot_behavior.task_complete_flag = False
             chatbot_behavior.consecutive_empty_rounds = 0
 
-            # Trigger on_goal_set to initialize workspace and subsystems
+            # Trigger onGoalSet to initialize workspace and subsystems
             # This is needed for agents like task_executor that need workspace setup
             agent.trigger_behavior_event(
-                "on_goal_set",
+                "onGoalSet",
                 goal=user_message,
                 workspace=agent.workspace
             )
@@ -1640,17 +1846,18 @@ Please retry the tool call using only the valid parameters listed above.
         model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
         temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
-        # Trigger on_goal_start event
-        if self.context_manager and self.context_manager.state.goal:
-            goal = self.context_manager.state.goal.description
-            self.trigger_behavior_event("on_goal_start", goal=goal)
+        # Trigger onGoalStart event
+        # This event should fire whenever there's a goal, regardless of context_manager
+        goal_desc = self._get_goal_description()
+        if goal_desc:
+            self.trigger_behavior_event("onGoalStart", goal=goal_desc)
 
         print(f"[{self.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
         return max_rounds, model, temperature
 
     def _get_goal_description(self) -> str | None:
         """
-        Get goal description from context manager or SubAgentModeBehavior.
+        Get goal description from context manager or core goal tracking.
 
         Returns:
             Goal description string or None
@@ -1659,10 +1866,9 @@ Please retry the tool call using only the valid parameters listed above.
         if self.context_manager and self.context_manager.state.goal:
             return self.context_manager.state.goal.description
 
-        # Try SubAgentModeBehavior
-        for behavior in self._behaviors:
-            if hasattr(behavior, 'goal') and behavior.goal:
-                return behavior.goal
+        # Try core goal tracking
+        if self.goal:
+            return self.goal
 
         return None
 
@@ -1692,7 +1898,7 @@ Please retry the tool call using only the valid parameters listed above.
         if result.get("success") is True and "summary" in result:
             print(f"[{self.name}] Goal marked complete")
             self.trigger_behavior_event(
-                "on_goal_complete",
+                "onGoalComplete",
                 success=True,
                 result=result,
                 goal=goal_desc,
@@ -1709,7 +1915,7 @@ Please retry the tool call using only the valid parameters listed above.
         if result.get("success") is False and "reason" in result:
             print(f"[{self.name}] Goal marked failed")
             self.trigger_behavior_event(
-                "on_goal_complete",
+                "onGoalComplete",
                 success=False,
                 result=result,
                 goal=goal_desc,
@@ -1727,7 +1933,7 @@ Please retry the tool call using only the valid parameters listed above.
         if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
             print(f"[{self.name}] Goal completed (legacy signal)")
             self.trigger_behavior_event(
-                "on_goal_complete",
+                "onGoalComplete",
                 success=True,
                 result=actual_result,
                 goal=goal_desc,
@@ -1836,8 +2042,8 @@ Please retry the tool call using only the valid parameters listed above.
         Returns:
             Completion dict if goal completed/failed, None to continue
         """
-        # Trigger on_round_start
-        self.trigger_behavior_event("on_round_start", round_number=round_no)
+        # Trigger onRoundStart
+        self.trigger_behavior_event("onRoundStart", round_number=round_no)
 
         # Call LLM
         print(f"\n[{self.name}] Round {round_no}/{max_rounds}")
@@ -1866,8 +2072,12 @@ Please retry the tool call using only the valid parameters listed above.
                 if completion:
                     return completion
 
-        # Trigger on_round_end with tool call info for idle detection
-        self.trigger_behavior_event("on_round_end", round_number=round_no, had_tool_calls=had_tool_calls)
+        # Check for completion signals and set nudge (core agent functionality)
+        if self.enable_completion_nudging and round_no >= self.min_rounds_before_nudge:
+            self._check_completion_signals(response, msg.get("tool_calls", []) if "message" in response else [])
+
+        # Trigger onRoundEnd with tool call info for idle detection
+        self.trigger_behavior_event("onRoundEnd", round_number=round_no, had_tool_calls=had_tool_calls)
 
         # Increment round counter
         self.increment_round()

@@ -51,10 +51,10 @@ class TaskExecutorAgent(BaseAgent):
             exclude_behaviors=exclude_behaviors,
         )
 
-        # Set goal if provided (triggers on_goal_set event in SubAgentModeBehavior)
+        # Set goal if provided (triggers onGoalSet event in SubAgentModeBehavior)
         if goal:
             self.trigger_behavior_event(
-                "on_goal_set",
+                "onGoalSet",
                 goal=goal,
                 workspace=Path(workspace) if workspace else None,
             )

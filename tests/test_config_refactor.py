@@ -12,7 +12,6 @@ Tests:
 import yaml
 from pathlib import Path
 import sys
-import os
 
 # Add parent directory to path so we can import agent modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -49,11 +48,11 @@ def test_agents_yaml_structure():
 
         # Check has required keys
         if "class" not in actual_keys:
-            print(f"  ❌ FAIL: Missing 'class' key")
+            print("  ❌ FAIL: Missing 'class' key")
             return False
 
         if "can_delegate_to" not in actual_keys:
-            print(f"  ❌ FAIL: Missing 'can_delegate_to' key")
+            print("  ❌ FAIL: Missing 'can_delegate_to' key")
             return False
 
         print(f"  ✓ PASS: Only contains {actual_keys}")
@@ -77,14 +76,14 @@ def test_blurbs_in_agent_configs():
 
         config_path = workspace_root / config_file
         if not config_path.exists():
-            print(f"  ❌ FAIL: Config file not found")
+            print("  ❌ FAIL: Config file not found")
             return False
 
         with open(config_path) as f:
             config = yaml.safe_load(f)
 
         if "blurb" not in config:
-            print(f"  ❌ FAIL: No 'blurb' field")
+            print("  ❌ FAIL: No 'blurb' field")
             return False
 
         blurb = config["blurb"].strip()
@@ -92,10 +91,10 @@ def test_blurbs_in_agent_configs():
         print(f"  First 100 chars: {blurb[:100]}...")
 
         if len(blurb) < 50:
-            print(f"  ❌ FAIL: Blurb too short")
+            print("  ❌ FAIL: Blurb too short")
             return False
 
-        print(f"  ✓ PASS: Blurb present and valid")
+        print("  ✓ PASS: Blurb present and valid")
 
     print("\n✓ PASS: All agent configs have blurbs")
     return True
@@ -123,22 +122,22 @@ def test_delegation_tools_in_agent_configs():
             config = yaml.safe_load(f)
 
         if "delegation_tool" not in config:
-            print(f"  ❌ FAIL: No 'delegation_tool' field")
+            print("  ❌ FAIL: No 'delegation_tool' field")
             return False
 
         delegation_tool = config["delegation_tool"]
 
         # Check structure
         if "name" not in delegation_tool:
-            print(f"  ❌ FAIL: No 'name' field in delegation_tool")
+            print("  ❌ FAIL: No 'name' field in delegation_tool")
             return False
 
         if "description" not in delegation_tool:
-            print(f"  ❌ FAIL: No 'description' field in delegation_tool")
+            print("  ❌ FAIL: No 'description' field in delegation_tool")
             return False
 
         if "parameters" not in delegation_tool:
-            print(f"  ❌ FAIL: No 'parameters' field in delegation_tool")
+            print("  ❌ FAIL: No 'parameters' field in delegation_tool")
             return False
 
         # Check tool name
@@ -149,7 +148,7 @@ def test_delegation_tools_in_agent_configs():
         print(f"  Tool name: {delegation_tool['name']}")
         print(f"  Description: {delegation_tool['description'][:60]}...")
         print(f"  Parameters: {list(delegation_tool['parameters'].keys())}")
-        print(f"  ✓ PASS: delegation_tool present and valid")
+        print("  ✓ PASS: delegation_tool present and valid")
 
     print("\n✓ PASS: All delegation tools defined in agent configs")
     return True
@@ -182,11 +181,11 @@ def test_token_limits_consistent():
                     print(f"  ❌ FAIL: Expected 8000, got {max_tokens}")
                     return False
 
-                print(f"  ✓ PASS: max_tokens = 8000")
+                print("  ✓ PASS: max_tokens = 8000")
                 break
 
         if not found:
-            print(f"  ⚠ WARNING: No CompactWhenNearFullBehavior found")
+            print("  ⚠ WARNING: No CompactWhenNearFullBehavior found")
 
     print("\n✓ PASS: All token limits are 8000")
     return True
@@ -210,10 +209,10 @@ def test_status_display_behavior_removed():
         # Check that StatusDisplayBehavior is NOT in behaviors list
         for behavior in config.get("behaviors", []):
             if behavior["type"] == "StatusDisplayBehavior":
-                print(f"  ❌ FAIL: StatusDisplayBehavior still present")
+                print("  ❌ FAIL: StatusDisplayBehavior still present")
                 return False
 
-        print(f"  ✓ PASS: StatusDisplayBehavior not in config")
+        print("  ✓ PASS: StatusDisplayBehavior not in config")
 
     print("\n✓ PASS: StatusDisplayBehavior removed from all configs")
     return True
@@ -272,7 +271,7 @@ def test_orchestrator_delegation_behavior():
 
         # Check blurb loaded from config
         blurb = agent.get_blurb()
-        print(f"\nOrchestrator blurb (first 100 chars):")
+        print("\nOrchestrator blurb (first 100 chars):")
         print(f"  {blurb[:100]}...")
 
         if len(blurb) < 50:
@@ -282,7 +281,7 @@ def test_orchestrator_delegation_behavior():
         print("  ✓ Blurb loaded successfully")
 
         # Check behaviors loaded
-        print(f"\nLoaded behaviors:")
+        print("\nLoaded behaviors:")
         for b in agent.behaviors:
             print(f"  - {b.get_name()}")
 
@@ -298,7 +297,7 @@ def test_orchestrator_delegation_behavior():
         tools = agent.get_tools()
         tool_names = [t['function']['name'] for t in tools]
 
-        print(f"\nDelegation tools:")
+        print("\nDelegation tools:")
         delegation_tools = [t for t in tool_names if 'delegate' in t or 'consult' in t]
         for tool_name in delegation_tools:
             print(f"  - {tool_name}")
@@ -320,7 +319,7 @@ def test_orchestrator_delegation_behavior():
                 params = tool['function']['parameters']['properties']
                 required = tool['function']['parameters']['required']
 
-                print(f"\nconsult_architect parameters:")
+                print("\nconsult_architect parameters:")
                 print(f"  Parameters: {list(params.keys())}")
                 print(f"  Required: {required}")
 
@@ -340,27 +339,27 @@ def test_orchestrator_delegation_behavior():
                 params = tool['function']['parameters']['properties']
                 required = tool['function']['parameters']['required']
 
-                print(f"\ndelegate_to_executor parameters:")
+                print("\ndelegate_to_executor parameters:")
                 print(f"  Parameters: {list(params.keys())}")
                 print(f"  Required: {required}")
 
                 # Should have task_description, workspace_mode, workspace_path
                 if "task_description" not in params or "task_description" not in required:
-                    print(f"  ❌ FAIL: task_description missing or not required")
+                    print("  ❌ FAIL: task_description missing or not required")
                     return False
 
                 if "workspace_mode" not in params or "workspace_mode" not in required:
-                    print(f"  ❌ FAIL: workspace_mode missing or not required")
+                    print("  ❌ FAIL: workspace_mode missing or not required")
                     return False
 
                 # workspace_path should NOT be required
                 if "workspace_path" in required:
-                    print(f"  ❌ FAIL: workspace_path should not be required")
+                    print("  ❌ FAIL: workspace_path should not be required")
                     return False
 
                 # Check enum on workspace_mode
                 if "enum" not in params["workspace_mode"]:
-                    print(f"  ❌ FAIL: workspace_mode missing enum")
+                    print("  ❌ FAIL: workspace_mode missing enum")
                     return False
 
                 print("  ✓ delegate_to_executor parameters correct")

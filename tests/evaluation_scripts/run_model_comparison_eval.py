@@ -210,9 +210,9 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'='*70}")
-    print(f"MODEL COMPARISON EVALUATION")
+    print("MODEL COMPARISON EVALUATION")
     print(f"Testing: {', '.join(MODELS)}")
-    print(f"Levels: L1-L7 (1 test each)")
+    print("Levels: L1-L7 (1 test each)")
     print(f"Output directory: {output_dir}")
     print(f"Started: {datetime.now().isoformat()}")
     print(f"{'='*70}")
@@ -250,7 +250,7 @@ def main():
     generate_report(results, total_elapsed, report_file)
 
     print(f"\n{'='*70}")
-    print(f"EVALUATION COMPLETE")
+    print("EVALUATION COMPLETE")
     print(f"Total time: {total_elapsed:.1f}s ({total_elapsed/60:.1f}m)")
     print(f"Results: {results_file}")
     print(f"Report: {report_file}")
@@ -311,7 +311,7 @@ def generate_report(results, total_elapsed, report_file):
         f.write(f"**Date**: {datetime.now().isoformat()}\n")
         f.write(f"**Total Time**: {total_elapsed:.1f}s ({total_elapsed/60:.1f}m)\n")
         f.write(f"**Models Tested**: {', '.join(MODELS)}\n")
-        f.write(f"**Levels**: L1-L7 (1 test per level per model)\n")
+        f.write("**Levels**: L1-L7 (1 test per level per model)\n")
         f.write(f"**Total Tests**: {len(results)}\n\n")
 
         f.write("## Performance Comparison by Model\n\n")
@@ -350,9 +350,9 @@ def generate_report(results, total_elapsed, report_file):
             speedup = baseline_time / model_stats[model]['avg_time']
             f.write(f"- {model}: {speedup:.2f}x ")
             if speedup > 1:
-                f.write(f"faster\n")
+                f.write("faster\n")
             else:
-                f.write(f"slower\n")
+                f.write("slower\n")
 
         f.write("\n## Success Rate by Level\n\n")
         f.write("| Level | Success Rate | Avg Time |\n")

@@ -1,8 +1,6 @@
 import json
 import csv
 import xml.etree.ElementTree as ET
-import os
-from pathlib import Path
 
 import pytest
 

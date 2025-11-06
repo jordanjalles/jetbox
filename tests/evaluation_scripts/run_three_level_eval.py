@@ -9,7 +9,6 @@ Tests the complete agent system across 3 levels of complexity:
 """
 
 import os
-import sys
 import time
 from pathlib import Path
 from datetime import datetime
@@ -61,14 +60,14 @@ def run_level1_test(task_name, goal, max_rounds, expected_files):
             )
 
             # Log agent setup
-            log_file.write(f"\nAgent Setup:\n")
+            log_file.write("\nAgent Setup:\n")
             log_file.write(f"  Workspace: {workspace}\n")
             log_file.write(f"  Behaviors: {[b.get_name() for b in agent.behaviors]}\n")
             log_file.write(f"  Tools: {len(agent.get_tools())} available\n")
             log_file.flush()
 
             # Run agent
-            log_file.write(f"\nRunning agent...\n")
+            log_file.write("\nRunning agent...\n")
             log_file.flush()
 
             result = agent.run(max_rounds=max_rounds)
@@ -85,7 +84,7 @@ def run_level1_test(task_name, goal, max_rounds, expected_files):
 
             # Log results
             success = result.get("status") == "success"
-            log_file.write(f"\nResults:\n")
+            log_file.write("\nResults:\n")
             log_file.write(f"  Status: {result.get('status')}\n")
             log_file.write(f"  Reason: {result.get('reason', 'N/A')}\n")
             log_file.write(f"  Duration: {duration:.2f}s\n")
@@ -140,13 +139,13 @@ def run_level2_test(task_name, user_request, max_rounds):
 
         try:
             # Create orchestrator
-            log_file.write(f"\nCreating OrchestratorAgent...\n")
+            log_file.write("\nCreating OrchestratorAgent...\n")
             log_file.flush()
 
             orchestrator = OrchestratorAgent(workspace=Path(".agent_workspace/test_orchestrator"))
 
             # Log setup
-            log_file.write(f"\nOrchestrator Setup:\n")
+            log_file.write("\nOrchestrator Setup:\n")
             log_file.write(f"  Behaviors: {[b.get_name() for b in orchestrator.behaviors]}\n")
 
             tools = orchestrator.get_tools()
@@ -157,15 +156,15 @@ def run_level2_test(task_name, user_request, max_rounds):
             has_delegate_executor = any("delegate" in name and "executor" in name for name in tool_names)
             has_consult_architect = any("architect" in name for name in tool_names)
 
-            log_file.write(f"\nDelegation Capabilities:\n")
+            log_file.write("\nDelegation Capabilities:\n")
             log_file.write(f"  Can delegate to executor: {has_delegate_executor}\n")
             log_file.write(f"  Can consult architect: {has_consult_architect}\n")
 
             end_time = time.time()
             duration = end_time - start_time
 
-            log_file.write(f"\nResults:\n")
-            log_file.write(f"  Orchestrator Configured: YES\n")
+            log_file.write("\nResults:\n")
+            log_file.write("  Orchestrator Configured: YES\n")
             log_file.write(f"  Can Delegate to Executor: {has_delegate_executor}\n")
             log_file.write(f"  Can Consult Architect: {has_consult_architect}\n")
             log_file.write(f"  Duration: {duration:.2f}s\n")
@@ -213,26 +212,26 @@ def run_level3_test(task_name, user_request):
 
         try:
             # Test that all 3 agents can be instantiated
-            log_file.write(f"\nInstantiating all agents...\n")
+            log_file.write("\nInstantiating all agents...\n")
             log_file.flush()
 
             orchestrator = OrchestratorAgent(workspace=Path(".agent_workspace/test_orchestrator_l3"))
-            log_file.write(f"  ✓ Orchestrator created\n")
+            log_file.write("  ✓ Orchestrator created\n")
 
             architect = ArchitectAgent(
                 workspace=Path(".agent_workspace/test_architect"),
             )
-            log_file.write(f"  ✓ Architect created\n")
+            log_file.write("  ✓ Architect created\n")
 
             task_executor = TaskExecutorAgent(
                 workspace=Path(".agent_workspace/test_executor"),
                 goal="test",
             )
-            log_file.write(f"  ✓ TaskExecutor created\n")
+            log_file.write("  ✓ TaskExecutor created\n")
             log_file.flush()
 
             # Log setup
-            log_file.write(f"\nAll Agents Configured:\n")
+            log_file.write("\nAll Agents Configured:\n")
             log_file.write(f"  Orchestrator: {len(orchestrator.behaviors)} behaviors, {len(orchestrator.get_tools())} tools\n")
             log_file.write(f"  Architect: {len(architect.behaviors)} behaviors, {len(architect.get_tools())} tools\n")
             log_file.write(f"  TaskExecutor: {len(task_executor.behaviors)} behaviors, {len(task_executor.get_tools())} tools\n")
@@ -242,7 +241,7 @@ def run_level3_test(task_name, user_request):
             has_architect_delegation = any("architect" in name for name in orch_tools)
             has_executor_delegation = any("delegate" in name and "executor" in name for name in orch_tools)
 
-            log_file.write(f"\nDelegation Setup:\n")
+            log_file.write("\nDelegation Setup:\n")
             log_file.write(f"  Can consult architect: {has_architect_delegation}\n")
             log_file.write(f"  Can delegate to executor: {has_executor_delegation}\n")
 
@@ -259,8 +258,8 @@ def run_level3_test(task_name, user_request):
 
             full_stack_ready = has_architect_delegation and has_executor_delegation
 
-            log_file.write(f"\nResults:\n")
-            log_file.write(f"  All Agents Configured: YES\n")
+            log_file.write("\nResults:\n")
+            log_file.write("  All Agents Configured: YES\n")
             log_file.write(f"  Full Stack Ready: {full_stack_ready}\n")
             log_file.write(f"  Duration: {duration:.2f}s\n")
             log_file.flush()
@@ -370,7 +369,7 @@ def generate_summary_report(level1_results, level2_results, level3_results):
             avg_rounds = sum(r.get('rounds_used', 0) for r in level1_results if 'rounds_used' in r)
             avg_rounds = avg_rounds / len([r for r in level1_results if 'rounds_used' in r]) if any('rounds_used' in r for r in level1_results) else 0
 
-            f.write(f"**Level 1 TaskExecutor**:\n")
+            f.write("**Level 1 TaskExecutor**:\n")
             f.write(f"- Average duration: {avg_duration:.1f}s\n")
             f.write(f"- Average rounds: {avg_rounds:.1f}\n")
             f.write(f"- Success rate: {l1_pass}/{len(level1_results)} ({100*l1_pass/len(level1_results):.0f}%)\n\n")

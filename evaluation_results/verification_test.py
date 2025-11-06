@@ -93,8 +93,8 @@ def test_orchestrator():
     assert "consult_architect" in tool_names, "Should have consult_architect tool!"
     assert "delegate_to_executor" in tool_names, "Should have delegate_to_executor tool!"
     print("\n2. Delegation Tools:")
-    print(f"   - consult_architect")
-    print(f"   - delegate_to_executor")
+    print("   - consult_architect")
+    print("   - delegate_to_executor")
     print("\n   ✓ Delegation tools available")
 
     print("\n✓ Orchestrator verification complete")
@@ -130,9 +130,9 @@ def test_architect():
     assert "write_module_spec" in tool_names, "Should have write_module_spec!"
     assert "write_task_list" in tool_names, "Should have write_task_list!"
     print("\n2. Architecture Tools:")
-    print(f"   - write_architecture_doc")
-    print(f"   - write_module_spec")
-    print(f"   - write_task_list")
+    print("   - write_architecture_doc")
+    print("   - write_module_spec")
+    print("   - write_task_list")
     print("\n   ✓ Architecture tools available")
 
     # Check dynamic tool documentation

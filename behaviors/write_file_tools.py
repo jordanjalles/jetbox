@@ -15,9 +15,12 @@ Features:
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from behaviors.base import AgentBehavior
 
@@ -194,8 +197,14 @@ class WriteFileToolsBehavior(AgentBehavior):
                 content = normalized
 
         # Resolve path through workspace if available
+        logger.debug("Starting write_file for path: %s", path)
+        logger.debug("workspace_manager: %s", workspace_manager)
+
         if workspace_manager:
+            logger.debug("workspace_manager.workspace_dir: %s", workspace_manager.workspace_dir)
             resolved_path = workspace_manager.resolve_path(path)
+            logger.debug("Resolved path: %s", resolved_path)
+            logger.debug("Resolved path absolute: %s", resolved_path.resolve())
 
             # Safety check in edit mode: prevent modifying agent code
             if workspace_manager.is_edit_mode:
@@ -207,29 +216,53 @@ class WriteFileToolsBehavior(AgentBehavior):
                 if resolved_path.name in forbidden_files:
                     error_msg = f"[SAFETY] Cannot modify agent code in edit mode: {resolved_path.name}"
                     self._ledger_append("ERROR", error_msg, ledger_file)
-                    return error_msg
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
 
             workspace_manager.track_file(path)  # Track file creation
             display_path = workspace_manager.relative_path(resolved_path)
         else:
+            logger.debug("No workspace_manager, using raw path")
             resolved_path = Path(path)
             display_path = path
+            logger.debug("Resolved path (no wm): %s", resolved_path.resolve())
 
         # Check overwrite flag
         if not overwrite and resolved_path.exists():
             error_msg = f"[ERROR] File exists and overwrite=False: {display_path}"
             self._ledger_append("ERROR", error_msg, ledger_file)
-            return error_msg
+            logger.error(error_msg)
+            raise FileExistsError(error_msg)
 
         if create_dirs:
-            os.makedirs(os.path.dirname(resolved_path) or ".", exist_ok=True)
+            parent_dir = os.path.dirname(resolved_path) or "."
+            logger.debug("Creating parent directories: %s", parent_dir)
+            os.makedirs(parent_dir, exist_ok=True)
 
         # Choose write mode based on append flag
         # Use newline='' to prevent Python from translating line endings
         mode = "a" if append else "w"
         newline = '' if line_end is not None else None
-        with open(resolved_path, mode, encoding=encoding, newline=newline) as f:
-            f.write(content)
+
+        logger.debug("Writing %d chars to %s", len(content), resolved_path)
+        try:
+            with open(resolved_path, mode, encoding=encoding, newline=newline) as f:
+                f.write(content)
+            logger.debug("Write successful!")
+
+            # Verify file was created
+            if not resolved_path.exists():
+                error_msg = f"[ERROR] File write reported success but file doesn't exist: {resolved_path}"
+                logger.error(error_msg)
+                raise IOError(error_msg)
+
+            file_size = resolved_path.stat().st_size
+            logger.debug("File exists after write, size: %d bytes", file_size)
+
+        except Exception as e:
+            error_msg = f"[ERROR] Failed to write file {resolved_path}: {e}"
+            logger.error(error_msg)
+            raise
 
         action = "Appended" if append else "Wrote"
         self._ledger_append("WRITE" if not append else "APPEND", str(resolved_path), ledger_file)

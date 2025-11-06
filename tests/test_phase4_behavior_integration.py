@@ -11,11 +11,7 @@ Tests:
 """
 
 import pytest
-from pathlib import Path
-import tempfile
-import shutil
 
-from base_agent import BaseAgent
 from task_executor_agent import TaskExecutorAgent
 from orchestrator_agent import OrchestratorAgent
 from architect_agent import ArchitectAgent

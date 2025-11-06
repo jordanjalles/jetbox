@@ -21,7 +21,7 @@ Usage:
 """
 
 import sqlite3
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 
 class Database:

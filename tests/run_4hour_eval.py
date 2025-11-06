@@ -65,7 +65,7 @@ def main():
 
     print("\n🚀 Starting 4-hour evaluation...")
     print(f"   Output: {output_dir}")
-    print(f"   Log: evaluation.log")
+    print("   Log: evaluation.log")
     print(f"   Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
 
@@ -118,12 +118,12 @@ def main():
             cat = result.failure_category
             failure_categories[cat] = failure_categories.get(cat, 0) + 1
 
-    evaluator.log(f"\nOVERALL RESULTS:")
+    evaluator.log("\nOVERALL RESULTS:")
     evaluator.log(f"  Total evaluations: {total_tasks}")
     evaluator.log(f"  Passed: {passed} ({100*passed/total_tasks:.1f}%)")
     evaluator.log(f"  Failed: {failed} ({100*failed/total_tasks:.1f}%)")
 
-    evaluator.log(f"\nRESULTS BY LEVEL:")
+    evaluator.log("\nRESULTS BY LEVEL:")
     for level in sorted(by_level.keys()):
         stats = by_level[level]
         total = stats["passed"] + stats["failed"]
@@ -131,7 +131,7 @@ def main():
         evaluator.log(f"  L{level}: {stats['passed']}/{total} passed ({pass_rate:.1f}%)")
 
     if failure_categories:
-        evaluator.log(f"\nFAILURE CATEGORIES:")
+        evaluator.log("\nFAILURE CATEGORIES:")
         for cat, count in sorted(failure_categories.items(), key=lambda x: x[1], reverse=True):
             evaluator.log(f"  {cat}: {count}")
 
@@ -143,7 +143,7 @@ def main():
     evaluator.generate_report(all_results)
 
     print(f"\n{'=' * 70}")
-    print(f"✅ 4-HOUR EVALUATION COMPLETE!")
+    print("✅ 4-HOUR EVALUATION COMPLETE!")
     print(f"{'=' * 70}")
     print(f"Results: {output_dir}")
     print(f"Report: {output_dir}/EVALUATION_REPORT.md")

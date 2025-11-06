@@ -31,7 +31,7 @@ def main():
         return 1
 
     print(f"\n{'='*70}")
-    print(f"CONTEXT LEAKAGE ANALYSIS")
+    print("CONTEXT LEAKAGE ANALYSIS")
     print(f"{'='*70}\n")
 
     # Track subtask transitions
@@ -53,10 +53,10 @@ def main():
             print(f"  Message history count: {msg_history}")
 
             if notes == "SUBTASK_TRANSITION_CLEAR":
-                print(f"  ℹ️  Transition clear marker detected")
+                print("  ℹ️  Transition clear marker detected")
 
             if msg_history > 0:
-                print(f"  ⚠️  LEAK DETECTED: Message history should be 0 after transition")
+                print("  ⚠️  LEAK DETECTED: Message history should be 0 after transition")
                 print(f"       but found {msg_history} messages from previous subtask\n")
                 leaks_detected.append({
                     "turn": turn,
@@ -65,7 +65,7 @@ def main():
                     "leaked_messages": msg_history
                 })
             else:
-                print(f"  ✓ Clean transition: Message history correctly cleared\n")
+                print("  ✓ Clean transition: Message history correctly cleared\n")
                 clean_transitions.append({
                     "turn": turn,
                     "from": last_subtask,
@@ -75,27 +75,27 @@ def main():
         last_subtask = subtask
 
     print(f"{'='*70}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*70}")
     print(f"Total turns analyzed: {len(entries)}")
     print(f"Clean transitions: {len(clean_transitions)}")
     print(f"Leaks detected: {len(leaks_detected)}")
 
     if clean_transitions:
-        print(f"\n✅ CLEAN TRANSITIONS:")
+        print("\n✅ CLEAN TRANSITIONS:")
         for trans in clean_transitions:
             print(f"  • Turn {trans['turn']}: Successfully isolated transition")
 
     if leaks_detected:
-        print(f"\n❌ CONTEXT LEAKAGE CONFIRMED")
-        print(f"\nDetails:")
+        print("\n❌ CONTEXT LEAKAGE CONFIRMED")
+        print("\nDetails:")
         for leak in leaks_detected:
             print(f"  • Turn {leak['turn']}: {leak['leaked_messages']} messages leaked")
             print(f"    from '{leak['from'][:60]}'")
             print(f"    to   '{leak['to'][:60]}'")
         return 1
     else:
-        print(f"\n✅ NO LEAKAGE: Context isolation working correctly")
+        print("\n✅ NO LEAKAGE: Context isolation working correctly")
         return 0
 
 

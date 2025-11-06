@@ -5,7 +5,6 @@ This agent is purely config-driven. All logic is in base_agent.py and behaviors.
 """
 from __future__ import annotations
 from pathlib import Path
-from typing import Any
 
 from base_agent import BaseAgent
 

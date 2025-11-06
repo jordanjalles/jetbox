@@ -27,7 +27,7 @@ def main():
         "content": task
     })
 
-    print(f"\nRunning orchestrator (max 2 rounds to see delegation)...")
+    print("\nRunning orchestrator (max 2 rounds to see delegation)...")
     print("="*80)
 
     # Run orchestrator - should delegate to architect

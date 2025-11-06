@@ -8,7 +8,7 @@ import os
 import shutil
 import time
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 
 def parse_time_delta(time_str: str) -> timedelta:

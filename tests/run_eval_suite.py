@@ -196,7 +196,7 @@ def main():
             print(f"  {mode}: {len(instances)} occurrences")
             print(f"    Examples: {', '.join(instances[:5])}")
 
-    print(f"\nDetailed results saved to: eval_suite_results.json")
+    print("\nDetailed results saved to: eval_suite_results.json")
 
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ with tempfile.TemporaryDirectory() as tmp:
     print(f"\n{'=' * 80}")
     print("FINAL STATE")
     print(f"{'=' * 80}")
-    print(f"\nWorkspace files:")
+    print("\nWorkspace files:")
     for f in ws.rglob("*"):
         if f.is_file():
             print(f"  - {f.relative_to(ws)}")

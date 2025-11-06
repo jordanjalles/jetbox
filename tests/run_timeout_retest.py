@@ -2,7 +2,6 @@
 """Re-test the 4 tests that had timeout issues after applying the fix."""
 
 import json
-import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +11,7 @@ from collections import defaultdict
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.run_stress_tests import TESTS, run_test, clean_workspace, restart_ollama_if_needed
+from tests.run_stress_tests import TESTS, run_test, restart_ollama_if_needed
 
 
 # Tests that had timeout issues (L3-2, L3-3, L4-1, L5-2)
@@ -25,7 +24,7 @@ def main():
     print("TIMEOUT FIX VERIFICATION TEST")
     print("="*80)
     print(f"Testing: {', '.join(TIMEOUT_TEST_IDS)}")
-    print(f"Iterations: 10 per test (40 total runs)")
+    print("Iterations: 10 per test (40 total runs)")
     print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*80)
 
@@ -104,7 +103,7 @@ def main():
               f"{data['timeouts']:<10} {status_icon}")
 
         if data["failures"]:
-            print(f"  Failures:")
+            print("  Failures:")
             for f in data["failures"]:
                 print(f"    - Iter {f['iteration']}: {f['mode']} "
                       f"({f['duration']:.1f}s, {f['rounds']} rounds)")
@@ -184,7 +183,7 @@ def main():
     else:
         print(f"✗ REGRESSION: Pass rate decreased from {prev_total_rate:.1f}% to {curr_total_rate:.1f}%")
 
-    print(f"\nDetailed results saved to: timeout_retest_results.json")
+    print("\nDetailed results saved to: timeout_retest_results.json")
 
 
 if __name__ == "__main__":

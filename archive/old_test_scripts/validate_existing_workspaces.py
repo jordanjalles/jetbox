@@ -34,33 +34,33 @@ for result in results:
     task_name = result["task"]
     strategy = result["strategy"]
     validator_name = result.get("validator", task_name.split("_", 1)[1])  # L3_calculator -> calculator
-    
+
     print(f"\n{'='*70}")
     print(f"Task: {task_name} | Strategy: {strategy}")
     print(f"Validator: {validator_name}")
-    
+
     # Find workspace directory
     # Workspaces are named after the goal, which varies by task
     workspace_dirs = list(workspace_base.glob(f"*{task_name}*"))
     if not workspace_dirs:
         workspace_dirs = list(workspace_base.glob(f"*{validator_name}*"))
-    
+
     if not workspace_dirs:
-        print(f"  ⚠️  No workspace found (task may have crashed)")
+        print("  ⚠️  No workspace found (task may have crashed)")
         updated_results.append(result)
         continue
-    
+
     # Use most recent workspace
     workspace_dir = max(workspace_dirs, key=lambda p: p.stat().st_mtime)
     print(f"  Workspace: {workspace_dir.name}")
-    
+
     # Run validation
     validation = validate_workspace(workspace_dir, validator_name)
-    
+
     # Update result
     old_passed = result.get("validation_passed", 0)
     old_failed = result.get("validation_failed", 0)
-    
+
     # Calculate new counts
     new_passed = 0
     new_failed = 0
@@ -70,25 +70,25 @@ for result in results:
     if "missing" in validation:
         for symbol_type, symbols in validation["missing"].items():
             new_failed += len(symbols)
-    
+
     result["validation_passed"] = new_passed
     result["validation_failed"] = new_failed
     result["validation_found"] = validation.get("found", {})
     result["validation_missing"] = validation.get("missing", {})
     result["success"] = validation.get("success", False)
-    
+
     print(f"  Old validation: {old_passed}/{old_passed + old_failed} passed")
     print(f"  New validation: {new_passed}/{new_passed + new_failed} passed")
-    
+
     if new_passed > old_passed:
         print(f"  ✓ IMPROVEMENT: +{new_passed - old_passed} symbols found")
     elif new_passed == old_passed and new_passed > 0:
-        print(f"  ✓ Same validation (working)")
+        print("  ✓ Same validation (working)")
     elif new_passed == 0 and old_passed == 0:
-        print(f"  ⚠️  Still no validation data")
+        print("  ⚠️  Still no validation data")
     else:
-        print(f"  ⚠️  Validation regressed")
-    
+        print("  ⚠️  Validation regressed")
+
     updated_results.append(result)
 
 # Save updated results

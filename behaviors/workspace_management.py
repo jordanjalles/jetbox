@@ -11,11 +11,10 @@ Other agents (TaskExecutor, Architect) work WITHIN workspaces but don't manage t
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from pathlib import Path
-import json
 from behaviors.base import AgentBehavior
 
 if TYPE_CHECKING:
-    from base_agent import BaseAgent
+    pass
 
 
 class WorkspaceManagementBehavior(AgentBehavior):

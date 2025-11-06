@@ -14,11 +14,10 @@ import os
 import sys
 import time
 import json
-import traceback
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass, asdict, field
-from typing import List, Dict, Any
+from dataclasses import dataclass, field
+from typing import List, Dict
 import statistics
 
 # Set model for testing
@@ -26,7 +25,6 @@ os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
 from task_executor_agent import TaskExecutorAgent
 from orchestrator_agent import OrchestratorAgent
-from architect_agent import ArchitectAgent
 
 
 @dataclass
@@ -459,12 +457,12 @@ class EnhancedEvaluator:
         print(f"{'='*80}")
         print(f"Duration: {total_duration/60:.1f} minutes")
         print(f"Success Rate: {report['summary']['success_rate']*100:.1f}% ({successful_runs}/{total_runs})")
-        print(f"\nPer-Level Results:")
+        print("\nPer-Level Results:")
         for level in ["L3", "L4", "L5", "L6", "L7"]:
             if level in level_stats:
                 s = level_stats[level]
                 print(f"  {level}: {s['success_rate']*100:.0f}% success | {s['avg_duration']:.1f}s avg | {s['avg_llm_time']:.1f}s LLM | {s['avg_tool_time']:.1f}s tools | {s['avg_overhead']:.1f}% overhead")
-        print(f"\nReports:")
+        print("\nReports:")
         print(f"  JSON: {json_path}")
         print(f"  MD:   {md_path}")
 

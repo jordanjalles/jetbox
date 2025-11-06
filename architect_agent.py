@@ -43,10 +43,10 @@ class ArchitectAgent(BaseAgent):
             exclude_behaviors=exclude_behaviors,
         )
 
-        # Set goal if provided (triggers on_goal_set event in SubAgentModeBehavior)
+        # Set goal if provided (triggers onGoalSet event in BaseAgent)
         if goal:
             self.trigger_behavior_event(
-                "on_goal_set",
+                "onGoalSet",
                 goal=goal,
                 workspace=workspace,
             )

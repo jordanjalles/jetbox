@@ -8,8 +8,6 @@ Tests:
 - max_repeats threshold
 """
 
-import pytest
-from unittest.mock import Mock
 from behaviors.loop_detection import LoopDetectionBehavior
 
 

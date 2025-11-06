@@ -1,9 +1,7 @@
 # tests/test_app.py
-import os
-import tempfile
 import pytest
 from app import create_app, db
-from models import User, Post, Comment
+from models import Post
 
 @pytest.fixture
 def app():

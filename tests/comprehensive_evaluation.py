@@ -107,7 +107,7 @@ class ComprehensiveEvaluator:
                     rounds_used = len(executor.status_display.stats.llm_call_times)
                 else:
                     rounds_used = task.timeout_rounds
-                self.log(f"✅ Agent execution completed")
+                self.log("✅ Agent execution completed")
                 self.log(f"   Result: {agent_result.get('status', 'unknown')}")
             except Exception as e:
                 self.log(f"⚠️  Agent execution error: {e}")
@@ -179,7 +179,7 @@ class ComprehensiveEvaluator:
             else:
                 failure_category = FailureCategory.MISSING_FILES
                 validation_output = f"Missing files: {set(task.expected_files) - set(files_created)}"
-                self.log(f"⚠️  Skipping validation - missing files")
+                self.log("⚠️  Skipping validation - missing files")
 
             # Save validation output
             (task_log_dir / "validation_output.txt").write_text(validation_output)
@@ -296,7 +296,7 @@ class ComprehensiveEvaluator:
         self._generate_final_report(results, total_duration)
 
         self.log("\n" + "="*70)
-        self.log(f"✅ EVALUATION COMPLETE!")
+        self.log("✅ EVALUATION COMPLETE!")
         self.log(f"Total duration: {total_duration/60:.1f} minutes")
         self.log(f"Results saved to: {self.log_dir}")
         self.log("="*70)
@@ -334,7 +334,7 @@ class ComprehensiveEvaluator:
         failed = total - passed
 
         with open(report_file, "w") as f:
-            f.write(f"# Jetbox Agent Comprehensive Evaluation Report\n\n")
+            f.write("# Jetbox Agent Comprehensive Evaluation Report\n\n")
             f.write(f"**Run ID**: {self.run_id}\n\n")
             f.write(f"**Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             f.write(f"**Duration**: {total_duration/60:.1f} minutes\n\n")

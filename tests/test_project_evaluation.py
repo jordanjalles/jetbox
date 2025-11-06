@@ -6,7 +6,6 @@ Tests L5-L7 coding tasks and L8 full projects with both orchestrator-only
 and orchestrator+architect scenarios.
 """
 import pytest
-import tempfile
 import json
 import time
 import subprocess
@@ -17,7 +16,7 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from semantic_validator import validate_workspace, SemanticValidator
+from semantic_validator import SemanticValidator
 
 
 # ===== TEST TASK DEFINITIONS =====
@@ -501,7 +500,7 @@ def run_orchestrator_once(task: dict, use_architect: bool = False) -> dict:
             "returncode": proc.returncode,
             "workspace": workspace,
         }
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         duration = time.time() - start_time
         workspace = find_workspace_for_task(task)
         return {

@@ -8,7 +8,6 @@ Tests:
 """
 import sys
 import tempfile
-import os
 from pathlib import Path
 
 # Add parent directory to path so we can import behaviors

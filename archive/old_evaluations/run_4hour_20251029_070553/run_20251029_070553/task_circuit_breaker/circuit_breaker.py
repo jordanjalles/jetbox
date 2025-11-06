@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import time
 from functools import wraps
-from typing import Callable, Any, Dict, Tuple
+from typing import Callable, Any, Dict
 
 __all__ = ["CircuitBreaker", "CircuitOpenError"]
 
@@ -115,7 +115,7 @@ class CircuitBreaker:
 
         try:
             result = func(*args, **kwargs)
-        except Exception as exc:  # pragma: no cover - exercised via tests
+        except Exception:  # pragma: no cover - exercised via tests
             self._handle_failure()
             raise
         else:

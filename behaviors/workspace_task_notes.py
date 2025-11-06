@@ -19,39 +19,33 @@ from datetime import datetime
 from typing import Any
 from behaviors.base import AgentBehavior
 
-# Module-level state for workspace notes system
-_workspace = None  # Global reference to workspace manager (set by behavior at runtime)
-
-
 # ============================================================================
 # UTILITY FUNCTIONS (workspace task notes implementation)
 # ============================================================================
 
-def set_workspace(workspace_manager) -> None:
-    """Set the workspace manager for notes file access."""
-    global _workspace
-    _workspace = workspace_manager
-
-
-def _get_notes_file() -> Path | None:
+def _get_notes_file(workspace_manager) -> Path | None:
     """Get the workspace task notes file path."""
-    if not _workspace:
+    if not workspace_manager:
         return None
-    return _workspace.workspace_dir / "workspace_task_notes.md"
+    # Store in .agent_context for workspace-specific state
+    context_dir = workspace_manager.workspace_dir / ".agent_context"
+    context_dir.mkdir(exist_ok=True)
+    return context_dir / "workspace_task_notes.md"
 
 
-def append_to_notes(content: str, section: str = "task") -> bool:
+def append_to_notes(content: str, section: str = "task", workspace_manager=None) -> bool:
     """
     Append content to workspace_task_notes.md in workspace.
 
     Args:
         content: Text to append (markdown formatted)
         section: Type of entry ("task", "goal_success", "goal_failure")
+        workspace_manager: WorkspaceManager instance for file access
 
     Returns:
         True if successful, False otherwise
     """
-    notes_file = _get_notes_file()
+    notes_file = _get_notes_file(workspace_manager)
     if not notes_file:
         return False
 
@@ -63,15 +57,15 @@ def append_to_notes(content: str, section: str = "task") -> bool:
         # Timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Format based on section
+        # Format based on section (matter-of-fact, not celebratory)
         if section == "task":
-            entry = f"## Task Complete - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Task marked done - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "goal_success":
-            entry = f"## ✓ GOAL COMPLETE - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Goal marked done - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "goal_failure":
-            entry = f"## ✗ GOAL FAILED - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Goal marked failed - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "timeout":
-            entry = f"## ⏱ TIMEOUT - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Agent timeout - {timestamp}\n\n{content}\n\n---\n\n"
         else:
             entry = f"## Note - {timestamp}\n\n{content}\n\n---\n\n"
 
@@ -87,7 +81,7 @@ def append_to_notes(content: str, section: str = "task") -> bool:
         return False
 
 
-def load_notes(max_chars: int = 2000) -> str | None:
+def load_notes(max_chars: int = 2000, workspace_manager=None) -> str | None:
     """
     Load workspace task notes from workspace file.
 
@@ -97,7 +91,7 @@ def load_notes(max_chars: int = 2000) -> str | None:
     Returns:
         Notes content or None if file doesn't exist
     """
-    notes_file = _get_notes_file()
+    notes_file = _get_notes_file(workspace_manager)
     if not notes_file or not notes_file.exists():
         return None
 
@@ -127,10 +121,11 @@ def prompt_for_task_summary(task_description: str) -> str:
 
     Returns:
         Summary text from agent
-    """
-    if not _llm_call_func:
-        return f"Task completed: {task_description}\n(Summary generation not available)"
 
+    Note: This function is currently unused. It was part of the original
+    workspace task notes implementation but has been superseded by the
+    changelog-style summaries in onGoalComplete.
+    """
     prompt = f"""You just completed this task: "{task_description}"
 
 Briefly summarize what was accomplished in 2-4 bullet points. Be specific and factual:
@@ -143,13 +138,14 @@ Keep it concise - focus on facts that future tasks might need to know.
 Format: Use bullet points starting with "-"."""
 
     try:
-        response = _llm_call_func(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,  # Low temperature for factual summary
-            timeout=30,
+        from utils.llm_utils import summarize_with_llm
+
+        content = summarize_with_llm(
+            prompt=prompt,
+            model="gpt-oss:20b",
+            temperature=0.2,
         )
 
-        content = response.get("message", {}).get("content", "")
         if not content:
             return f"- Completed: {task_description}"
 
@@ -236,21 +232,21 @@ Format: Use bullet points starting with "-"."""
         return f"- Goal {status}: {goal_description}\n- (Summary generation timed out)"
 
 
-def get_notes_summary_for_display() -> str | None:
+def get_notes_summary_for_display(workspace_manager=None) -> str | None:
     """
     Get notes content formatted for console display.
 
     Returns:
         Formatted notes or None if no notes exist
     """
-    content = load_notes(max_chars=1000)  # Shorter for display
+    content = load_notes(max_chars=1000, workspace_manager=workspace_manager)  # Shorter for display
     if not content:
         return None
 
     return f"\n{'='*70}\nWORKSPACE TASK NOTES\n{'='*70}\n{content}\n{'='*70}\n"
 
 
-def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history: list = None) -> None:
+def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history: list = None, workspace_manager=None) -> None:
     """
     Create a workspace task notes summary when goal times out.
 
@@ -261,12 +257,13 @@ def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history
         goal: Goal object (optional, uses goal.description if provided)
         elapsed_seconds: Total elapsed time
         action_history: List of Action objects from context manager (optional)
+        workspace_manager: WorkspaceManager instance for file access
     """
-    if not _workspace:
+    if not workspace_manager:
         return
 
     # Extract goal description
-    goal_description = goal.description if goal else _workspace.goal
+    goal_description = goal.description if goal else workspace_manager.goal
 
     # Build action summary from action_history (strategy-agnostic)
     if action_history:
@@ -296,7 +293,7 @@ def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history
         # Build progress context
         progress_lines = [
             f"- Total actions: {total_actions} (success: {successful_actions}, failed: {failed_actions})",
-            f"- Actions by tool:",
+            "- Actions by tool:",
         ]
         for tool, counts in actions_by_tool.items():
             progress_lines.append(f"  • {tool}: {counts['total']} total ({counts['success']} success, {counts['error']} failed)")
@@ -352,7 +349,7 @@ Format: Dense bullets focused on facts."""
 
         # Append to notes
         timeout_header = f"## TIMEOUT ({elapsed_seconds:.0f}s)"
-        append_to_notes(f"{timeout_header}\n{summary}", "timeout")
+        append_to_notes(f"{timeout_header}\n{summary}", "timeout", workspace_manager=workspace_manager)
 
         print(f"[workspace_task_notes] Created timeout summary ({len(summary)} chars)")
 
@@ -376,7 +373,7 @@ Format: Dense bullets focused on facts."""
         fallback_lines.append("- Summary generation failed - see action history for details")
 
         fallback = "\n".join(fallback_lines)
-        append_to_notes(fallback, "timeout")
+        append_to_notes(fallback, "timeout", workspace_manager=workspace_manager)
         print(f"[workspace_task_notes] Created fallback timeout summary (LLM failed: {e})")
 
 
@@ -407,6 +404,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         """
         self.workspace_manager = None
         self.notes_content = None
+        self.initial_files = None  # Snapshot of files at goal start for change tracking
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -429,19 +427,22 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         Returns:
             Modified context with notes injected (if notes exist)
         """
-        # Set workspace if provided
-        if "workspace_manager" in kwargs and not self.workspace_manager:
-            self.workspace_manager = kwargs["workspace_manager"]
-            set_workspace(self.workspace_manager)
+        # Get workspace_manager from kwargs
+        agent = kwargs.get("agent")
+        if agent and hasattr(agent, "workspace_manager"):
+            workspace_manager = agent.workspace_manager
+            if not self.workspace_manager:
+                self.workspace_manager = workspace_manager
+        else:
+            workspace_manager = kwargs.get("workspace_manager") or self.workspace_manager
 
         # Load notes (cached)
         if self.notes_content is None:
-            self.notes_content = load_notes(max_chars=2000)
+            self.notes_content = load_notes(max_chars=2000, workspace_manager=workspace_manager)
 
         # Inject notes into context if they exist
         if self.notes_content and len(context) > 0:
             # Check if notes are too large (warning threshold: 10% of max context)
-            agent = kwargs.get("agent")
             if agent:
                 max_tokens = self._get_max_tokens(agent)
                 if max_tokens:
@@ -453,11 +454,13 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
                         pct = (notes_tokens / max_tokens) * 100
                         print(f"⚠️  Workspace task notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
 
-            # Insert after system prompt (index 1)
-            self.inject_user_message_after_system(
-                context,
-                f"## Previous Context (from workspace task notes)\n\n{self.notes_content}"
+            # Insert after system prompt with clear delimiters
+            notes_with_delimiters = (
+                "<Begin Reading Workspace Task Notes File>\n\n"
+                f"{self.notes_content}\n\n"
+                "<End Reading Workspace Task Notes File>"
             )
+            self.inject_user_message_after_system(context, notes_with_delimiters)
 
         return context
 
@@ -467,7 +470,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
 
         Tries to extract max_tokens from various agent attributes:
         - CompactWhenNearFullBehavior in agent.behaviors
-        - SubAgentContextBehavior in agent.behaviors
+        - Core goal tracking in BaseAgent
         - agent.token_threshold (orchestrator)
         - agent.context_window (orchestrator)
 
@@ -496,68 +499,265 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
 
         return None
 
-    def on_goal_start(self, goal: str, **kwargs: Any) -> None:
+    def _get_snapshot_file(self, workspace_manager=None) -> Path | None:
+        """Get path to the file snapshot JSON file."""
+        if not workspace_manager:
+            return None
+        # Store in .agent_context for workspace-specific state
+        context_dir = workspace_manager.workspace_dir / ".agent_context"
+        context_dir.mkdir(exist_ok=True)
+        return context_dir / "wtn_file_snapshot.json"
+
+    def _save_snapshot(self, snapshot: dict[str, dict[str, Any]], workspace_manager=None) -> None:
+        """Save file snapshot to workspace for future reuse."""
+        snapshot_file = self._get_snapshot_file(workspace_manager)
+        if not snapshot_file:
+            return
+
+        try:
+            import json
+            snapshot_file.write_text(json.dumps(snapshot, indent=2))
+            print(f"[workspace_task_notes] Saved initial snapshot: {len(snapshot)} files")
+        except Exception as e:
+            print(f"[workspace_task_notes] Failed to save snapshot: {e}")
+
+    def _get_workspace_files(self, workspace_manager=None) -> dict[str, dict[str, Any]]:
+        """
+        Get snapshot of workspace files with metadata.
+
+        Args:
+            workspace_manager: WorkspaceManager instance
+
+        Returns:
+            Dict mapping file path -> {size, mtime} for all workspace files
+        """
+        import os
+
+        files = {}
+        wm = workspace_manager or self.workspace_manager
+        if not wm:
+            return files
+
+        workspace_path = Path(wm.workspace_dir)
+        if not workspace_path.exists():
+            return files
+
+        for item in workspace_path.rglob("*"):
+            if item.is_file():
+                # Skip hidden files, workspace_task_notes, and snapshot file
+                if (item.name.startswith('.') or
+                    'workspace_task_notes' in item.name or
+                    item.name == '.wtn_file_snapshot.json'):
+                    continue
+
+                rel_path = str(item.relative_to(workspace_path))
+                try:
+                    stat = os.stat(item)
+                    files[rel_path] = {
+                        'size': stat.st_size,
+                        'mtime': stat.st_mtime
+                    }
+                except Exception:
+                    # File disappeared or inaccessible
+                    pass
+
+        return files
+
+    def _compute_file_changes(self, initial_files: dict, final_files: dict) -> dict[str, list[str]]:
+        """
+        Compute file changes between initial and final snapshots.
+
+        Args:
+            initial_files: Snapshot from goal start
+            final_files: Snapshot from goal end
+
+        Returns:
+            Dict with keys: created, edited, deleted (each a list of file paths)
+        """
+        changes = {
+            'created': [],
+            'edited': [],
+            'deleted': []
+        }
+
+        if not initial_files:
+            # No initial snapshot - all files are created
+            changes['created'] = sorted(final_files.keys())
+            return changes
+
+        # Find created and edited files
+        for path, final_meta in final_files.items():
+            if path not in initial_files:
+                changes['created'].append(path)
+            else:
+                initial_meta = initial_files[path]
+                # Check if modified (size or mtime changed)
+                if (final_meta['size'] != initial_meta['size'] or
+                    final_meta['mtime'] != initial_meta['mtime']):
+                    changes['edited'].append(path)
+
+        # Find deleted files
+        for path in initial_files:
+            if path not in final_files:
+                changes['deleted'].append(path)
+
+        # Sort for consistent output
+        changes['created'] = sorted(changes['created'])
+        changes['edited'] = sorted(changes['edited'])
+        changes['deleted'] = sorted(changes['deleted'])
+
+        return changes
+
+    def onGoalStart(self, goal: str, **kwargs: Any) -> None:
         """
         Called when goal starts.
 
         Sets up workspace and LLM caller for notes system.
+        Captures initial file snapshot for change tracking.
 
         Args:
             goal: The goal string
-            **kwargs: Additional context (workspace_manager, llm_call_func, etc.)
+            **kwargs: Additional context (agent, workspace_manager, llm_call_func, etc.)
         """
-        # Set workspace manager
-        if "workspace_manager" in kwargs:
-            self.workspace_manager = kwargs["workspace_manager"]
-            set_workspace(self.workspace_manager)
+        # Get workspace manager from agent (primary) or kwargs (fallback)
+        agent = kwargs.get("agent")
+        if agent and hasattr(agent, "workspace_manager"):
+            workspace_manager = agent.workspace_manager
+            self.workspace_manager = workspace_manager
+        else:
+            workspace_manager = kwargs.get("workspace_manager")
+            if workspace_manager:
+                self.workspace_manager = workspace_manager
 
         # Clear cached notes to force reload
         self.notes_content = None
 
-    def on_goal_complete(self, success: bool, **kwargs: Any) -> None:
+        # Load or capture initial file snapshot for change tracking
+        snapshot_file = self._get_snapshot_file(workspace_manager)
+        if snapshot_file and snapshot_file.exists():
+            # Workspace reuse - load existing snapshot
+            import json
+            try:
+                self.initial_files = json.loads(snapshot_file.read_text())
+                print(f"[workspace_task_notes] Loaded initial snapshot: {len(self.initial_files)} files")
+            except Exception as e:
+                print(f"[workspace_task_notes] Failed to load snapshot: {e}")
+                self.initial_files = self._get_workspace_files(workspace_manager)
+        else:
+            # New workspace - capture initial snapshot
+            self.initial_files = self._get_workspace_files(workspace_manager)
+            # Save snapshot for future reuse
+            self._save_snapshot(self.initial_files, workspace_manager)
+
+    def onGoalComplete(self, success: bool, **kwargs: Any) -> None:
         """
         Called when goal completes.
 
-        Generates and saves goal summary to workspace_task_notes.md.
+        Generates and saves changelog-style summary to workspace_task_notes.md.
 
         Args:
             success: True if goal succeeded, False if failed
-            **kwargs: Additional context (goal, reason, workspace_manager, llm_call_func, etc.)
+            **kwargs: Additional context (agent, goal, reason, workspace_manager, llm_call_func, etc.)
         """
-        # Set workspace manager from kwargs
-        if "workspace_manager" in kwargs:
-            self.workspace_manager = kwargs["workspace_manager"]
-            set_workspace(self.workspace_manager)
+        # Get workspace manager from agent (primary) or kwargs (fallback)
+        agent = kwargs.get("agent")
+        if agent and hasattr(agent, "workspace_manager"):
+            workspace_manager = agent.workspace_manager
+            self.workspace_manager = workspace_manager
+        else:
+            workspace_manager = kwargs.get("workspace_manager")
+            if workspace_manager:
+                self.workspace_manager = workspace_manager
 
         goal_description = kwargs.get("goal", "Unknown goal")
         reason = kwargs.get("reason", "")
-        task_summaries = kwargs.get("task_summaries", None)
 
-        # Generate summary via module functions
-        summary = prompt_for_goal_summary(
-            goal_description=goal_description,
-            success=success,
-            reason=reason,
-            task_summaries=task_summaries
-        )
+        # Get final file snapshot
+        final_files = self._get_workspace_files(workspace_manager)
 
-        # Append to notes
-        section = "goal_success" if success else "goal_failure"
-        append_to_notes(summary, section=section)
+        # Compute file changes
+        changes = self._compute_file_changes(self.initial_files or {}, final_files)
 
-        # Print summary for console
-        if success:
-            print("\n" + "="*70)
-            print("GOAL COMPLETE - Summary:")
-            print("="*70)
-            print(summary)
-            print("="*70 + "\n")
+        # Find documentation files
+        doc_files = []
+        for path in final_files.keys():
+            lower_path = path.lower()
+            if any(doc_marker in lower_path for doc_marker in ['readme', 'doc', 'guide', '.md']):
+                doc_files.append(path)
+
+        # Build changelog-style summary
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        status = "marked done" if success else "marked failed"
+
+        summary_lines = [
+            f"Timestamp: {timestamp}",
+            f"Goal: {goal_description}",
+            f"Status: {status}",
+            ""
+        ]
+
+        # File changes section
+        has_changes = any(changes.values())
+        if has_changes:
+            summary_lines.append("File Changes:")
+
+            if changes['created']:
+                summary_lines.append("  Created:")
+                for path in changes['created']:
+                    summary_lines.append(f"    - {path}")
+
+            if changes['edited']:
+                summary_lines.append("  Edited:")
+                for path in changes['edited']:
+                    summary_lines.append(f"    - {path}")
+
+            if changes['deleted']:
+                summary_lines.append("  Deleted:")
+                for path in changes['deleted']:
+                    summary_lines.append(f"    - {path}")
+
+            summary_lines.append("")
         else:
-            print("\n" + "="*70)
-            print("GOAL FAILED - Summary:")
-            print("="*70)
-            print(summary)
-            print("="*70 + "\n")
+            summary_lines.append("File Changes: none")
+            summary_lines.append("")
+
+        # Documentation pointers
+        if doc_files:
+            summary_lines.append("Documentation:")
+            for doc in sorted(doc_files):
+                summary_lines.append(f"  - {doc}")
+            summary_lines.append("")
+
+        # Failure reason (if applicable)
+        if not success and reason:
+            summary_lines.append(f"Failure Reason:")
+            summary_lines.append(f"  {reason}")
+            summary_lines.append("")
+
+        # Total file count
+        total_files = len(final_files)
+        summary_lines.append(f"Workspace Files: {total_files} total")
+
+        summary = "\n".join(summary_lines)
+
+        # Append to notes with matter-of-fact section header
+        section = "goal_success" if success else "goal_failure"
+        append_to_notes(summary, section=section, workspace_manager=workspace_manager)
+
+        # Update snapshot for next round (save final state as new baseline)
+        # This ensures subsequent rounds can track Created vs Edited correctly
+        if success:
+            self._save_snapshot(final_files, workspace_manager)
+
+        # Print summary for console (matter-of-fact)
+        print("\n" + "="*70)
+        if success:
+            print("Goal marked done")
+        else:
+            print("Goal marked failed")
+        print("="*70)
+        print(summary)
+        print("="*70 + "\n")
 
     def on_timeout(self, elapsed_seconds: float, **kwargs: Any) -> None:
         """
@@ -567,12 +767,17 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
 
         Args:
             elapsed_seconds: Time elapsed since goal start
-            **kwargs: Additional context (goal, action_history, workspace_manager, llm_call_func, etc.)
+            **kwargs: Additional context (agent, goal, action_history, workspace_manager, llm_call_func, etc.)
         """
-        # Set workspace manager from kwargs
-        if "workspace_manager" in kwargs:
-            self.workspace_manager = kwargs["workspace_manager"]
-            set_workspace(self.workspace_manager)
+        # Get workspace manager from agent (primary) or kwargs (fallback)
+        agent = kwargs.get("agent")
+        if agent and hasattr(agent, "workspace_manager"):
+            workspace_manager = agent.workspace_manager
+            self.workspace_manager = workspace_manager
+        else:
+            workspace_manager = kwargs.get("workspace_manager")
+            if workspace_manager:
+                self.workspace_manager = workspace_manager
 
         goal = kwargs.get("goal", None)
         action_history = kwargs.get("action_history", None)
@@ -581,7 +786,8 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         create_timeout_summary(
             goal=goal,
             elapsed_seconds=elapsed_seconds,
-            action_history=action_history
+            action_history=action_history,
+            workspace_manager=workspace_manager
         )
 
     def get_instructions(self) -> str:

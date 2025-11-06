@@ -66,7 +66,7 @@ def test_timeout_handling():
 
             # List files created
             if result.get('file_list'):
-                print(f"\n  Files:")
+                print("\n  Files:")
                 for f in result['file_list']:
                     print(f"    - {f}")
         elif result.get('status') == 'success':

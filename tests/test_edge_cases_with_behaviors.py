@@ -133,11 +133,11 @@ class BrokenEventBehavior(AgentBehavior):
     def get_name(self) -> str:
         return "broken_events"
 
-    def on_goal_start(self, goal, **kwargs):
-        raise RuntimeError("Intentional error in on_goal_start")
+    def onGoalStart(self, goal, **kwargs):
+        raise RuntimeError("Intentional error in onGoalStart")
 
-    def on_tool_call(self, tool_name, args, result, **kwargs):
-        raise ValueError("Intentional error in on_tool_call")
+    def onToolCall(self, tool_name, args, result, **kwargs):
+        raise ValueError("Intentional error in onToolCall")
 
 
 @pytest.fixture
@@ -189,7 +189,7 @@ class TestToolConflictDetection:
         with pytest.raises(ValueError) as exc_info:
             agent.add_behavior(behavior2)
 
-        print(f"\n✓ Tool conflict detected correctly!")
+        print("\n✓ Tool conflict detected correctly!")
         print(f"  Error: {exc_info.value}")
 
         assert "already registered" in str(exc_info.value).lower()
@@ -258,7 +258,7 @@ class TestContextEnhancementOrder:
 
         assert pos_a < pos_b < pos_c, "Enhancements not applied in order"
 
-        print(f"\n✓ Enhancements applied in correct order")
+        print("\n✓ Enhancements applied in correct order")
         print(f"  Positions: A={pos_a}, B={pos_b}, C={pos_c}")
         print("="*80)
 
@@ -292,27 +292,27 @@ class TestEventHandlerErrors:
         print(f"\nRegistered behavior: {broken_behavior.get_name()}")
         print("  This behavior throws exceptions in event handlers")
 
-        # Test on_goal_start - should not crash
-        print("\nCalling on_goal_start...")
+        # Test onGoalStart - should not crash
+        print("\nCalling onGoalStart...")
         try:
-            agent._notify_behaviors("on_goal_start", goal="test goal")
-            print("✓ on_goal_start handled (no crash)")
+            agent._notify_behaviors("onGoalStart", goal="test goal")
+            print("✓ onGoalStart handled (no crash)")
         except Exception as e:
-            print(f"✓ on_goal_start exception caught: {e}")
+            print(f"✓ onGoalStart exception caught: {e}")
             # This is OK - as long as it doesn't crash the whole system
 
-        # Test on_tool_call - should not crash
-        print("\nCalling on_tool_call...")
+        # Test onToolCall - should not crash
+        print("\nCalling onToolCall...")
         try:
             agent._notify_behaviors(
-                "on_tool_call",
+                "onToolCall",
                 tool_name="test_tool",
                 args={},
                 result={"success": True}
             )
-            print("✓ on_tool_call handled (no crash)")
+            print("✓ onToolCall handled (no crash)")
         except Exception as e:
-            print(f"✓ on_tool_call exception caught: {e}")
+            print(f"✓ onToolCall exception caught: {e}")
 
         print("\n✓ Event handler errors don't crash the system")
         print("="*80)
@@ -365,10 +365,10 @@ behaviors:
         # Should have same number of behaviors (none added due to failures)
         final_behavior_count = len(agent.behaviors)
 
-        print(f"\n✓ Load completed without crashing!")
+        print("\n✓ Load completed without crashing!")
         print(f"  Initial behaviors: {initial_behavior_count}")
         print(f"  Final behaviors: {final_behavior_count}")
-        print(f"  Errors logged (check output above)")
+        print("  Errors logged (check output above)")
 
         assert final_behavior_count == initial_behavior_count, \
             "Missing behaviors should not be added"

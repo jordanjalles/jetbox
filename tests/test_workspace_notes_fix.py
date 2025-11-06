@@ -113,7 +113,7 @@ def test_workspace_uniqueness():
             exists = "exists" if ws.exists() else "missing"
             print(f"  - {ws.name}: {exists}")
     else:
-        print(f"✗ FAIL: Workspace names are not unique")
+        print("✗ FAIL: Workspace names are not unique")
         print(f"  Expected: {len(workspaces_created)} unique")
         print(f"  Got: {len(unique_names)} unique")
 
@@ -227,7 +227,7 @@ def test_test_workspace_isolation():
     print("-" * 80)
 
     if test_workspace.exists():
-        print(f"✓ PASS: Test workspace created in .agent_workspaces/tests/")
+        print("✓ PASS: Test workspace created in .agent_workspaces/tests/")
         print(f"  Path: {test_workspace}")
 
         # Verify it's in tests subdirectory

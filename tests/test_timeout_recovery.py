@@ -7,7 +7,7 @@ from pathlib import Path
 # Add tests directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from run_stress_tests import TESTS, run_test
+from run_stress_tests import run_test
 
 # Run a simple test to verify the timeout recovery logic works
 test = {

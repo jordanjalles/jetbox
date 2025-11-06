@@ -34,7 +34,7 @@ def test_orchestrator_workflow():
         "content": "Create a simple Python calculator with add and subtract functions. Include tests."
     })
 
-    print(f"Created orchestrator with task")
+    print("Created orchestrator with task")
     print(f"Workspace: {workspace}")
     print()
 

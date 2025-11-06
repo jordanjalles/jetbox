@@ -171,13 +171,13 @@ def main():
     total_successes = [r for r in results if r["status"] == "success"]
     overall_success_rate = len(total_successes) / len(results) * 100
 
-    print(f"\nOVERALL:")
+    print("\nOVERALL:")
     print(f"  Success Rate: {overall_success_rate:.1f}% ({len(total_successes)}/{len(results)})")
     print(f"  Total Time:   {overall_duration/3600:.1f} hours")
     print(f"  Avg Test:     {overall_duration/len(results):.1f}s")
 
     # Time analysis
-    print(f"\nTIME BREAKDOWN:")
+    print("\nTIME BREAKDOWN:")
     durations = [r["duration"] for r in results]
     print(f"  Min:    {min(durations):.1f}s")
     print(f"  Max:    {max(durations):.1f}s")
@@ -190,14 +190,14 @@ def main():
         for r in long_tests:
             print(f"    - {r['level']} P{r['problem_idx']+1} R{r['run_idx']+1}: {r['duration']:.1f}s ({r['status']})")
     else:
-        print(f"\n  ✓ No tests exceeded 5 minutes")
+        print("\n  ✓ No tests exceeded 5 minutes")
 
     # Empty round and error feedback analysis
-    print(f"\nEMPTY ROUND DETECTION:")
-    print(f"  Check logs for:")
-    print(f"    - '[loop_detection] ⚠️  Empty round #N'")
-    print(f"    - '🚨 CRITICAL: You have not called ANY tools'")
-    print(f"    - 'ERROR: Your last response had a malformed tool call'")
+    print("\nEMPTY ROUND DETECTION:")
+    print("  Check logs for:")
+    print("    - '[loop_detection] ⚠️  Empty round #N'")
+    print("    - '🚨 CRITICAL: You have not called ANY tools'")
+    print("    - 'ERROR: Your last response had a malformed tool call'")
 
     print(f"\nDetailed results saved to: {output_file}")
     print("="*80)

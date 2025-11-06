@@ -376,7 +376,7 @@ class TaskExecutorAgent(BaseAgent):
             self.init_workspace_manager(goal_slug, workspace_path=self.workspace)
         else:
             # Create new mode: create isolated workspace
-            print(f"[task_executor] Creating new workspace for goal")
+            print("[task_executor] Creating new workspace for goal")
             self.init_workspace_manager(goal_slug, workspace_path=None)
 
         # Phase 4: If using behaviors, trigger on_goal_start event
@@ -402,7 +402,7 @@ class TaskExecutorAgent(BaseAgent):
             # This will inject notes into context if they exist
             jetbox_enhancement = JetboxNotesEnhancement(workspace_manager=self.workspace_manager)
             self.enhancements.append(jetbox_enhancement)
-            print(f"[task_executor] Added JetboxNotesEnhancement")
+            print("[task_executor] Added JetboxNotesEnhancement")
 
             # Load existing notes for display (optional)
             existing_notes = jetbox_notes.load_jetbox_notes()
@@ -676,7 +676,7 @@ class TaskExecutorAgent(BaseAgent):
 
                         # If using SubAgent mode, nudge agent to report completion/failure
                         if is_subagent_mode:
-                            print(f"[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status")
+                            print("[timeout_nudge] LLM timeout detected with SubAgentStrategy - nudging agent to report status")
 
                             # Add a system message nudging completion
                             nudge_message = {
@@ -745,7 +745,7 @@ You MUST call one of these tools in your next response. The controlling agent is
                             # Attempt to extract JSON from error message
                             extracted = extract_tool_call_from_parse_error(str(llm_error))
                             if extracted:
-                                print(f"[llm_recovery] Recovered tool call from parse error (LLM generated text before JSON)")
+                                print("[llm_recovery] Recovered tool call from parse error (LLM generated text before JSON)")
 
                                 # Construct a valid response with the extracted tool call
                                 # We need to figure out which tool was being called
@@ -793,8 +793,8 @@ You MUST call one of these tools in your next response. The controlling agent is
                                 print(f"[llm_recovery] Synthetic response created: tool={tool_name}, args_keys={list(tool_args.keys())}")
                             else:
                                 # Could not extract - return error to LLM so it can retry
-                                print(f"[llm_recovery] Could not extract JSON from parse error")
-                                print(f"[llm_recovery] Sending parse error back to LLM for retry")
+                                print("[llm_recovery] Could not extract JSON from parse error")
+                                print("[llm_recovery] Sending parse error back to LLM for retry")
 
                                 # Return the raw error text to LLM
                                 response = {
@@ -826,14 +826,14 @@ You MUST call one of these tools in your next response. The controlling agent is
 
                 # Check for circuit breaker (handled by base_agent.call_llm())
                 if response.get("_circuit_breaker"):
-                    print(f"[timeout] Circuit breaker triggered - saving partial progress")
+                    print("[timeout] Circuit breaker triggered - saving partial progress")
                     partial_result = self._save_partial_progress()
                     self._cleanup()
                     return partial_result
 
                 # Check for timeout (will retry)
                 if response.get("_timeout"):
-                    print(f"[timeout] LLM timeout - continuing to next round (retry)")
+                    print("[timeout] LLM timeout - continuing to next round (retry)")
                     continue  # Skip to next round
 
                 # Add assistant message

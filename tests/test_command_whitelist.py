@@ -7,7 +7,6 @@ Verifies that:
 2. Allowed commands execute successfully
 3. Blocked commands are rejected with clear error messages
 """
-from pathlib import Path
 from behaviors.command_tools import CommandToolsBehavior
 
 def test_whitelist_loading():

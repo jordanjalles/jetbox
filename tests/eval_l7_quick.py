@@ -145,24 +145,24 @@ def main():
     avg_duration = sum(r["duration"] for r in results) / len(results) if results else 0
     avg_files = sum(r["files_created"] for r in successes) / len(successes) if successes else 0
 
-    print(f"\nL7 Results:")
+    print("\nL7 Results:")
     print(f"  Success Rate: {success_rate:.1f}% ({len(successes)}/{len(results)})")
     print(f"  Avg Duration: {avg_duration:.1f}s ({avg_duration/60:.1f}m)")
     print(f"  Avg Files:    {avg_files:.1f}")
     print(f"  Total Time:   {overall_duration/3600:.1f} hours")
 
     # Compare to baseline (0% success from overnight eval)
-    print(f"\nIMPROVEMENT:")
-    print(f"  Baseline (overnight eval):  0.0% (0/15)")
+    print("\nIMPROVEMENT:")
+    print("  Baseline (overnight eval):  0.0% (0/15)")
     print(f"  Current (with fixes):       {success_rate:.1f}% ({len(successes)}/{len(results)})")
 
     if success_rate > 0:
         print(f"  ✓ SUCCESS: L7 tests now working! ({len(successes)} successes)")
     else:
-        print(f"  ✗ Still failing - need more investigation")
+        print("  ✗ Still failing - need more investigation")
 
     # Time analysis
-    print(f"\nTIME BREAKDOWN:")
+    print("\nTIME BREAKDOWN:")
     durations = [r["duration"] for r in results]
     print(f"  Min:    {min(durations):.1f}s")
     print(f"  Max:    {max(durations):.1f}s")
@@ -175,10 +175,10 @@ def main():
         for r in timeout_tests:
             print(f"    - P{r['problem_idx']+1} R{r['run_idx']+1}: {r['duration']:.1f}s")
     else:
-        print(f"\n  ✓ No timeouts!")
+        print("\n  ✓ No timeouts!")
 
     # Per-problem breakdown
-    print(f"\nPER-PROBLEM BREAKDOWN:")
+    print("\nPER-PROBLEM BREAKDOWN:")
     for problem_idx in range(3):
         problem_results = [r for r in results if r["problem_idx"] == problem_idx]
         problem_successes = [r for r in problem_results if r["status"] == "success"]

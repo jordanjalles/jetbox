@@ -9,7 +9,6 @@ Tests:
 4. Integration with agent.py
 """
 
-import os
 import tempfile
 import shutil
 from pathlib import Path
@@ -70,7 +69,7 @@ def test_file_operations():
         print("  Testing write_file with subdirectory...")
         result = tools.write_file("subdir/nested.txt", "Nested file")
         assert (test_dir / "subdir" / "nested.txt").exists()
-        print(f"  ✓ Subdirectory creation works")
+        print("  ✓ Subdirectory creation works")
 
         # Test grep_file
         print("  Testing grep_file...")
@@ -78,7 +77,7 @@ def test_file_operations():
         grep_result = tools.grep_file("search.txt", "Hello")
         assert "2 match(es)" in grep_result
         assert "Hello World" in grep_result
-        print(f"  ✓ grep_file found matches")
+        print("  ✓ grep_file found matches")
 
         print("✅ All file operations working")
 
@@ -111,14 +110,14 @@ def test_command_execution():
         result = tools.run_cmd(["curl", "example.com"])
         assert "error" in result
         assert "not allowed" in result["error"]
-        print(f"  ✓ Disallowed command blocked")
+        print("  ✓ Disallowed command blocked")
 
         # Test command with output
         print("  Testing command with output...")
         result = tools.run_cmd(["python", "-c", "print('test output')"])
         assert result["returncode"] == 0
         assert "test output" in result["stdout"]
-        print(f"  ✓ Command output captured")
+        print("  ✓ Command output captured")
 
         print("✅ Command execution working")
 

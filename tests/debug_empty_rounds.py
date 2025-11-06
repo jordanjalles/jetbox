@@ -23,10 +23,10 @@ def debug_run(self, max_rounds: int | None = None) -> dict:
     model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
     temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
-    # Trigger on_goal_start event
+    # Trigger onGoalStart event
     if self.context_manager and self.context_manager.state.goal:
         goal = self.context_manager.state.goal.description
-        self.trigger_behavior_event("on_goal_start", goal=goal)
+        self.trigger_behavior_event("onGoalStart", goal=goal)
 
     print(f"[{self.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
 
@@ -34,8 +34,8 @@ def debug_run(self, max_rounds: int | None = None) -> dict:
 
     try:
         for round_no in range(1, max_rounds + 1):
-            # Trigger on_round_start
-            self.trigger_behavior_event("on_round_start", round_number=round_no)
+            # Trigger onRoundStart
+            self.trigger_behavior_event("onRoundStart", round_number=round_no)
 
             # Build context and call LLM
             print(f"\n[{self.name}] Round {round_no}/{max_rounds}")
@@ -71,7 +71,7 @@ def debug_run(self, max_rounds: int | None = None) -> dict:
                     print(f"[DEBUG] Message content: {msg_content[:300]}...")
 
                     if consecutive_empty_rounds >= 3:
-                        print(f"[DEBUG] 🚨 3 consecutive empty rounds! Dumping full context...")
+                        print("[DEBUG] 🚨 3 consecutive empty rounds! Dumping full context...")
                         with open(f"debug_empty_context_{self.name}_round{round_no}.json", "w") as f:
                             json.dump({
                                 "round": round_no,
@@ -108,7 +108,7 @@ def debug_run(self, max_rounds: int | None = None) -> dict:
                             # Check for mark_complete/mark_failed
                             if result.get("success") is True and "summary" in result:
                                 print(f"[{self.name}] Goal marked complete")
-                                self.trigger_behavior_event("on_goal_complete", success=True, result=result)
+                                self.trigger_behavior_event("onGoalComplete", success=True, result=result)
                                 return {
                                     "status": "success",
                                     "summary": result.get("summary"),
@@ -116,7 +116,7 @@ def debug_run(self, max_rounds: int | None = None) -> dict:
                                 }
                             elif result.get("success") is False and "reason" in result:
                                 print(f"[{self.name}] Goal marked failed")
-                                self.trigger_behavior_event("on_goal_complete", success=False, result=result)
+                                self.trigger_behavior_event("onGoalComplete", success=False, result=result)
                                 return {
                                     "status": "failure",
                                     "reason": result.get("reason"),
@@ -127,15 +127,15 @@ def debug_run(self, max_rounds: int | None = None) -> dict:
                             actual_result = result.get("result", result)
                             if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
                                 print(f"[{self.name}] Goal completed (legacy signal)")
-                                self.trigger_behavior_event("on_goal_complete", success=True, result=actual_result)
+                                self.trigger_behavior_event("onGoalComplete", success=True, result=actual_result)
                                 return {
                                     "status": "success",
                                     "message": actual_result.get("message", "Goal completed"),
                                     "workspace": str(self.workspace) if self.workspace else None,
                                 }
 
-            # Trigger on_round_end
-            self.trigger_behavior_event("on_round_end", round_number=round_no)
+            # Trigger onRoundEnd
+            self.trigger_behavior_event("onRoundEnd", round_number=round_no)
 
             # Increment round counter
             self.increment_round()

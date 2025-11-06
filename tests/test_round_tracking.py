@@ -61,7 +61,7 @@ def test_rounds_only_tracked_for_deepest_subtask():
     assert parent.rounds_used == 5, f"Parent rounds should stay at 5, got {parent.rounds_used}"
     assert parent.status == "decomposed", "Parent should be decomposed"
 
-    print(f"✓ After decomposition:")
+    print("✓ After decomposition:")
     print(f"  - Parent (decomposed) frozen at {parent.rounds_used} rounds")
     print(f"  - Child 1 (active) has {active.rounds_used} rounds")
 
@@ -78,7 +78,7 @@ def test_rounds_only_tracked_for_deepest_subtask():
     # Parent should still be frozen at 5
     assert parent.rounds_used == 5, f"Parent should still be at 5 rounds, got {parent.rounds_used}"
 
-    print(f"✓ After 3 more rounds:")
+    print("✓ After 3 more rounds:")
     print(f"  - Parent (decomposed) still frozen at {parent.rounds_used} rounds")
     print(f"  - Child 1 (active) now has {active.rounds_used} rounds")
 
@@ -103,7 +103,7 @@ def test_rounds_only_tracked_for_deepest_subtask():
     assert parent.rounds_used == 5, "Parent should remain at 5"
     assert child1.rounds_used == 3, "Child should remain at 3"
 
-    print(f"✓ After further decomposition:")
+    print("✓ After further decomposition:")
     print(f"  - Parent (decomposed) frozen at {parent.rounds_used} rounds")
     print(f"  - Child 1 (decomposed) frozen at {child1.rounds_used} rounds")
     print(f"  - Grandchild (active) has {active.rounds_used} rounds")

@@ -16,14 +16,12 @@ import json
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict
 import statistics
 
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
-from task_executor_agent import TaskExecutorAgent
 from orchestrator_agent import OrchestratorAgent
-from architect_agent import ArchitectAgent
 
 
 @dataclass
@@ -206,7 +204,7 @@ class L5L7Evaluator:
         print("="*80)
         print(f"Model: {os.environ.get('OLLAMA_MODEL', 'default')}")
         print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Tests: 9 problems × 3 runs = 27 tests")
+        print("Tests: 9 problems × 3 runs = 27 tests")
         print("="*80)
 
         for level in ["L5", "L6", "L7"]:
@@ -302,12 +300,12 @@ class L5L7Evaluator:
         print(f"{'='*80}")
         print(f"Duration: {total_duration/60:.1f} minutes")
         print(f"Success Rate: {report['summary']['success_rate']*100:.1f}% ({successful}/{total_runs})")
-        print(f"\nPer-Level Results:")
+        print("\nPer-Level Results:")
         for level in ["L5", "L6", "L7"]:
             if level in level_stats:
                 s = level_stats[level]
                 print(f"  {level}: {s['success_rate']*100:.0f}% ({int(s['success_rate']*s['runs'])}/{s['runs']} tests)")
-        print(f"\nReports:")
+        print("\nReports:")
         print(f"  JSON: {json_path}")
         print(f"  MD:   {md_path}")
 

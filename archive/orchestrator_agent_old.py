@@ -86,7 +86,7 @@ class OrchestratorAgent(BaseAgent):
             self.context_strategy = context_strategy or AppendUntilFullStrategy()
             print(f"[orchestrator] Using legacy strategy mode: {self.context_strategy.get_name()}")
         else:
-            print(f"[orchestrator] Using behavior system")
+            print("[orchestrator] Using behavior system")
 
         # Initialize simple context manager (for strategy compatibility)
         from context_manager import ContextManager

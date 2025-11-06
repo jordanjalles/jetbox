@@ -71,7 +71,7 @@ def analyze_diagnostic_log():
             print(f"  Message history count: {msg_history}")
 
             if msg_history > 0:
-                print(f"  ⚠️  LEAK DETECTED: Message history should be 0 after transition")
+                print("  ⚠️  LEAK DETECTED: Message history should be 0 after transition")
                 print(f"       but found {msg_history} messages from previous subtask\n")
                 leaks_detected.append({
                     "turn": turn,
@@ -80,7 +80,7 @@ def analyze_diagnostic_log():
                     "leaked_messages": msg_history
                 })
             else:
-                print(f"  ✓ Clean transition: Message history correctly cleared\n")
+                print("  ✓ Clean transition: Message history correctly cleared\n")
 
         last_subtask = subtask
 

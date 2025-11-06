@@ -49,7 +49,7 @@ def test_append_compaction():
     # Check if compaction triggered
     summary_found = any("Previous work summary" in str(msg.get("content", "")) for msg in context)
 
-    print(f"\nResults:")
+    print("\nResults:")
     print(f"  Context messages: {len(context)}")
     print(f"  Summary found: {summary_found}")
     print(f"  Final tokens: ~{strategy.estimate_context_size(context):,}")

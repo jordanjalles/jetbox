@@ -36,7 +36,7 @@ def format_user_questions(uncertainty_analysis: dict) -> str:
     is_uncertain = uncertainty_analysis["is_uncertain"]
 
     output.append(f"\n{'='*60}")
-    output.append(f"UNCERTAINTY ANALYSIS")
+    output.append("UNCERTAINTY ANALYSIS")
     output.append(f"{'='*60}")
 
     # Uncertainty bar
@@ -49,14 +49,14 @@ def format_user_questions(uncertainty_analysis: dict) -> str:
     output.append(f"[{bar}]")
 
     # Breakdown
-    output.append(f"\nUncertainty Breakdown:")
+    output.append("\nUncertainty Breakdown:")
     breakdown = uncertainty_analysis["uncertainty_breakdown"]
     output.append(f"  Consistency:       {breakdown['consistency']:.2%}")
     output.append(f"  Component Variance: {breakdown['variance']:.2%}")
     output.append(f"  Concept Confidence: {breakdown['concept_confidence']:.2%}")
 
     # Detected concepts
-    output.append(f"\nDetected Concepts (Top 3):")
+    output.append("\nDetected Concepts (Top 3):")
     for i, concept in enumerate(uncertainty_analysis["detected_concepts"], 1):
         conf_str = f"{concept['confidence']:.1%}"
         conf_bar = "█" * int(concept['confidence'] * 20) + "░" * (20 - int(concept['confidence'] * 20))
@@ -64,14 +64,14 @@ def format_user_questions(uncertainty_analysis: dict) -> str:
 
     # Uncertain concepts
     if uncertainty_analysis["uncertain_concepts"]:
-        output.append(f"\n⚠️  Low Confidence Concepts:")
+        output.append("\n⚠️  Low Confidence Concepts:")
         for concept in uncertainty_analysis["uncertain_concepts"]:
             output.append(f"  - {concept['concept'].replace('_', ' ')} (confidence: {concept['confidence']:.1%})")
 
     # User questions
     if uncertainty_analysis["user_questions"]:
         output.append(f"\n{'='*60}")
-        output.append(f"🙋 QUESTIONS FOR USER (Model needs help!)")
+        output.append("🙋 QUESTIONS FOR USER (Model needs help!)")
         output.append(f"{'='*60}")
 
         for i, question in enumerate(uncertainty_analysis["user_questions"], 1):
@@ -109,7 +109,7 @@ def test_uncertainty(
             "What is the meaning of life?",  # Very high uncertainty expected
         ]
 
-    print(f"🔍 Testing Uncertainty Detection")
+    print("🔍 Testing Uncertainty Detection")
     print(f"Model: {model}")
     print(f"Test questions: {len(test_questions)}")
     print("-" * 60)
@@ -161,7 +161,7 @@ def test_uncertainty(
             traceback.print_exc()
 
     print(f"\n{'='*60}")
-    print(f"✅ Uncertainty testing complete")
+    print("✅ Uncertainty testing complete")
     print(f"{'='*60}")
 
 

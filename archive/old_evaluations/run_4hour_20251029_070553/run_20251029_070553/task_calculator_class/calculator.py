@@ -6,7 +6,7 @@ operations and keeps a history of all operations performed.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Tuple
 
 

@@ -3,7 +3,6 @@
 
 import json
 from collections import defaultdict
-from pathlib import Path
 
 def main():
     with open('eval_suite_results_x10.json') as f:
@@ -48,7 +47,7 @@ def main():
         print(f"\n{status} {test_id}: {data['passed']}/{total_runs} passed ({pass_rate:.0f}%)")
 
         if data['failures']:
-            print(f"  Failures:")
+            print("  Failures:")
             failure_modes = defaultdict(list)
             for f in data['failures']:
                 failure_modes[f['failure_mode']].append(f['iteration'])

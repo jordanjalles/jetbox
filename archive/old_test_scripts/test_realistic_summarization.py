@@ -226,7 +226,7 @@ def test_realistic_summarization():
             summary_content = content
             print(f"\n{i}. [{role}] ⭐ SUMMARY MESSAGE")
             print(f"   Length: {len(content):,} chars (~{tokens:,} tokens)")
-            print(f"   Content preview:")
+            print("   Content preview:")
             print(f"   {content[:300]}...")
         elif len(content) > 500:
             print(f"{i}. [{role}] {len(content):,} chars (~{tokens:,} tokens)")
@@ -246,7 +246,7 @@ def test_realistic_summarization():
 
         # Check that summary is actually compact (should be <2000 tokens)
         if summary_tokens < 2000:
-            print(f"✓ Summary is compact (<2000 tokens)")
+            print("✓ Summary is compact (<2000 tokens)")
         else:
             print(f"✗ Summary too large ({summary_tokens:,} tokens)")
 

@@ -57,7 +57,7 @@ def test_rounds_counted_before_decomposition():
 
         if subtask_rounds_sum == 0 and total_rounds > 0:
             print(f"⚠️  This demonstrates the bug: subtask sum is 0 but total_rounds is {total_rounds}")
-            print(f"    (This happens when rounds occur before task decomposition)")
+            print("    (This happens when rounds occur before task decomposition)")
 
 
 def test_hierarchical_still_works():
@@ -79,7 +79,7 @@ def test_hierarchical_still_works():
         total_rounds = agent.state.total_rounds
         print(f"\nHierarchical strategy total_rounds: {total_rounds}")
         assert total_rounds > 0, "Hierarchical should also count rounds"
-        print(f"✓ Hierarchical strategy works correctly")
+        print("✓ Hierarchical strategy works correctly")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import sys, importlib, pprint
+import sys
 print(sys.path)
 try:
     import mathx
