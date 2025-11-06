@@ -134,9 +134,10 @@ class CreateBehaviorBehavior(AgentBehavior):
             tool_specs = args.get("tool_specs", [])
             lifecycle_hooks = args.get("lifecycle_hooks", [])
             safety_mode = args.get("safety_mode", self.default_safety_mode)
+            context_enhancement = args.get("context_enhancement", None)
 
             # Ignore unsupported parameters with warning
-            supported_params = {"behavior_name", "description", "tool_specs", "lifecycle_hooks", "safety_mode"}
+            supported_params = {"behavior_name", "description", "tool_specs", "lifecycle_hooks", "safety_mode", "context_enhancement"}
             unsupported = set(args.keys()) - supported_params
             if unsupported:
                 print(f"[create_behavior] Ignoring parameters: {unsupported}")
@@ -156,7 +157,7 @@ class CreateBehaviorBehavior(AgentBehavior):
 
             # Run the workflow
             return self._run_behavior_generation_workflow(
-                agent, behavior_name, description, tool_specs, lifecycle_hooks, safety_mode
+                agent, behavior_name, description, tool_specs, lifecycle_hooks, safety_mode, context_enhancement
             )
 
         except Exception as e:
@@ -169,7 +170,8 @@ class CreateBehaviorBehavior(AgentBehavior):
         description: str,
         tool_specs: list,
         lifecycle_hooks: list,
-        safety_mode: str
+        safety_mode: str,
+        context_enhancement: str = None
     ) -> dict[str, Any]:
         """
         Run the full behavior generation workflow.
@@ -196,7 +198,7 @@ class CreateBehaviorBehavior(AgentBehavior):
         # Step 1: Generate behavior code
         print("[create_behavior] Step 1/6: Generating behavior code...")
         code_result = self._generate_behavior_code(
-            agent, behavior_name, description, tool_specs, lifecycle_hooks
+            agent, behavior_name, description, tool_specs, lifecycle_hooks, context_enhancement
         )
         if "error" in code_result:
             return code_result
@@ -247,7 +249,8 @@ class CreateBehaviorBehavior(AgentBehavior):
         behavior_name: str,
         description: str,
         tool_specs: list,
-        lifecycle_hooks: list
+        lifecycle_hooks: list,
+        context_enhancement: str = None
     ) -> dict[str, Any]:
         """
         Generate behavior code using LLM.
@@ -258,6 +261,7 @@ class CreateBehaviorBehavior(AgentBehavior):
             description: Description
             tool_specs: Tool specifications
             lifecycle_hooks: Lifecycle hooks to implement
+            context_enhancement: Optional implementation guidance for LLM
 
         Returns:
             Dict with "code" key or "error"
@@ -287,6 +291,17 @@ class CreateBehaviorBehavior(AgentBehavior):
             tools_spec_str = json.dumps(tool_specs, indent=2)
             hooks_str = ", ".join(lifecycle_hooks) if lifecycle_hooks else "none"
 
+            # Add context enhancement hints if provided
+            enhancement_section = ""
+            if context_enhancement:
+                enhancement_section = f"""
+
+IMPORTANT IMPLEMENTATION GUIDANCE:
+{context_enhancement}
+
+Follow the guidance above carefully when implementing the behavior.
+"""
+
             prompt = f"""You are generating a Python behavior class. Follow these instructions EXACTLY.
 
 IMPORTANT: Start your code with this exact comment on the first line:
@@ -300,7 +315,7 @@ BEHAVIOR SPECIFICATION:
 - Description: {description}
 - Tools: {tools_spec_str}
 - Lifecycle hooks: {hooks_str}
-
+{enhancement_section}
 CRITICAL INSTRUCTIONS:
 1. Use EXACTLY this class name: {class_name}
 2. The import MUST be: from behaviors.base import AgentBehavior

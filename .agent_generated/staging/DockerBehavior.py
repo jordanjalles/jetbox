@@ -3,7 +3,11 @@
 DockerBehavior provides Docker container management with persistent state tracking.
 """
 
-from typing import Any, Dict, List
+from typing import Any
+import json
+import os
+import uuid
+import subprocess
 from behaviors.base import AgentBehavior
 
 
@@ -12,7 +16,7 @@ class DockerBehavior(AgentBehavior):
     Provides Docker container management with persistent state tracking.
 
     This behavior offers tools to start, stop, and list Docker containers,
-    maintaining their state across agent sessions.
+    maintaining an internal state of container IDs and statuses across agent runs.
     """
 
     def __init__(self, workspace_manager=None, **kwargs):
@@ -24,6 +28,11 @@ class DockerBehavior(AgentBehavior):
             **kwargs: Additional parameters (ignored for extensibility)
         """
         self.workspace_manager = workspace_manager
+        self.containers = {}  # key: container name, value: dict with id and status
+        self.state_file = os.path.join(
+            self.workspace_manager.get_workspace_path() if self.workspace_manager else ".",
+            "docker_state.json",
+        )
 
     def get_name(self) -> str:
         """
@@ -36,7 +45,7 @@ class DockerBehavior(AgentBehavior):
         """
         return "DockerBehavior"
 
-    def get_tools(self) -> List[Dict[str, Any]]:
+    def get_tools(self) -> list[dict[str, Any]]:
         """
         Return tool definitions in OpenAI function format.
 
@@ -59,16 +68,16 @@ class DockerBehavior(AgentBehavior):
                         "properties": {
                             "image": {
                                 "type": "string",
-                                "description": "Docker image name"
+                                "description": "Docker image name",
                             },
                             "name": {
                                 "type": "string",
-                                "description": "Container name"
-                            }
+                                "description": "Container name",
+                            },
                         },
-                        "required": ["image", "name"]
-                    }
-                }
+                        "required": ["image", "name"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -80,12 +89,12 @@ class DockerBehavior(AgentBehavior):
                         "properties": {
                             "name": {
                                 "type": "string",
-                                "description": "Container name to stop"
-                            }
+                                "description": "Container name to stop",
+                            },
                         },
-                        "required": ["name"]
-                    }
-                }
+                        "required": ["name"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -94,18 +103,19 @@ class DockerBehavior(AgentBehavior):
                     "description": "List all tracked containers with their status",
                     "parameters": {
                         "type": "object",
-                        "properties": {}
-                    }
-                }
-            }
+                        "properties": {},
+                        "required": [],
+                    },
+                },
+            },
         ]
 
     def dispatch_tool(
         self,
         agent: Any,
         tool_name: str,
-        args: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        args: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Execute tool by name.
 
@@ -124,9 +134,9 @@ class DockerBehavior(AgentBehavior):
                 image = args.get("image")
                 name = args.get("name")
                 if not image or not name:
-                    raise ValueError("Both 'image' and 'name' must be provided.")
-                self._start_container(agent, name, image)
-                return {"result": f"Container '{name}' started with image '{image}'.", "success": True}
+                    raise ValueError("Both 'image' and 'name' are required.")
+                container_id = self._do_start_container(image, name)
+                return {"result": {"container_id": container_id}, "success": True}
             except Exception as e:
                 return {"error": str(e)}
 
@@ -134,15 +144,15 @@ class DockerBehavior(AgentBehavior):
             try:
                 name = args.get("name")
                 if not name:
-                    raise ValueError("'name' must be provided.")
-                self._stop_container(agent, name)
+                    raise ValueError("'name' is required.")
+                self._do_stop_container(name)
                 return {"result": f"Container '{name}' stopped.", "success": True}
             except Exception as e:
                 return {"error": str(e)}
 
         if tool_name == "docker_list_containers":
             try:
-                containers = self._list_containers(agent)
+                containers = self._do_list_containers()
                 return {"result": containers, "success": True}
             except Exception as e:
                 return {"error": str(e)}
@@ -150,83 +160,84 @@ class DockerBehavior(AgentBehavior):
         # Not our tool, pass to parent
         return super().dispatch_tool(agent, tool_name, args)
 
-    def _start_container(self, agent: Any, name: str, image: str) -> None:
+    def _do_start_container(self, image: str, name: str) -> str:
         """
-        Core functionality to start a container and update state.
-        """
-        containers = agent.state.setdefault("docker_containers", {})
-        containers[name] = {"image": image, "status": "running"}
+        Start a Docker container and update internal state.
 
-    def _stop_container(self, agent: Any, name: str) -> None:
+        Returns the container ID.
         """
-        Core functionality to stop a container and update state.
-        """
-        containers = agent.state.setdefault("docker_containers", {})
-        if name not in containers:
-            raise ValueError(f"Container '{name}' not found.")
-        containers[name]["status"] = "stopped"
+        # Run docker to start container
+        cmd = ["docker", "run", "-d", "--name", name, image]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        container_id = result.stdout.strip()
+        self.containers[name] = {"id": container_id, "status": "running"}
+        return container_id
 
-    def _list_containers(self, agent: Any) -> List[Dict[str, Any]]:
+    def _do_stop_container(self, name: str) -> None:
         """
-        Core functionality to list all tracked containers.
+        Stop a running Docker container and update internal state.
         """
-        containers = agent.state.get("docker_containers", {})
+        if name not in self.containers:
+            raise ValueError(f"Container '{name}' not tracked.")
+        cmd = ["docker", "stop", name]
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        self.containers[name]["status"] = "stopped"
+
+    def _do_list_containers(self) -> list[dict[str, Any]]:
+        """
+        Return list of tracked containers with their status.
+        """
         return [
-            {"name": name, "image": info.get("image"), "status": info.get("status")}
-            for name, info in containers.items()
+            {"name": name, "id": info["id"], "status": info["status"]}
+            for name, info in self.containers.items()
         ]
 
-    # OPTIONAL: Override lifecycle hooks if needed
+    def _load_state(self) -> None:
+        """
+        Load container state from persistent storage.
+        """
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, "r", encoding="utf-8") as f:
+                    self.containers = json.load(f)
+            except Exception:
+                self.containers = {}
+        else:
+            self.containers = {}
+
+    def _save_state(self) -> None:
+        """
+        Save container state to persistent storage.
+        """
+        try:
+            with open(self.state_file, "w", encoding="utf-8") as f:
+                json.dump(self.containers, f, indent=2)
+        except Exception:
+            pass
 
     def on_initial_context(
         self,
         agent: Any,
-        context: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Called once at agent startup.
 
         Use this to inject tool documentation into context.
         Standard pattern below handles tool documentation automatically.
         """
-        tools = self.get_tools()
-        if not tools:
-            return context
-
-        # Build tool documentation
-        tool_docs = []
-        for tool in tools:
-            func = tool.get("function", {})
-            name = func.get("name", "unknown")
-            desc = func.get("description", "")
-            params = func.get("parameters", {}).get("properties", {})
-            required = func.get("parameters", {}).get("required", [])
-
-            # Build parameter signature
-            param_strs = []
-            for param_name, param_spec in params.items():
-                param_type = param_spec.get("type", "any")
-                is_required = param_name in required
-                if is_required:
-                    param_strs.append(f"{param_name}: {param_type}")
-                else:
-                    param_strs.append(f"{param_name}?: {param_type}")
-
-            param_sig = ", ".join(param_strs) if param_strs else ""
-            tool_docs.append(f"  - {name}({param_sig}): {desc}")
-
-        if tool_docs:
-            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            return self.inject_user_message_after_system(context, tool_message)
-
-        return context
+        self._load_state()
+        return super().on_initial_context(agent, context)
 
     def on_goal_complete(
         self,
         agent: Any,
-        goal: Dict[str, Any]
-    ) -> None:
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
-        Called when a goal is completed. No special handling required for DockerBehavior.
+        Called when a goal is completed.
+
+        Persist the container state.
         """
-        pass
+        self._save_state()
+        return super().on_goal_complete(agent, context)
