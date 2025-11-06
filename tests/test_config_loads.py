@@ -16,8 +16,8 @@ from behaviors import (
 )
 
 def test_config_loads():
-    """Test that task_executor_config.yaml loads successfully."""
-    config_path = Path("/workspace/task_executor_config.yaml")
+    """Test that config/agents/task_executor.yaml loads successfully."""
+    config_path = Path("/workspace/config/agents/task_executor.yaml")
 
     with open(config_path) as f:
         config = yaml.safe_load(f)

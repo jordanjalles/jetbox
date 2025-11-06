@@ -43,6 +43,55 @@ class ReadFileToolsBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "read_file_tools"
 
+    def on_initial_context(
+        self,
+        agent: Any,
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Inject tool documentation for read file tools.
+
+        Called once during agent initialization to document available tools.
+
+        Args:
+            agent: Agent instance
+            context: Initial context (system prompt only)
+
+        Returns:
+            Context with tool documentation injected
+        """
+        tools = self.get_tools()
+        if not tools:
+            return context
+
+        # Build tool documentation
+        tool_docs = []
+        for tool in tools:
+            func = tool.get("function", {})
+            name = func.get("name", "unknown")
+            desc = func.get("description", "")
+            params = func.get("parameters", {}).get("properties", {})
+            required = func.get("parameters", {}).get("required", [])
+
+            # Build parameter signature
+            param_strs = []
+            for param_name, param_spec in params.items():
+                param_type = param_spec.get("type", "any")
+                is_required = param_name in required
+                if is_required:
+                    param_strs.append(f"{param_name}: {param_type}")
+                else:
+                    param_strs.append(f"{param_name}?: {param_type}")
+
+            param_sig = ", ".join(param_strs) if param_strs else ""
+            tool_docs.append(f"  - {name}({param_sig}): {desc}")
+
+        if tool_docs:
+            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
+            return self.inject_user_message_after_system(context, tool_message)
+
+        return context
+
     def get_tools(self) -> list[dict[str, Any]]:
         """Return file reading tool definitions."""
         return [

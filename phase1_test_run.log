@@ -1,0 +1,100 @@
+
+============================================================
+PHASE 1: BASELINE VALIDATION
+============================================================
+Testing MetaProgrammer's ability to generate:
+- 3 simple behaviors (no hooks)
+- 2 simple agents (standard behaviors)
+
+
+============================================================
+Running: Test 1.1: HttpRequestBehavior
+============================================================
+
+❌ FAIL: Test 1.1: HttpRequestBehavior (0.2s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_1_1_http_request_behavior.py", line 11, in <module>
+    from task_executor_agent import TaskExecutorAgent
+ModuleNotFoundError: No module named 'task_executor_agent'
+
+
+============================================================
+Running: Test 1.2: JsonToolsBehavior
+============================================================
+
+❌ FAIL: Test 1.2: JsonToolsBehavior (0.2s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_1_2_json_tools_behavior.py", line 11, in <module>
+    from task_executor_agent import TaskExecutorAgent
+ModuleNotFoundError: No module named 'task_executor_agent'
+
+
+============================================================
+Running: Test 1.3: EnvironmentBehavior
+============================================================
+
+❌ FAIL: Test 1.3: EnvironmentBehavior (0.2s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_1_3_environment_behavior.py", line 10, in <module>
+    from task_executor_agent import TaskExecutorAgent
+ModuleNotFoundError: No module named 'task_executor_agent'
+
+
+============================================================
+Running: Test 3.2: DocGeneratorAgent
+============================================================
+
+❌ FAIL: Test 3.2: DocGeneratorAgent (0.2s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_3_2_doc_generator_agent.py", line 11, in <module>
+    from task_executor_agent import TaskExecutorAgent
+ModuleNotFoundError: No module named 'task_executor_agent'
+
+
+============================================================
+Running: Test 3.3: TestGeneratorAgent
+============================================================
+
+❌ FAIL: Test 3.3: TestGeneratorAgent (0.2s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_3_3_test_generator_agent.py", line 11, in <module>
+    from task_executor_agent import TaskExecutorAgent
+ModuleNotFoundError: No module named 'task_executor_agent'
+
+
+============================================================
+PHASE 1 SUMMARY
+============================================================
+
+Results: 0/5 tests passed
+Duration: 1.0s
+
+❌ Test 1.1: HttpRequestBehavior: 0.2s
+❌ Test 1.2: JsonToolsBehavior: 0.2s
+❌ Test 1.3: EnvironmentBehavior: 0.2s
+❌ Test 3.2: DocGeneratorAgent: 0.2s
+❌ Test 3.3: TestGeneratorAgent: 0.2s
+
+Success Gate (4/5): ❌ FAIL
+
+Detailed results saved to: evaluation_results/phase1_test_results.json
+
+============================================================
+GENERATED ARTIFACTS
+============================================================
+
+Behaviors:
+  ✓ HttpRequestBehavior.py
+  ✗ JsonToolsBehavior.py
+  ✗ EnvironmentBehavior.py
+
+Agent Configs:
+  ✗ DocGeneratorAgent.yaml
+  ✗ TestGeneratorAgent.yaml
+
+❌ PHASE 1 INCOMPLETE - Review failures before proceeding

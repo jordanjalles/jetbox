@@ -233,19 +233,12 @@ class LoopDetectionBehavior(AgentBehavior):
         goal_desc = None
         has_goal = False
 
-        # Source 1: context_manager
-        context_manager = getattr(agent, 'context_manager', None)
-        if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
-            goal_desc = context_manager.state.goal.description
-            has_goal = True
-
-        # Source 2: Core goal tracking (all agents)
-        if not goal_desc and agent and hasattr(agent, 'goal') and agent.goal:
+        # Use core goal tracking (all agents have this)
+        if agent and hasattr(agent, 'goal') and agent.goal:
             goal_desc = agent.goal
             has_goal = True
-
-        # Fallback
-        if not goal_desc:
+        else:
+            # Fallback if goal not set
             goal_desc = "your assigned goal (check earlier messages)"
 
         return goal_desc, has_goal
@@ -270,8 +263,8 @@ class LoopDetectionBehavior(AgentBehavior):
                     tool_name = tool['function'].get('name', 'unknown')
                     tool_names.append(tool_name)
 
-                    # Track completion tools
-                    if tool_name in ['mark_complete', 'mark_failed', 'mark_goal_complete']:
+                    # Track completion tools (detect by name pattern)
+                    if 'complete' in tool_name.lower() or 'done' in tool_name.lower() or 'failed' in tool_name.lower():
                         completion_tools.append(tool_name)
 
         tools_list = ", ".join(tool_names) if tool_names else "(none available)"

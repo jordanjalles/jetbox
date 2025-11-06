@@ -1,0 +1,8 @@
+name: "Simple Chatbot Team"
+description: "Single simple-chatbot agent for pure conversation"
+
+agents:
+  simple_chatbot:
+    class: TaskExecutorAgent
+    config: simple-chatbot
+    can_delegate_to: []

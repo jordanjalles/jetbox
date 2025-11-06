@@ -1,0 +1,265 @@
+"""
+Tests for HttprequestbehaviorBehavior.
+
+Tests:
+- Behavior identifier
+- Tool schemas
+- Tool dispatch (http_get, http_post)
+- Parameter validation
+- Context enhancement
+- Event handlers
+- No cross-behavior dependencies
+"""
+
+import pytest
+from unittest.mock import Mock, patch, MagicMock
+import requests
+
+from behaviors.httprequestbehavior import HttprequestbehaviorBehavior
+
+
+class TestHttprequestbehaviorBehavior:
+    """Test suite for HttprequestbehaviorBehavior."""
+
+    def test_get_name(self):
+        """Behavior returns correct identifier."""
+        behavior = HttprequestbehaviorBehavior()
+        assert behavior.get_name() == "HttpRequestBehavior"
+
+    def test_initialization(self):
+        """Behavior initializes without errors."""
+        behavior = HttprequestbehaviorBehavior()
+        assert behavior is not None
+
+    def test_tool_schema(self):
+        """Tool schemas are well-formed."""
+        behavior = HttprequestbehaviorBehavior()
+        tools = behavior.get_tools()
+
+        assert isinstance(tools, list)
+        assert len(tools) >= 2
+        for tool in tools:
+            assert tool["type"] == "function"
+            func = tool["function"]
+            assert "name" in func
+            assert "description" in func
+            assert "parameters" in func
+            # Basic parameter checks
+            params = func["parameters"]
+            assert "type" in params and params["type"] == "object"
+            assert "properties" in params
+
+    @pytest.mark.parametrize(
+        "tool_name, args, expected_url, expected_headers, expected_timeout",
+        [
+            (
+                "http_get",
+                {"url": "https://example.com/api", "headers": {"X-Test": "1"}, "timeout": 10},
+                "https://example.com/api",
+                {"X-Test": "1"},
+                10,
+            ),
+            (
+                "http_get",
+                {"url": "https://example.com/api"},
+                "https://example.com/api",
+                None,
+                30,  # default timeout
+            ),
+            (
+                "http_post",
+                {"url": "https://example.com/api", "data": {"key": "value"}},
+                "https://example.com/api",
+                None,
+                30,
+            ),
+            (
+                "http_post",
+                {"url": "https://example.com/api", "data": {"key": "value"}, "headers": {"Content-Type": "application/json"}, "timeout": 5},
+                "https://example.com/api",
+                {"Content-Type": "application/json"},
+                5,
+            ),
+        ],
+    )
+    def test_tool_dispatch_success(
+        self,
+        tool_name,
+        args,
+        expected_url,
+        expected_headers,
+        expected_timeout,
+    ):
+        """Tool dispatch returns expected result for valid inputs."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        # Mock the requests methods
+        with patch("requests.get") as mock_get, patch("requests.post") as mock_post:
+            # Configure mock response
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"ok": True}
+            mock_response.text = '{"ok": true}'
+            mock_response.raise_for_status.return_value = None
+
+            if tool_name == "http_get":
+                mock_get.return_value = mock_response
+            else:
+                mock_post.return_value = mock_response
+
+            result = behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name=tool_name,
+                args=args,
+            )
+
+            # Verify that the correct requests method was called
+            if tool_name == "http_get":
+                mock_get.assert_called_once_with(
+                    expected_url,
+                    headers=expected_headers,
+                    timeout=expected_timeout,
+                )
+                mock_post.assert_not_called()
+            else:
+                mock_post.assert_called_once_with(
+                    expected_url,
+                    json=args["data"],
+                    headers=expected_headers,
+                    timeout=expected_timeout,
+                )
+                mock_get.assert_not_called()
+
+            # Verify result structure
+            assert isinstance(result, dict)
+            assert "result" in result
+            assert result["result"] == {"ok": True}
+
+    def test_tool_dispatch_missing_required(self):
+        """Dispatching a tool with missing required parameters raises ValueError."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        # Missing 'url' for http_get
+        with pytest.raises(ValueError):
+            behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name="http_get",
+                args={},
+            )
+
+        # Missing 'data' for http_post
+        with pytest.raises(ValueError):
+            behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name="http_post",
+                args={"url": "https://example.com"},
+            )
+
+    def test_tool_dispatch_invalid_timeout(self):
+        """Providing a non-integer timeout raises ValueError."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        with pytest.raises(ValueError):
+            behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name="http_get",
+                args={"url": "https://example.com", "timeout": "not-an-int"},
+            )
+
+    def test_tool_dispatch_http_error(self):
+        """HTTP errors are handled and returned appropriately."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        with patch("requests.get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.status_code = 404
+            mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
+            mock_get.return_value = mock_response
+
+            result = behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name="http_get",
+                args={"url": "https://example.com/notfound"},
+            )
+
+            assert isinstance(result, dict)
+            assert "error" in result
+            assert "404 Not Found" in result["error"]
+
+    def test_tool_dispatch_timeout(self):
+        """Timeout exceptions are handled and returned appropriately."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        with patch("requests.get") as mock_get:
+            mock_get.side_effect = requests.exceptions.Timeout("Request timed out")
+
+            result = behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name="http_get",
+                args={"url": "https://example.com/slow"},
+            )
+
+            assert isinstance(result, dict)
+            assert "error" in result
+            assert "timed out" in result["error"]
+
+    def test_tool_dispatch_unknown_tool(self):
+        """Unknown tools raise NotImplementedError."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        with pytest.raises(NotImplementedError):
+            behavior.dispatch_tool(
+                agent=mock_agent,
+                tool_name="unknown_tool",
+                args={},
+            )
+
+    def test_initial_context_injection(self):
+        """on_initial_context injects goal into system messages."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+        mock_agent.goal = "Collect data"
+
+        context = [
+            {"role": "system", "content": "System prompt"},
+        ]
+
+        enhanced = behavior.on_initial_context(agent=mock_agent, context=context)
+
+        assert isinstance(enhanced, list)
+        assert len(enhanced) > len(context)
+        # Ensure goal is mentioned
+        assert any("Collect data" in msg.get("content", "") for msg in enhanced)
+
+    def test_round_start_context_injection(self):
+        """on_round_start injects round number into system messages."""
+        behavior = HttprequestbehaviorBehavior()
+        mock_agent = Mock()
+
+        context = [
+            {"role": "system", "content": "System prompt"},
+        ]
+
+        enhanced = behavior.on_round_start(
+            agent=mock_agent,
+            round_number=3,
+            context=context,
+        )
+
+        assert isinstance(enhanced, list)
+        # Ensure round number is mentioned
+        assert any("Round 3" in msg.get("content", "") for msg in enhanced)
+
+    def test_no_cross_behavior_dependencies(self):
+        """Behavior does not depend on other behaviors."""
+        behavior = HttprequestbehaviorBehavior()
+        # Ensure no attributes referencing other behaviors
+        for attr in dir(behavior):
+            if "behavior" in attr.lower() and attr != "get_name":
+                raise AssertionError(f"Unexpected cross-behavior attribute: {attr}")

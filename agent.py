@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-agent.py - Universal agent wrapper based on agents.yaml configuration
+agent.py - Universal agent wrapper with team selection support
 
-This file dynamically loads and runs the first agent defined in agents.yaml.
-By default, this is the orchestrator agent, but it can be changed via config.
+This file dynamically loads and runs agents based on team configuration.
+Supports multiple teams via config/teams/*.yaml files.
 
 Usage:
-    python agent.py [args]  # Runs first agent in agents.yaml with all args
+    python agent.py [args]           # Auto-select team (interactive if multiple)
+    python agent.py --team solo      # Use specific team
+    python agent.py --list-teams     # List available teams
+    python agent.py --help           # Show help
 
 The actual agent implementation and CLI logic lives in the agent classes
 (orchestrator_agent.py, task_executor_agent.py, architect_agent.py).
@@ -14,28 +17,161 @@ The actual agent implementation and CLI logic lives in the agent classes
 import sys
 import yaml
 from pathlib import Path
+from agent_config import list_available_teams, load_team_config
 
 
-def get_first_agent_class():
+def print_usage():
+    """Print usage information."""
+    print("Usage: python agent.py [OPTIONS] [goal]")
+    print()
+    print("Options:")
+    print("  --team NAME         Use specific team (e.g., --team solo)")
+    print("  --list-teams        List all available teams and exit")
+    print("  --help              Show this help message")
+    print()
+    print("Other options:")
+    print("  --workspace PATH    Use specific workspace directory")
+    print("  --timeout SECONDS   Set subprocess timeout (default: 600)")
+    print("  --once              Exit after initial response")
+    print("  --chat              Force interactive chat mode")
+    print()
+    print("Examples:")
+    print("  python agent.py 'Create a calculator'")
+    print("  python agent.py --team solo 'Write a Flask app'")
+    print("  python agent.py --list-teams")
+
+
+def list_teams_and_exit():
+    """List available teams and exit."""
+    teams = list_available_teams()
+
+    if not teams:
+        print("No agent teams found.")
+        print()
+        print("Please create a team configuration in config/teams/")
+        print("See CONFIG_REFACTOR_PLAN.md for details.")
+        sys.exit(1)
+
+    print("Available agent teams:")
+    print()
+
+    for team in teams:
+        print(f"{team['file']} - {team['name']}")
+        if team['description']:
+            print(f"  {team['description']}")
+        print(f"  Agents: {', '.join(team['agents'])}")
+        print()
+
+    sys.exit(0)
+
+
+def select_team_interactively(teams: list[dict]) -> str:
     """
-    Load agents.yaml and return the first agent's class.
+    Prompt user to select a team interactively.
+
+    Args:
+        teams: List of team configs from list_available_teams()
+
+    Returns:
+        Selected team file name (without .yaml)
+    """
+    print("Multiple agent teams available. Which team would you like to use?")
+    print()
+
+    for idx, team in enumerate(teams, 1):
+        print(f"{idx}. {team['name']} ({team['file']}.yaml)")
+        if team['description']:
+            print(f"   {team['description']}")
+        print()
+
+    while True:
+        try:
+            choice = input(f"Select team [1-{len(teams)}] (default: 1): ").strip()
+            if not choice:
+                return teams[0]['file']
+
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(teams):
+                return teams[choice_num - 1]['file']
+            else:
+                print(f"Please enter a number between 1 and {len(teams)}")
+        except ValueError:
+            print("Please enter a valid number")
+        except KeyboardInterrupt:
+            print("\n\nCancelled.")
+            sys.exit(0)
+
+
+def get_team_name() -> str:
+    """
+    Determine which team to use based on CLI args and available teams.
+
+    Returns:
+        Team file name (without .yaml extension)
+    """
+    # Check for --list-teams flag
+    if "--list-teams" in sys.argv:
+        list_teams_and_exit()
+
+    # Check for --help flag
+    if "--help" in sys.argv:
+        print_usage()
+        sys.exit(0)
+
+    # Check for --team flag
+    if "--team" in sys.argv:
+        idx = sys.argv.index("--team")
+        if idx + 1 < len(sys.argv):
+            team_name = sys.argv[idx + 1]
+            # Remove --team and its argument from sys.argv so BaseAgent.parse_cli_args doesn't see it
+            sys.argv.pop(idx)
+            sys.argv.pop(idx)
+            return team_name
+        else:
+            print("Error: --team requires a team name")
+            print()
+            print_usage()
+            sys.exit(1)
+
+    # Auto-select team
+    teams = list_available_teams()
+
+    if not teams:
+        print("Error: No agent teams found")
+        print()
+        print("Please create a team configuration in config/teams/")
+        print("See CONFIG_REFACTOR_PLAN.md for details.")
+        sys.exit(1)
+
+    if len(teams) == 1:
+        # Single team - use it automatically
+        return teams[0]['file']
+
+    # Multiple teams - prompt user
+    return select_team_interactively(teams)
+
+
+def get_first_agent_class(team_name: str):
+    """
+    Load team config and return the first agent's class.
+
+    Args:
+        team_name: Team file name (without .yaml extension)
 
     Returns:
         The agent class to instantiate
     """
-    # Load agents.yaml
-    config_path = Path("agents.yaml")
-    if not config_path.exists():
-        print("Error: agents.yaml not found")
+    # Load team config
+    team_config = load_team_config(team_name)
+
+    if not team_config:
+        print(f"Error: Could not load team config '{team_name}'")
         sys.exit(1)
 
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-
-    # Get first agent
-    agents = config.get("agents", {})
+    # Get first agent from team
+    agents = team_config.get("agents", {})
     if not agents:
-        print("Error: No agents defined in agents.yaml")
+        print(f"Error: No agents defined in team '{team_name}'")
         sys.exit(1)
 
     # Get first agent (dict maintains insertion order in Python 3.7+)
@@ -45,10 +181,12 @@ def get_first_agent_class():
     # Get class name
     class_name = first_agent_config.get("class")
     if not class_name:
-        print(f"Error: No class defined for agent '{first_agent_name}' in agents.yaml")
+        print(f"Error: No class defined for agent '{first_agent_name}' in team '{team_name}'")
         sys.exit(1)
 
-    print(f"[agent.py] Loading first agent from agents.yaml: {first_agent_name} ({class_name})")
+    team_display_name = team_config.get("name", team_name)
+    print(f"[agent.py] Using team: {team_display_name}")
+    print(f"[agent.py] Starting agent: {first_agent_name} ({class_name})")
 
     # Import the class dynamically
     # Map class names to modules
@@ -77,8 +215,12 @@ def get_first_agent_class():
 
 
 def main():
-    """Main entry point - load first agent from agents.yaml and run its main()."""
-    agent_class = get_first_agent_class()
+    """Main entry point - select team and run first agent."""
+    # Determine which team to use
+    team_name = get_team_name()
+
+    # Load first agent from team
+    agent_class = get_first_agent_class(team_name)
 
     # Call the agent's main() method, which handles all CLI parsing and execution
     agent_class.main()

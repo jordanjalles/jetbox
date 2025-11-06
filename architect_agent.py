@@ -14,7 +14,7 @@ class ArchitectAgent(BaseAgent):
     Agent specialized for architecture design and planning.
 
     This is a minimal wrapper around BaseAgent that passes config to BaseAgent.__init__().
-    Everything (role, system_prompt, behaviors) is loaded from architect_config.yaml.
+    Everything (role, system_prompt, behaviors) is loaded from config/agents/architect.yaml.
 
     All logic is in base_agent.py or behaviors. NO unique logic here.
     """
@@ -25,6 +25,7 @@ class ArchitectAgent(BaseAgent):
         goal: str | None = None,
         timeout_seconds: int = 600,
         exclude_behaviors: list[str] | None = None,
+        config_file: str = "config/agents/architect.yaml",
     ):
         """
         Initialize Architect agent.
@@ -34,11 +35,12 @@ class ArchitectAgent(BaseAgent):
             goal: Initial goal/project description (optional)
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
+            config_file: Path to agent config file (default: architect.yaml)
         """
         super().__init__(
             name="architect",
             workspace=workspace or Path(".agent_workspaces"),
-            config_file="architect_config.yaml",
+            config_file=config_file,
             timeout_seconds=timeout_seconds,
             exclude_behaviors=exclude_behaviors,
         )

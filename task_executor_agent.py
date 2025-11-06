@@ -14,7 +14,7 @@ class TaskExecutorAgent(BaseAgent):
     Agent specialized for executing coding tasks.
 
     This is a minimal wrapper around BaseAgent that passes config to BaseAgent.__init__().
-    Everything (role, system_prompt, behaviors) is loaded from task_executor_config.yaml.
+    Everything (role, system_prompt, behaviors) is loaded from config/agents/task_executor.yaml.
 
     All logic is in base_agent.py or behaviors. NO unique logic here.
     """
@@ -25,6 +25,7 @@ class TaskExecutorAgent(BaseAgent):
         goal: str | None = None,
         timeout_seconds: int = 600,
         exclude_behaviors: list[str] | None = None,
+        config_file: str = "config/agents/task_executor.yaml",
     ):
         """
         Initialize TaskExecutor agent.
@@ -34,6 +35,7 @@ class TaskExecutorAgent(BaseAgent):
             goal: Optional initial goal to set
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
+            config_file: Path to agent config file (default: task_executor.yaml)
         """
         # Resolve workspace path - if None, use .agent_workspaces (absolute path)
         if workspace:
@@ -46,7 +48,7 @@ class TaskExecutorAgent(BaseAgent):
         super().__init__(
             name="task_executor",
             workspace=workspace_path,
-            config_file="task_executor_config.yaml",
+            config_file=config_file,
             timeout_seconds=timeout_seconds,
             exclude_behaviors=exclude_behaviors,
         )

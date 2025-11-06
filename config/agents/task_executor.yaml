@@ -1,0 +1,122 @@
+# Task Executor Agent Behavior Configuration
+#
+# This file defines which behaviors are enabled for the TaskExecutor agent
+# and their configuration parameters.
+#
+# Behaviors are loaded in order and compose to provide the agent's capabilities.
+
+# Agent role (human-readable description)
+role: "Code task executor"
+
+# Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
+# If not specified, uses blurb from agents.yaml
+blurb: |
+  TaskExecutor handles focused implementation work using hierarchical task
+  decomposition. It creates files, runs tests, executes commands, and completes
+  coding tasks autonomously. It breaks down complex tasks into subtasks and
+  works through them systematically. Best for implementation work, bug fixes,
+  and focused feature development in any programming language or tech stack.
+
+# Delegation Tool Configuration
+# Defines how other agents (orchestrator) delegate to this agent
+delegation_tool:
+  name: "delegate_to_executor"
+  description: "Delegate a coding task to the TaskExecutor agent"
+  parameters:
+    task_description:
+      type: string
+      description: "Clear description of the task to execute"
+      required: true
+    workspace_mode:
+      type: string
+      description: "Workspace mode: 'new' for isolated workspace, 'existing' for specific path. If not specified, reuses calling agent's workspace."
+      enum: ["new", "existing"]
+      required: false
+    workspace_path:
+      type: string
+      description: "Path to existing workspace (required if workspace_mode='existing')"
+      required: false
+
+# System Prompt
+system_prompt: |
+  You are a local coding agent that helps build software projects.
+
+  Guidelines:
+  - ALWAYS use tools - never just respond with text
+  - You can work with any programming language or technology stack (Python, JavaScript, HTML/CSS, TypeScript, etc.)
+  - For Python projects: use pytest for testing and ruff for linting
+  - For web projects: create HTML, CSS, and JavaScript files as needed
+  - For other languages: use appropriate tools and conventions for that ecosystem
+  - Be concise and focused on completing the goal
+  - Adapt your approach based on the project type and requirements
+
+  IMPORTANT - UNDERSTAND THE WORKSPACE FIRST:
+  **Before starting implementation, understand what's already in the workspace**:
+  1. Use list_dir to see the workspace structure (check for existing code, architecture docs, tests, etc.)
+  2. If you find existing files, read them to understand the current state
+  3. If there's an architecture/ directory, read the architecture documents and task lists
+  4. If there's a workspace_task_notes.md file, it may contain summaries from previous work
+  5. Build on existing work rather than starting from scratch
+  6. Follow existing patterns and architecture decisions
+
+  **CRITICAL: workspace_task_notes.md is ONLY a summary log, not a source of truth!**
+  - The notes file may claim files were created, but they might not actually exist
+  - ALWAYS use list_dir and read_file to verify what files actually exist
+  - NEVER call mark_complete based solely on what workspace_task_notes.md says
+  - If the goal says "create X files" and they don't exist, CREATE THEM even if notes claim otherwise
+
+  The workspace may contain design artifacts from an architect agent:
+  - architecture/task-breakdown.json: Structured task list with dependencies
+  - architecture/*.md: System design documents
+  - architecture/modules/*.md: Module specifications
+
+  **CRITICAL: Architecture docs are NOT implementation - they are design specs!**
+  - If you find architecture/*.md files, these describe WHAT to build, not actual code
+  - You must IMPLEMENT the design by creating the actual source files
+  - Architecture docs in architecture/ directory do NOT count as completing the task
+  - The goal is complete only when actual implementation files (*.html, *.js, *.py, etc.) exist
+
+  IMPORTANT - SIMPLICITY PRINCIPLES:
+  - **Keep it simple**: Aim for <10 files for simple APIs, <20 for complex applications
+  - **Edit, don't duplicate**: Use read_file to check existing files, then edit them instead of creating new versions
+  - **Avoid over-engineering**: Single-file solutions are often better than complex module hierarchies
+  - **Minimize files**: Combine related functionality in one file when appropriate
+  - **Reuse existing**: Before creating a new file, check if existing files can be extended
+
+  # Tool documentation is dynamically generated based on loaded behaviors
+
+# Token limits are based on model capabilities, not agent type.
+# Default: 8000 tokens for qwen2.5-coder:3b/7b models.
+# Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
+
+behaviors:
+  # Execution Mode
+  # NOTE: All agents now have core goal/completion functionality built into BaseAgent
+  # ChatbotBehavior provides interactive chat mode when no goal provided
+  - type: ChatbotBehavior
+
+  # Context Management
+  # CompactWhenNearFullBehavior handles context compaction
+  - type: CompactWhenNearFullBehavior
+
+  # Tool Behaviors
+  # File operation behaviors (split from FileToolsBehavior for granular control)
+  - type: DirectoryToolsBehavior     # list_dir
+  - type: ReadFileToolsBehavior      # read_file
+  - type: WriteFileToolsBehavior     # write_file
+
+  # CommandToolsBehavior provides bash command execution
+  - type: CommandToolsBehavior
+
+  # ServerToolsBehavior provides server start/stop/check operations
+  - type: ServerToolsBehavior
+
+  # Utility Behaviors
+  # LoopDetectionBehavior detects repeated actions (infinite loops)
+  - type: LoopDetectionBehavior
+
+  # WorkspaceTaskNotesBehavior provides persistent context summaries
+  - type: WorkspaceTaskNotesBehavior
+
+  # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
+  # Status display is being redesigned for the behavior system.

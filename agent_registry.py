@@ -1,13 +1,13 @@
 """
 Agent registry - manages agent instances and delegation relationships.
 
-Loads agent configuration from agents.yaml and provides:
+Loads agent configuration from team config (config/teams/*.yaml) and provides:
 - Agent instantiation (dynamic, no hardcoded agent classes)
 - Delegation routing
 - Agent lifecycle management
 
 This registry is fully generic - it never refers to specific agent classes.
-All agent instantiation is driven by agents.yaml configuration.
+All agent instantiation is driven by team configuration.
 """
 from __future__ import annotations
 from typing import Any
@@ -29,30 +29,32 @@ class AgentRegistry:
     - Track active agents
     """
 
-    def __init__(self, config_path: str = "agents.yaml", workspace: Path = Path(".")):
+    def __init__(self, team_name: str = "default", workspace: Path = Path(".")):
         """
         Initialize agent registry.
 
         Args:
-            config_path: Path to agents.yaml config file
+            team_name: Name of team config file (default: "default")
             workspace: Base workspace directory
         """
-        self.config_path = config_path
+        self.team_name = team_name
         self.workspace = Path(workspace)
         self.agents: dict[str, BaseAgent] = {}
         self.config = self._load_config()
 
     def _load_config(self) -> dict[str, Any]:
         """
-        Load agent configuration from YAML.
+        Load agent configuration from team config.
 
         Returns:
             Config dict with agent definitions
         """
-        config_file = Path(self.config_path)
+        from agent_config import load_team_config
+
+        config = load_team_config(self.team_name)
 
         # Default config if file doesn't exist
-        if not config_file.exists():
+        if not config:
             return {
                 "agents": {
                     "orchestrator": {
@@ -66,9 +68,7 @@ class AgentRegistry:
                 }
             }
 
-        # Load from YAML
-        with open(config_file) as f:
-            return yaml.safe_load(f) or {}
+        return config
 
     def get_agent(self, name: str) -> BaseAgent:
         """
@@ -113,8 +113,13 @@ class AgentRegistry:
                 f"Failed to import {agent_class_name} from {module_name}: {e}"
             ) from e
 
-        # Instantiate agent (all agents follow same __init__ signature)
-        agent = agent_class(workspace=self.workspace)
+        # Instantiate agent
+        # If agent has a custom config, pass config_file parameter
+        if "config" in agent_config:
+            config_file = f"config/agents/{agent_config['config']}.yaml"
+            agent = agent_class(workspace=self.workspace, config_file=config_file)
+        else:
+            agent = agent_class(workspace=self.workspace)
 
         # Store and return
         self.agents[name] = agent

@@ -14,12 +14,12 @@ class OrchestratorAgent(BaseAgent):
     Agent specialized for user interaction and task delegation.
 
     This is a minimal wrapper around BaseAgent that passes config to BaseAgent.__init__().
-    Everything (role, system_prompt, behaviors) is loaded from orchestrator_config.yaml.
+    Everything (role, system_prompt, behaviors) is loaded from config/agents/orchestrator.yaml.
 
     All logic is in base_agent.py or behaviors. NO unique logic here.
     """
 
-    def __init__(self, workspace: Path | None = None, exclude_behaviors: list[str] | None = None, timeout_seconds: int = 600):
+    def __init__(self, workspace: Path | None = None, exclude_behaviors: list[str] | None = None, timeout_seconds: int = 600, config_file: str = "config/agents/orchestrator.yaml"):
         """
         Initialize Orchestrator agent.
 
@@ -27,11 +27,12 @@ class OrchestratorAgent(BaseAgent):
             workspace: Working directory (defaults to .agent_workspaces)
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
+            config_file: Path to agent config file (default: orchestrator.yaml)
         """
         super().__init__(
             name="orchestrator",
             workspace=workspace or Path(".agent_workspaces"),
-            config_file="orchestrator_config.yaml",
+            config_file=config_file,
             exclude_behaviors=exclude_behaviors,
             timeout_seconds=timeout_seconds,
         )

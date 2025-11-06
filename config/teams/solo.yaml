@@ -1,0 +1,12 @@
+# Solo Executor Team Configuration
+# Single task executor agent - no orchestrator or delegation
+
+name: "Solo Executor"
+description: "Single task executor agent - no orchestrator or delegation"
+
+agents:
+  # TaskExecutor: Coding agent that executes specific tasks
+  task_executor:
+    class: TaskExecutorAgent
+    config: task_executor  # References config/agents/task_executor.yaml
+    can_delegate_to: []  # No delegation

@@ -1,0 +1,161 @@
+import json
+import pytest
+from unittest.mock import Mock, patch
+
+from behaviors.httprequestbehavior import HttprequestbehaviorBehavior
+
+
+class TestHttprequestbehaviorBehavior:
+    """Test suite for HttprequestbehaviorBehavior."""
+
+    @pytest.fixture
+    def behavior(self):
+        return HttprequestbehaviorBehavior()
+
+    def test_get_name(self, behavior):
+        """Behavior returns correct identifier."""
+        assert behavior.get_name() == "HttpRequestBehavior"
+
+    def test_initialization(self, behavior):
+        """Behavior initializes without errors."""
+        assert behavior is not None
+
+    def test_tool_schemas(self, behavior):
+        """Tool schemas are well-formed."""
+        tools = behavior.get_tools()
+        assert isinstance(tools, list)
+        assert len(tools) == 2
+
+        expected_names = {"http_get", "http_post"}
+        tool_names = {tool["function"]["name"] for tool in tools}
+        assert tool_names == expected_names
+
+        for tool in tools:
+            assert tool["type"] == "function"
+            func = tool["function"]
+            assert "name" in func
+            assert "description" in func
+            assert "parameters" in func
+            params = func["parameters"]
+            assert "type" in params and params["type"] == "object"
+            assert "properties" in params
+            assert "required" in params
+
+    def test_http_get_success(self, behavior, monkeypatch):
+        """http_get dispatch returns expected result on success."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": "ok"}
+        mock_response.text = json.dumps({"data": "ok"})
+        monkeypatch.setattr("requests.get", lambda *args, **kwargs: mock_response)
+
+        result = behavior.dispatch_tool(
+            agent=Mock(),
+            tool_name="http_get",
+            args={"url": "https://example.com/api", "timeout": 5}
+        )
+
+        assert isinstance(result, dict)
+        assert "result" in result
+        assert result["result"] == {"data": "ok"}
+
+    def test_http_post_success(self, behavior, monkeypatch):
+        """http_post dispatch returns expected result on success."""
+        mock_response = Mock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"created": True}
+        mock_response.text = json.dumps({"created": True})
+        monkeypatch.setattr("requests.post", lambda *args, **kwargs: mock_response)
+
+        result = behavior.dispatch_tool(
+            agent=Mock(),
+            tool_name="http_post",
+            args={
+                "url": "https://example.com/api",
+                "data": {"name": "test"},
+                "timeout": 5
+            }
+        )
+
+        assert isinstance(result, dict)
+        assert "result" in result
+        assert result["result"] == {"created": True}
+
+    def test_http_get_missing_url(self, behavior):
+        """http_get raises ValueError when url is missing."""
+        with pytest.raises(ValueError):
+            behavior.dispatch_tool(
+                agent=Mock(),
+                tool_name="http_get",
+                args={}
+            )
+
+    def test_http_post_missing_data(self, behavior):
+        """http_post raises ValueError when data is missing."""
+        with pytest.raises(ValueError):
+            behavior.dispatch_tool(
+                agent=Mock(),
+                tool_name="http_post",
+                args={"url": "https://example.com/api"}
+            )
+
+    def test_http_get_timeout(self, behavior, monkeypatch):
+        """http_get handles timeout exception."""
+        import requests
+        monkeypatch.setattr("requests.get", lambda *args, **kwargs: (_ for _ in ()).throw(requests.exceptions.Timeout()))
+
+        result = behavior.dispatch_tool(
+            agent=Mock(),
+            tool_name="http_get",
+            args={"url": "https://example.com/api", "timeout": 1}
+        )
+
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "timeout" in result["error"].lower()
+
+    def test_http_post_timeout(self, behavior, monkeypatch):
+        """http_post handles timeout exception."""
+        import requests
+        monkeypatch.setattr("requests.post", lambda *args, **kwargs: (_ for _ in ()).throw(requests.exceptions.Timeout()))
+
+        result = behavior.dispatch_tool(
+            agent=Mock(),
+            tool_name="http_post",
+            args={"url": "https://example.com/api", "data": {"x": 1}, "timeout": 1}
+        )
+
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "timeout" in result["error"].lower()
+
+    def test_unknown_tool_dispatch(self, behavior):
+        """Unknown tools raise NotImplementedError."""
+        with pytest.raises(NotImplementedError):
+            behavior.dispatch_tool(
+                agent=Mock(),
+                tool_name="unknown_tool",
+                args={}
+            )
+
+    def test_on_initial_context(self, behavior):
+        """on_initial_context returns a list of messages."""
+        if hasattr(behavior, "on_initial_context"):
+            agent = Mock()
+            agent.goal = "Test goal"
+            context = [{"role": "system", "content": "System prompt"}]
+            enhanced = behavior.on_initial_context(agent=agent, context=context)
+            assert isinstance(enhanced, list)
+            assert len(enhanced) >= len(context)
+            # Ensure goal is mentioned if behavior injects it
+            if any("Test goal" in msg.get("content", "") for msg in enhanced):
+                assert True
+
+    def test_on_round_start(self, behavior):
+        """on_round_start returns a list of messages."""
+        if hasattr(behavior, "on_round_start"):
+            agent = Mock()
+            context = [{"role": "system", "content": "System prompt"}]
+            enhanced = behavior.on_round_start(agent=agent, round_number=1, context=context)
+            assert isinstance(enhanced, list)
+            assert len(enhanced) >= len(context)

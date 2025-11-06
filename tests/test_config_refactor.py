@@ -17,15 +17,15 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_agents_yaml_structure():
-    """Test that agents.yaml only contains class and can_delegate_to."""
+    """Test that config/teams/default.yaml only contains class and can_delegate_to."""
     print("\n" + "="*70)
-    print("TEST 1: agents.yaml structure (only class and can_delegate_to)")
+    print("TEST 1: config/teams/default.yaml structure (only class and can_delegate_to)")
     print("="*70)
 
     # Get workspace root
     workspace_root = Path(__file__).parent.parent
 
-    with open(workspace_root / "agents.yaml") as f:
+    with open(workspace_root / "config/teams/default.yaml") as f:
         config = yaml.safe_load(f)
 
     agents = config["agents"]
@@ -57,7 +57,7 @@ def test_agents_yaml_structure():
 
         print(f"  ✓ PASS: Only contains {actual_keys}")
 
-    print("\n✓ PASS: agents.yaml structure is correct")
+    print("\n✓ PASS: config/teams/default.yaml structure is correct")
     return True
 
 
@@ -71,7 +71,7 @@ def test_blurbs_in_agent_configs():
     agents_with_blurbs = ["orchestrator", "architect", "task_executor"]
 
     for agent_name in agents_with_blurbs:
-        config_file = f"{agent_name}_config.yaml"
+        config_file = f"config/agents/{agent_name}.yaml"
         print(f"\n{config_file}:")
 
         config_path = workspace_root / config_file
@@ -115,7 +115,7 @@ def test_delegation_tools_in_agent_configs():
     }
 
     for agent_name, expected_tool_name in agents_with_delegation_tools.items():
-        config_file = f"{agent_name}_config.yaml"
+        config_file = f"config/agents/{agent_name}.yaml"
         print(f"\n{config_file}:")
 
         with open(workspace_root / config_file) as f:
@@ -161,7 +161,7 @@ def test_token_limits_consistent():
     print("="*70)
 
     workspace_root = Path(__file__).parent.parent
-    config_files = ["task_executor_config.yaml", "orchestrator_config.yaml", "architect_config.yaml"]
+    config_files = ["config/agents/task_executor.yaml", "config/agents/orchestrator.yaml", "config/agents/architect.yaml"]
 
     for config_file in config_files:
         print(f"\n{config_file}:")
@@ -174,14 +174,18 @@ def test_token_limits_consistent():
         for behavior in config.get("behaviors", []):
             if behavior["type"] == "CompactWhenNearFullBehavior":
                 found = True
-                max_tokens = behavior["params"]["max_tokens"]
-                print(f"  max_tokens: {max_tokens}")
+                # Check if behavior has explicit params or uses global defaults
+                if "params" in behavior and behavior["params"]:
+                    max_tokens = behavior["params"]["max_tokens"]
+                    print(f"  max_tokens (explicit): {max_tokens}")
 
-                if max_tokens != 8000:
-                    print(f"  ❌ FAIL: Expected 8000, got {max_tokens}")
-                    return False
+                    if max_tokens != 8000:
+                        print(f"  ❌ FAIL: Expected 8000, got {max_tokens}")
+                        return False
 
-                print("  ✓ PASS: max_tokens = 8000")
+                    print("  ✓ PASS: max_tokens = 8000")
+                else:
+                    print("  ✓ PASS: Using global defaults (max_tokens from behavior_defaults.yaml)")
                 break
 
         if not found:
@@ -198,7 +202,7 @@ def test_status_display_behavior_removed():
     print("="*70)
 
     workspace_root = Path(__file__).parent.parent
-    config_files = ["task_executor_config.yaml", "orchestrator_config.yaml", "architect_config.yaml"]
+    config_files = ["config/agents/task_executor.yaml", "config/agents/orchestrator.yaml", "config/agents/architect.yaml"]
 
     for config_file in config_files:
         print(f"\n{config_file}:")

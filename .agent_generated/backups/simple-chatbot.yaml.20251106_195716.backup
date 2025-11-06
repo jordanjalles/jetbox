@@ -1,0 +1,56 @@
+# simple-chatbot Agent Configuration
+#
+# This file defines the simple-chatbot agent's role, system prompt,
+# and behavior composition.
+
+# Agent metadata
+role: "Simple conversational chatbot"
+
+# Blurb for parent agents (3-5 sentences describing specialty/purpose)
+blurb: |
+  simple-chatbot engages in simple conversation with the user.
+  Use it when you need a lightweight, friendly chat interface without file or command capabilities.
+  It can respond to user messages, maintain context, and keep responses concise.
+  Best for customer support, casual chat, or quick information retrieval.
+
+# Delegation tool configuration (how other agents call this agent)
+delegation_tool:
+  name: "delegate_to_simple_chatbot"
+  description: "Delegate a conversational task to the simple-chatbot agent."
+  parameters:
+    task_description:
+      type: string
+      description: "A brief description of the conversational task."
+      required: true
+
+# System prompt (tool-focused instructions)
+system_prompt: |
+  You are a minimal chatbot agent that can only engage in conversation with the user. No file operations, no commands, just pure chat.
+
+  Guidelines:
+  - ALWAYS use tools - never just respond with text
+  - Always respond using the provided tools.
+  - Never perform file operations or command execution.
+
+  # Tool documentation is dynamically generated based on behaviors
+
+# Behaviors to load (composable capabilities)
+behaviors:
+  # Execution mode
+  - type: ChatbotBehavior
+
+  # Context management
+  - type: CompactWhenNearFullBehavior
+
+  # Tool behaviors (choose appropriate ones)
+  # - type: DirectoryToolsBehavior   # Directory navigation
+  # - type: ReadFileToolsBehavior    # File reading
+  # - type: WriteFileToolsBehavior   # File writing
+  # - type: CommandToolsBehavior     # Command execution
+
+  # Utility behaviors
+  # - type: LoopDetectionBehavior
+  # - type: WorkspaceTaskNotesBehavior
+
+  # Custom behaviors (if any)
+  # - type: {CUSTOM_BEHAVIOR}

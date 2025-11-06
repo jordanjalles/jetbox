@@ -521,11 +521,17 @@ Generate the complete test file now:"""
             if not validation_behavior:
                 return {"valid": True, "message": "Validation skipped (ValidationBehavior not available)"}
 
-            # Call validate_behavior_class tool
+            # Call validate_behavior_class tool (needs code string, not file path)
+            try:
+                with open(behavior_file, 'r') as f:
+                    code = f.read()
+            except Exception as e:
+                return {"valid": False, "error": f"Failed to read file for validation: {str(e)}"}
+
             result = validation_behavior.dispatch_tool(
                 agent,
                 "validate_behavior_class",
-                {"file_path": behavior_file}
+                {"code": code, "expected_name": class_name}
             )
 
             return result.get("result", {"valid": False, "error": "No validation result"})

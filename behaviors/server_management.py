@@ -37,44 +37,34 @@ class ServerManagementBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "server_management"
 
-    def on_agent_init(self, agent: Any, **kwargs: Any) -> None:
+    def on_goal_start(self, agent: Any, goal: str) -> None:
         """
-        Initialize server manager when agent starts.
+        Initialize server manager when goal starts (STANDARD LIFECYCLE HOOK).
 
         Args:
             agent: Agent instance
-            **kwargs: Additional context
+            goal: Goal description
         """
         # Initialize server manager if agent supports it
-        if hasattr(agent, 'init_server_manager') and not agent.server_manager:
-            agent.init_server_manager()
+        if hasattr(agent, 'init_server_manager'):
+            if not hasattr(agent, 'server_manager') or not agent.server_manager:
+                agent.init_server_manager()
+            self.server_manager = agent.server_manager
+        elif hasattr(agent, 'server_manager'):
             self.server_manager = agent.server_manager
 
-    def pre_task_hook(self, agent: Any) -> None:
-        """
-        Hook called before each task in multi-task mode.
-
-        Cleans up old server requests before starting new task.
-
-        Args:
-            agent: Agent instance
-        """
-        # Ensure server_manager is initialized
-        if not self.server_manager and hasattr(agent, 'server_manager'):
-            self.server_manager = agent.server_manager
-
-        # Clean up old requests
+        # Clean up old requests at start
         if self.server_manager:
             self.server_manager.cleanup_old_requests()
 
-    def cleanup_hook(self, agent: Any) -> None:
+    def on_goal_complete(self, agent: Any, success: bool, summary: str) -> None:
         """
-        Hook called at end of agent execution.
-
-        Stops all servers and monitoring.
+        Stop all servers when goal completes (STANDARD LIFECYCLE HOOK).
 
         Args:
             agent: Agent instance
+            success: Whether goal succeeded
+            summary: Completion summary
         """
         # Ensure server_manager is initialized
         if not self.server_manager and hasattr(agent, 'server_manager'):

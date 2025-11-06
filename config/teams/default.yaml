@@ -1,0 +1,26 @@
+# Default Team Configuration
+# Standard orchestrator → architect + task_executor delegation model
+
+name: "Default Team"
+description: "Standard orchestrator → architect + task_executor delegation model"
+
+agents:
+  # Orchestrator: User-facing agent that plans and delegates
+  orchestrator:
+    class: OrchestratorAgent
+    config: orchestrator  # References config/agents/orchestrator.yaml (without .yaml extension)
+    can_delegate_to:
+      - architect       # Can consult architect for complex projects
+      - task_executor   # Can delegate implementation work
+
+  # Architect: Architecture design consultant
+  architect:
+    class: ArchitectAgent
+    config: architect  # References config/agents/architect.yaml
+    can_delegate_to: []  # Consultant agent (doesn't delegate)
+
+  # TaskExecutor: Coding agent that executes specific tasks
+  task_executor:
+    class: TaskExecutorAgent
+    config: task_executor  # References config/agents/task_executor.yaml
+    can_delegate_to: []  # Executor doesn't delegate (terminal agent)

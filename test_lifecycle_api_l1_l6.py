@@ -289,6 +289,11 @@ def save_results(tests: list[EvaluationTest]) -> None:
 
 def main():
     """Run all L1-L6 tests."""
+    # Unset OLLAMA_MODEL to ensure tests use config file settings
+    if "OLLAMA_MODEL" in os.environ:
+        print(f"[ENV] Unsetting OLLAMA_MODEL (was: {os.environ['OLLAMA_MODEL']})")
+        del os.environ["OLLAMA_MODEL"]
+
     print("="*80)
     print("L1-L6 Lifecycle API Evaluation Test Suite")
     print("="*80)

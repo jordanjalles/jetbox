@@ -24,7 +24,7 @@ This guide shows how to use each template and validate your generated code.
 
 2. **Copy and fill in placeholders:**
    ```bash
-   cp docs/templates/behavior_with_tools_template.py behaviors/my_new_behavior.py
+   cp behaviors/templates/behavior_with_tools_template.py behaviors/my_new_behavior.py
    ```
 
 3. **Replace placeholders** (marked with `{PLACEHOLDER}`):
@@ -56,7 +56,7 @@ This guide shows how to use each template and validate your generated code.
 
 ### 1. Minimal Behavior Template
 
-**File:** `docs/templates/behavior_minimal_template.py`
+**File:** `behaviors/templates/behavior_minimal_template.py`
 
 **When to use:**
 - Simple behavior with no tools
@@ -119,7 +119,7 @@ class PerformanceMonitorBehavior(AgentBehavior):
 
 ### 2. Tool-Providing Behavior Template
 
-**File:** `docs/templates/behavior_with_tools_template.py`
+**File:** `behaviors/templates/behavior_with_tools_template.py`
 
 **When to use:**
 - Behavior provides tools for LLM to call
@@ -247,7 +247,7 @@ class JsonValidatorBehavior(AgentBehavior):
 
 ### 3. Context Enhancement Template
 
-**File:** `docs/templates/behavior_context_enhancement_template.py`
+**File:** `behaviors/templates/behavior_context_enhancement_template.py`
 
 **When to use:**
 - Behavior modifies context sent to LLM
@@ -318,7 +318,7 @@ class DeadlineTrackerBehavior(AgentBehavior):
 
 ### 4. Behavior Test Template
 
-**File:** `docs/templates/behavior_test_template.py`
+**File:** `behaviors/templates/behavior_test_template.py`
 
 **When to use:**
 - Testing any new behavior
@@ -403,7 +403,7 @@ class TestJsonValidatorBehavior:
 
 ### 5. Agent Configuration Template
 
-**File:** `docs/templates/agent_config_template.yaml`
+**File:** `behaviors/templates/agent_config_template.yaml`
 
 **When to use:**
 - Creating a new agent type
@@ -655,7 +655,7 @@ def on_round_start(self, agent, round_number, context):
 
 See:
 - **Existing behaviors** in `behaviors/` for real-world examples
-- **Anti-patterns doc** at `docs/templates/behavior_antipatterns.md`
+- **Anti-patterns doc** at `behaviors/templates/behavior_antipatterns.md`
 - **Test suite** in `tests/test_behavior_independence.py`
 
 ---

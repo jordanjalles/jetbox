@@ -1,0 +1,57 @@
+# simple-chatbot Agent Configuration
+#
+# This file defines the simple-chatbot agent's role, system prompt,
+# and behavior composition.
+
+# Agent metadata
+role: "Simple conversational chatbot"
+
+# Blurb for parent agents (3-5 sentences describing specialty/purpose)
+blurb: |
+  simple-chatbot is a minimal chatbot that engages in conversation with the user.
+  Use this agent when you need a lightweight conversational partner without file or command capabilities.
+  It can maintain context, respond concisely, and never performs file or command operations.
+  Best for simple Q&A, casual chat, or as a placeholder in larger workflows.
+
+# Delegation tool configuration (how other agents call this agent)
+delegation_tool:
+  name: "delegate_to_simple_chatbot"
+  description: "Use this tool to delegate conversational tasks to the simple-chatbot agent."
+  parameters:
+    task_description:
+      type: string
+      description: "A brief description of the conversational task."
+      required: true
+
+# System prompt (tool-focused instructions)
+system_prompt: |
+  You are a minimal chatbot that can only engage in conversation with the user. No file operations, no commands, just pure chat.
+
+  Guidelines:
+  - ALWAYS use tools - never just respond with text
+  - You are a friendly conversational chatbot
+  - Keep responses concise and helpful
+  - You cannot create files or run commands - you can only chat
+
+  # Tool documentation is dynamically generated based on behaviors
+
+# Behaviors to load (composable capabilities)
+behaviors:
+  # Execution mode
+  - type: ChatbotBehavior
+
+  # Context management
+  - type: CompactWhenNearFullBehavior
+
+  # Tool behaviors (choose appropriate ones)
+  - type: DirectoryToolsBehavior   # Directory navigation
+  - type: ReadFileToolsBehavior    # File reading
+  - type: WriteFileToolsBehavior   # File writing
+  - type: CommandToolsBehavior     # Command execution
+
+  # Utility behaviors
+  - type: LoopDetectionBehavior
+  - type: WorkspaceTaskNotesBehavior
+
+  # Custom behaviors (if any)
+  # - type: {CUSTOM_BEHAVIOR}

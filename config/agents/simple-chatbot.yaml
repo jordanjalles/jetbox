@@ -1,0 +1,53 @@
+# simple-chatbot Agent Configuration
+#
+# This file defines the simple-chatbot agent's role, system prompt,
+# and behavior composition.
+
+# Agent metadata
+role: "Simple conversational chatbot"
+
+# Blurb for parent agents (3-5 sentences describing specialty/purpose)
+blurb: |
+  simple-chatbot provides concise conversational responses. Use it when you need a straightforward chat interface without file or command capabilities. It can handle general queries, offer friendly replies, and maintain context within a limited window. Best for simple Q&A, user support, or as a conversational front-end.
+
+# Delegation tool configuration (how other agents call this agent)
+delegation_tool:
+  name: "delegate_to_simple_chatbot"
+  description: "Delegate to simple-chatbot when you need a conversational response without file or command operations."
+  parameters:
+    task_description:
+      type: string
+      description: "A brief description of the task or question to be answered."
+      required: true
+
+# System prompt (tool-focused instructions)
+system_prompt: |
+  You are simple-chatbot, a minimal conversational agent that engages users in natural dialogue. It can only chat; no file operations or command execution are allowed.
+
+  Guidelines:
+  - ALWAYS use tools - never just respond with text (if a tool is available).
+  - Keep responses concise and helpful.
+  - You are a friendly conversational chatbot.
+
+  # Tool documentation is dynamically generated based on behaviors
+
+# Behaviors to load (composable capabilities)
+behaviors:
+  # Execution mode
+  - type: ChatbotBehavior
+
+  # Context management
+  - type: CompactWhenNearFullBehavior
+
+  # Tool behaviors (choose appropriate ones)
+  # - type: DirectoryToolsBehavior   # Directory navigation
+  # - type: ReadFileToolsBehavior    # File reading
+  # - type: WriteFileToolsBehavior   # File writing
+  # - type: CommandToolsBehavior     # Command execution
+
+  # Utility behaviors
+  # - type: LoopDetectionBehavior
+  # - type: WorkspaceTaskNotesBehavior
+
+  # Custom behaviors (if any)
+  # - type: {CUSTOM_BEHAVIOR}

@@ -1,0 +1,225 @@
+"""
+HttpRequestBehaviorBehavior - Provides HTTP GET/POST request tools for API interaction
+
+Provides tools:
+- http_get: Send HTTP GET request to specified URL
+- http_post: Send HTTP POST request with data to specified URL
+"""
+
+from typing import Any
+import requests
+from behaviors.base import AgentBehavior
+
+
+class HttprequestbehaviorBehavior(AgentBehavior):
+    """
+    Provides HTTP tools for agent use.
+    """
+
+    def __init__(self, workspace_manager=None, **kwargs):
+        """
+        Initialize behavior.
+
+        Args:
+            workspace_manager: Optional WorkspaceManager for path resolution
+            **kwargs: Additional parameters (ignored)
+        """
+        self.workspace_manager = workspace_manager
+
+    def get_name(self) -> str:
+        return "HttpRequestBehavior"
+
+    def on_initial_context(
+        self,
+        agent: Any,
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Inject tool documentation for this behavior's tools.
+
+        Called once during agent initialization to document available tools.
+
+        Args:
+            agent: Agent instance
+            context: Initial context (system prompt only)
+
+        Returns:
+            Context with tool documentation injected
+        """
+        tools = self.get_tools()
+        if not tools:
+            return context
+
+        # Build tool documentation
+        tool_docs = []
+        for tool in tools:
+            func = tool.get("function", {})
+            name = func.get("name", "unknown")
+            desc = func.get("description", "")
+            params = func.get("parameters", {}).get("properties", {})
+            required = func.get("parameters", {}).get("required", [])
+
+            # Build parameter signature
+            param_strs = []
+            for param_name, param_spec in params.items():
+                param_type = param_spec.get("type", "any")
+                is_required = param_name in required
+                if is_required:
+                    param_strs.append(f"{param_name}: {param_type}")
+                else:
+                    param_strs.append(f"{param_name}?: {param_type}")
+
+            param_sig = ", ".join(param_strs) if param_strs else ""
+            tool_docs.append(f"  - {name}({param_sig}): {desc}")
+
+        if tool_docs:
+            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
+            return self.inject_user_message_after_system(context, tool_message)
+
+        return context
+
+    def get_tools(self) -> list[dict[str, Any]]:
+        """Return tool definitions in OpenAI function call format."""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "http_get",
+                    "description": "Send HTTP GET request to specified URL",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "Target URL for GET request"
+                            },
+                            "headers": {
+                                "type": "object",
+                                "description": "Optional HTTP headers as key-value pairs"
+                            },
+                            "timeout": {
+                                "type": "integer",
+                                "description": "Request timeout in seconds (default: 30)"
+                            }
+                        },
+                        "required": ["url"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "http_post",
+                    "description": "Send HTTP POST request with data to specified URL",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "Target URL for POST request"
+                            },
+                            "data": {
+                                "type": "object",
+                                "description": "Data to send in POST body (will be JSON-encoded)"
+                            },
+                            "headers": {
+                                "type": "object",
+                                "description": "Optional HTTP headers as key-value pairs"
+                            },
+                            "timeout": {
+                                "type": "integer",
+                                "description": "Request timeout in seconds (default: 30)"
+                            }
+                        },
+                        "required": ["url", "data"]
+                    }
+                }
+            }
+        ]
+
+    def dispatch_tool(
+        self,
+        agent: Any,
+        tool_name: str,
+        args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Handle tool execution.
+
+        Args:
+            agent: Agent instance (access agent.workspace, agent.state, etc.)
+            tool_name: Tool being called
+            args: Tool arguments from LLM
+
+        Returns:
+            Tool result dict ({"result": ..., "success": True} or {"error": ...})
+        """
+        if tool_name == "http_get":
+            return self._execute_http_get(agent, args)
+        elif tool_name == "http_post":
+            return self._execute_http_post(agent, args)
+        else:
+            return super().dispatch_tool(agent, tool_name, args)
+
+    def _execute_http_get(
+        self,
+        agent: Any,
+        args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Execute http_get tool.
+
+        Args:
+            agent: Agent instance (for workspace access)
+            args: Tool arguments
+
+        Returns:
+            Result dict
+        """
+        try:
+            url = args["url"]
+            headers = args.get("headers", {})
+            timeout = args.get("timeout", 30)
+
+            response = requests.get(url, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            result = {
+                "status_code": response.status_code,
+                "headers": dict(response.headers),
+                "body": response.text
+            }
+            return {"result": result, "success": True}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _execute_http_post(
+        self,
+        agent: Any,
+        args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Execute http_post tool.
+
+        Args:
+            agent: Agent instance (for workspace access)
+            args: Tool arguments
+
+        Returns:
+            Result dict
+        """
+        try:
+            url = args["url"]
+            data = args["data"]
+            headers = args.get("headers", {})
+            timeout = args.get("timeout", 30)
+
+            response = requests.post(url, json=data, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            result = {
+                "status_code": response.status_code,
+                "headers": dict(response.headers),
+                "body": response.text
+            }
+            return {"result": result, "success": True}
+        except Exception as e:
+            return {"error": str(e)}

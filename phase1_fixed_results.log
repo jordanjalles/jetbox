@@ -1,0 +1,67 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-8.1.1, pluggy-1.6.0
+rootdir: /workspace/tests
+configfile: pytest.ini
+plugins: anyio-4.11.0
+collected 0 items / 5 errors
+
+==================================== ERRORS ====================================
+___________ ERROR collecting test_meta_1_1_http_request_behavior.py ____________
+ImportError while importing test module '/workspace/tests/test_meta_1_1_http_request_behavior.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_meta_1_1_http_request_behavior.py:12: in <module>
+    from behaviors.create_behavior import CreateBehaviorBehavior
+E   ModuleNotFoundError: No module named 'behaviors.create_behavior'
+____________ ERROR collecting test_meta_1_2_json_tools_behavior.py _____________
+ImportError while importing test module '/workspace/tests/test_meta_1_2_json_tools_behavior.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_meta_1_2_json_tools_behavior.py:12: in <module>
+    from behaviors.create_behavior import CreateBehaviorBehavior
+E   ModuleNotFoundError: No module named 'behaviors.create_behavior'
+____________ ERROR collecting test_meta_1_3_environment_behavior.py ____________
+ImportError while importing test module '/workspace/tests/test_meta_1_3_environment_behavior.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_meta_1_3_environment_behavior.py:11: in <module>
+    from behaviors.create_behavior import CreateBehaviorBehavior
+E   ModuleNotFoundError: No module named 'behaviors.create_behavior'
+____________ ERROR collecting test_meta_3_2_doc_generator_agent.py _____________
+ImportError while importing test module '/workspace/tests/test_meta_3_2_doc_generator_agent.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_meta_3_2_doc_generator_agent.py:12: in <module>
+    from behaviors.create_agent import CreateAgentBehavior
+E   ModuleNotFoundError: No module named 'behaviors.create_agent'
+____________ ERROR collecting test_meta_3_3_test_generator_agent.py ____________
+ImportError while importing test module '/workspace/tests/test_meta_3_3_test_generator_agent.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_meta_3_3_test_generator_agent.py:12: in <module>
+    from behaviors.create_agent import CreateAgentBehavior
+E   ModuleNotFoundError: No module named 'behaviors.create_agent'
+=============================== warnings summary ===============================
+behaviors/__init__.py:37
+  /workspace/behaviors/__init__.py:37: DeprecationWarning: StatusDisplayBehavior is deprecated and will be removed in v2.0. Status display is being redesigned for the behavior system.
+    from behaviors.status_display import StatusDisplayBehavior
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_meta_1_1_http_request_behavior.py
+ERROR tests/test_meta_1_2_json_tools_behavior.py
+ERROR tests/test_meta_1_3_environment_behavior.py
+ERROR tests/test_meta_3_2_doc_generator_agent.py
+ERROR tests/test_meta_3_3_test_generator_agent.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 5 errors during collection !!!!!!!!!!!!!!!!!!!!
+========================= 1 warning, 5 errors in 2.07s =========================

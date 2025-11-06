@@ -1,0 +1,273 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-8.1.1, pluggy-1.6.0
+rootdir: /workspace/tests
+configfile: pytest.ini
+plugins: anyio-4.11.0
+collected 5 items
+
+tests/test_meta_1_1_http_request_behavior.py F                           [ 20%]
+tests/test_meta_1_2_json_tools_behavior.py F                             [ 40%]
+tests/test_meta_1_3_environment_behavior.py F                            [ 60%]
+tests/test_meta_3_2_doc_generator_agent.py F                             [ 80%]
+tests/test_meta_3_3_test_generator_agent.py F                            [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_generate_http_request_behavior ______________________
+tests/test_meta_1_1_http_request_behavior.py:148: in test_generate_http_request_behavior
+    if behavior_file.exists():
+E   AttributeError: 'str' object has no attribute 'exists'
+----------------------------- Captured stdout call -----------------------------
+
+============================================================
+TEST 1.1: HttpRequestBehavior Generation
+============================================================
+
+[1/6] Creating MetaProgrammer agent...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded with 12 behaviors
+
+[2/6] Defining HttpRequestBehavior specification...
+✓ Defined 2 tools: http_get, http_post
+
+[3/6] Generating behavior code...
+[create_behavior] Ignoring parameters: {'context_enhancement'}
+[create_behavior] Generating behavior: HttpRequestBehavior
+[create_behavior] Description: Provides HTTP GET/POST request tools for API interaction
+[create_behavior] Tools: 2
+[create_behavior] Safety mode: auto
+[create_behavior] Step 1/6: Generating behavior code...
+[create_behavior] Step 2/6: Generating test code...
+[create_behavior] Step 3/6: Saving to staging...
+[create_behavior] Saved behavior to: /workspace/.agent_workspace/meta_test_http_request/.agent_generated/staging/HttpRequestBehavior.py
+[create_behavior] Saved test to: /workspace/.agent_workspace/meta_test_http_request/.agent_generated/staging/test_HttpRequestBehavior.py
+[create_behavior] Step 4/6: Validating generated code...
+[create_behavior] Step 5/6: Testing in sandbox...
+[sandbox_test] Created sandbox: /tmp/sandbox_behavior_test_mg937k46
+[sandbox_test] Running pytest with timeout=30s
+[sandbox_test] ❌ Tests failed
+[sandbox_test] Cleaned up sandbox: /tmp/sandbox_behavior_test_mg937k46
+[create_behavior] Step 6/6: Handling safety mode 'auto'...
+[installer] Backed up existing file: .agent_generated/backups/HttpRequestBehavior.py.20251106_212159.backup
+[installer] Installed: behaviors/HttpRequestBehavior.py
+[installer] Backed up existing file: .agent_generated/backups/test_HttpRequestBehavior.py.20251106_212159.backup
+[installer] Installed: tests/test_HttpRequestBehavior.py
+[create_behavior] ✅ Installed behavior: behaviors/HttpRequestBehavior.py
+[create_behavior] ✅ Installed test: tests/test_HttpRequestBehavior.py
+
+Generation result: True
+✓ Behavior generated: /workspace/.agent_workspace/meta_test_http_request/.agent_generated/staging/HttpRequestBehavior.py
+✓ Tests generated: /workspace/.agent_workspace/meta_test_http_request/.agent_generated/staging/test_HttpRequestBehavior.py
+
+[4/6] Validating generated code...
+
+Validation result: {'result': {'valid': False, 'error': 'No class definition found'}}
+Valid: False
+Issues: []
+______________________ test_generate_json_tools_behavior _______________________
+tests/test_meta_1_2_json_tools_behavior.py:134: in test_generate_json_tools_behavior
+    pytest.fail(f"Validation failed: {issues}")
+E   Failed: Validation failed: []
+----------------------------- Captured stdout call -----------------------------
+
+============================================================
+TEST 1.2: JsonToolsBehavior Generation
+============================================================
+
+[1/6] Creating MetaProgrammer agent...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded
+
+[2/6] Defining JsonToolsBehavior specification...
+✓ Defined 3 tools: parse_json, format_json, validate_json_schema
+
+[3/6] Generating behavior code...
+[create_behavior] Ignoring parameters: {'context_enhancement'}
+[create_behavior] Generating behavior: JsonToolsBehavior
+[create_behavior] Description: Provides JSON manipulation tools for parsing, formatting, and validation
+[create_behavior] Tools: 3
+[create_behavior] Safety mode: auto
+[create_behavior] Step 1/6: Generating behavior code...
+[create_behavior] Step 2/6: Generating test code...
+[create_behavior] Step 3/6: Saving to staging...
+[create_behavior] Saved behavior to: /workspace/.agent_workspace/meta_test_json_tools/.agent_generated/staging/JsonToolsBehavior.py
+[create_behavior] Saved test to: /workspace/.agent_workspace/meta_test_json_tools/.agent_generated/staging/test_JsonToolsBehavior.py
+[create_behavior] Step 4/6: Validating generated code...
+[create_behavior] Step 5/6: Testing in sandbox...
+[sandbox_test] Created sandbox: /tmp/sandbox_behavior_test_56atbs2x
+[sandbox_test] Running pytest with timeout=30s
+[sandbox_test] ❌ Tests failed
+[sandbox_test] Cleaned up sandbox: /tmp/sandbox_behavior_test_56atbs2x
+[create_behavior] Step 6/6: Handling safety mode 'auto'...
+[installer] Installed: behaviors/JsonToolsBehavior.py
+[installer] Installed: tests/test_JsonToolsBehavior.py
+[create_behavior] ✅ Installed behavior: behaviors/JsonToolsBehavior.py
+[create_behavior] ✅ Installed test: tests/test_JsonToolsBehavior.py
+✓ Behavior: /workspace/.agent_workspace/meta_test_json_tools/.agent_generated/staging/JsonToolsBehavior.py
+✓ Tests: /workspace/.agent_workspace/meta_test_json_tools/.agent_generated/staging/test_JsonToolsBehavior.py
+
+[4/6] Validating generated code...
+______________________ test_generate_environment_behavior ______________________
+tests/test_meta_1_3_environment_behavior.py:121: in test_generate_environment_behavior
+    pytest.fail(f"Validation failed: {issues}")
+E   Failed: Validation failed: []
+----------------------------- Captured stdout call -----------------------------
+
+============================================================
+TEST 1.3: EnvironmentBehavior Generation
+============================================================
+
+[1/6] Creating MetaProgrammer agent...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded
+
+[2/6] Defining EnvironmentBehavior specification...
+✓ Defined 2 tools: get_env_var, set_env_var
+
+[3/6] Generating behavior code...
+[create_behavior] Ignoring parameters: {'context_enhancement'}
+[create_behavior] Generating behavior: EnvironmentBehavior
+[create_behavior] Description: Provides environment variable management tools
+[create_behavior] Tools: 2
+[create_behavior] Safety mode: auto
+[create_behavior] Step 1/6: Generating behavior code...
+[create_behavior] Step 2/6: Generating test code...
+[create_behavior] Step 3/6: Saving to staging...
+[create_behavior] Saved behavior to: /workspace/.agent_workspace/meta_test_environment/.agent_generated/staging/EnvironmentBehavior.py
+[create_behavior] Saved test to: /workspace/.agent_workspace/meta_test_environment/.agent_generated/staging/test_EnvironmentBehavior.py
+[create_behavior] Step 4/6: Validating generated code...
+[create_behavior] Step 5/6: Testing in sandbox...
+[sandbox_test] Created sandbox: /tmp/sandbox_behavior_test_j5ge1ktz
+[sandbox_test] Running pytest with timeout=30s
+[sandbox_test] ❌ Tests failed
+[sandbox_test] Cleaned up sandbox: /tmp/sandbox_behavior_test_j5ge1ktz
+[create_behavior] Step 6/6: Handling safety mode 'auto'...
+[installer] Installed: behaviors/EnvironmentBehavior.py
+[installer] Installed: tests/test_EnvironmentBehavior.py
+[create_behavior] ✅ Installed behavior: behaviors/EnvironmentBehavior.py
+[create_behavior] ✅ Installed test: tests/test_EnvironmentBehavior.py
+✓ Behavior: /workspace/.agent_workspace/meta_test_environment/.agent_generated/staging/EnvironmentBehavior.py
+✓ Tests: /workspace/.agent_workspace/meta_test_environment/.agent_generated/staging/test_EnvironmentBehavior.py
+
+[4/6] Validating...
+______________________ test_generate_doc_generator_agent _______________________
+tests/test_meta_3_2_doc_generator_agent.py:113: in test_generate_doc_generator_agent
+    pytest.fail(f"Agent generation failed: {result.get('error')}")
+E   Failed: Agent generation failed: description is required
+----------------------------- Captured stdout call -----------------------------
+
+============================================================
+TEST 3.2: DocGeneratorAgent Generation
+============================================================
+
+[1/5] Creating MetaProgrammer agent...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded
+
+[2/5] Defining DocGeneratorAgent specification...
+✓ Agent spec: 6 behaviors, delegation tool defined
+
+[3/5] Generating agent configuration...
+[create_agent] Ignoring parameters: {'blurb', 'system_prompt', 'delegation_tool'}
+______________________ test_generate_test_generator_agent ______________________
+tests/test_meta_3_3_test_generator_agent.py:119: in test_generate_test_generator_agent
+    pytest.fail(f"Generation failed: {result.get('error')}")
+E   Failed: Generation failed: description is required
+----------------------------- Captured stdout call -----------------------------
+
+============================================================
+TEST 3.3: TestGeneratorAgent Generation
+============================================================
+
+[1/5] Creating MetaProgrammer agent...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded
+
+[2/5] Defining TestGeneratorAgent specification...
+✓ Agent spec: 7 behaviors
+
+[3/5] Generating agent configuration...
+[create_agent] Ignoring parameters: {'blurb', 'system_prompt', 'delegation_tool'}
+=============================== warnings summary ===============================
+behaviors/__init__.py:37
+  /workspace/behaviors/__init__.py:37: DeprecationWarning: StatusDisplayBehavior is deprecated and will be removed in v2.0. Status display is being redesigned for the behavior system.
+    from behaviors.status_display import StatusDisplayBehavior
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_meta_1_1_http_request_behavior.py::test_generate_http_request_behavior
+FAILED tests/test_meta_1_2_json_tools_behavior.py::test_generate_json_tools_behavior
+FAILED tests/test_meta_1_3_environment_behavior.py::test_generate_environment_behavior
+FAILED tests/test_meta_3_2_doc_generator_agent.py::test_generate_doc_generator_agent
+FAILED tests/test_meta_3_3_test_generator_agent.py::test_generate_test_generator_agent
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 5 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+=================== 5 failed, 1 warning in 122.35s (0:02:02) ===================

@@ -1,0 +1,37 @@
+# Meta-Programming Team Configuration
+# Orchestrator with meta-programmer for self-extensibility tasks
+#
+# This team configuration includes the MetaProgrammer agent for creating new
+# behaviors and agents to extend Jetbox capabilities.
+
+name: "Meta-Programming Team"
+description: "Orchestrator with meta-programmer for self-extensibility. Use this team when you need to create new behaviors or agents to extend Jetbox capabilities."
+
+agents:
+  # Orchestrator: User-facing agent that plans and delegates
+  orchestrator:
+    class: OrchestratorAgent
+    config: orchestrator  # References config/agents/orchestrator.yaml
+    can_delegate_to:
+      - meta_programmer  # Can delegate meta-programming tasks
+      - task_executor    # Can delegate implementation work
+      - architect        # Can consult architect for design
+
+  # MetaProgrammer: Creates new behaviors and agents
+  meta_programmer:
+    class: TaskExecutorAgent  # Uses TaskExecutorAgent with custom config
+    config: meta_programmer   # References config/agents/meta_programmer.yaml
+    can_delegate_to:
+      - task_executor  # For running complex validations or auxiliary tasks
+
+  # TaskExecutor: Coding agent that executes specific tasks
+  task_executor:
+    class: TaskExecutorAgent
+    config: task_executor  # References config/agents/task_executor.yaml
+    can_delegate_to: []  # Terminal agent (doesn't delegate)
+
+  # Architect: Architecture design consultant
+  architect:
+    class: ArchitectAgent
+    config: architect  # References config/agents/architect.yaml
+    can_delegate_to: []  # Consultant agent (doesn't delegate)
