@@ -102,7 +102,7 @@ class BaseAgent:
         Args:
             name: Agent identifier (e.g., "orchestrator", "task_executor")
             workspace: Working directory for this agent
-            config_file: Path to agent-specific config YAML (e.g., "task_executor_config.yaml")
+            config_file: Path to agent-specific config YAML (e.g., "config/agents/task_executor.yaml")
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
         """
@@ -233,60 +233,70 @@ class BaseAgent:
         Return tool definitions for this agent.
 
         Default implementation: Returns behavior tools + core completion tools.
+        Core completion tools (mark_complete/mark_failed) are only included
+        if the agent has a goal set. This allows pure conversational agents
+        to operate without goal completion semantics.
+
         Override this method if you need custom tool handling.
 
         Returns:
             List of tool definitions in Ollama format
         """
-        # Core completion tools (always available to ALL agents)
-        core_tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "mark_complete",
-                    "description": "Mark the task/goal as complete and report success. REQUIRED when work is finished.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "summary": {
-                                "type": "string",
-                                "description": "Brief summary of what was accomplished (2-4 sentences)"
-                            }
-                        },
-                        "required": ["summary"]
+        tools = []
+
+        # Core completion tools (only available when agent has a goal)
+        if self.goal:
+            core_tools = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "mark_complete",
+                        "description": "Mark the task/goal as complete and report success. REQUIRED when work is finished.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "summary": {
+                                    "type": "string",
+                                    "description": "Brief summary of what was accomplished (2-4 sentences)"
+                                }
+                            },
+                            "required": ["summary"]
+                        }
+                    }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "mark_failed",
+                        "description": "Mark the task/goal as failed and report reason. Use when you cannot complete the task.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string",
+                                    "description": "Explanation of why the task could not be completed"
+                                }
+                            },
+                            "required": ["reason"]
+                        }
                     }
                 }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "mark_failed",
-                    "description": "Mark the task/goal as failed and report reason. Use when you cannot complete the task.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "reason": {
-                                "type": "string",
-                                "description": "Explanation of why the task could not be completed"
-                            }
-                        },
-                        "required": ["reason"]
-                    }
-                }
-            }
-        ]
+            ]
+            tools.extend(core_tools)
 
         # Behavior tools
         behavior_tools = self.get_behavior_tools()
+        tools.extend(behavior_tools)
 
-        # Combine core tools + behavior tools
-        return core_tools + behavior_tools
+        return tools
 
     def get_system_prompt(self) -> str:
         """
         Return system prompt for this agent.
 
-        Default implementation: Returns config prompt + behavior instructions + tool docs.
+        Default implementation: Returns config prompt + behavior instructions.
+        Tool documentation is now injected by behaviors via on_initial_context().
+
         Override this method to provide custom system prompt.
 
         Returns:
@@ -303,10 +313,8 @@ class BaseAgent:
         if behavior_instructions:
             parts.append(behavior_instructions)
 
-        # Add dynamic tool documentation
-        tool_docs = self.generate_tool_documentation()
-        if tool_docs:
-            parts.append(tool_docs)
+        # Tool documentation is now handled by behaviors in on_initial_context()
+        # (removed from here)
 
         return "\n\n".join(parts)
 
@@ -542,11 +550,20 @@ class BaseAgent:
 
         tools = self.get_tools()
 
+        # Build options dict with temperature
+        options = {"temperature": temperature}
+
+        # Add num_ctx if specified in llm_config (otherwise llm_utils uses model-specific default)
+        if hasattr(self, 'config') and self.config:
+            if hasattr(self.config, 'llm') and self.config.llm:
+                if self.config.llm.max_tokens is not None:
+                    options["num_ctx"] = self.config.llm.max_tokens
+
         try:
             response = chat_with_inactivity_timeout(
                 model=model,
                 messages=context,
-                options={"temperature": temperature},
+                options=options,
                 tools=tools,
                 inactivity_timeout=timeout,
             )
@@ -865,16 +882,16 @@ Please retry the tool call using only the valid parameters listed above.
             self.server_manager = ServerManager(self.workspace)
             self.server_manager.start_monitoring()
 
-    def init_registry(self, config_path: str = "agents.yaml") -> None:
+    def init_registry(self, team_name: str = "default") -> None:
         """
         Initialize agent registry for delegation.
 
         Args:
-            config_path: Path to agents.yaml config file
+            team_name: Name of team config file (default: "default")
         """
         from agent_registry import AgentRegistry
         if self.registry is None:
-            self.registry = AgentRegistry(config_path=config_path, workspace=self.workspace)
+            self.registry = AgentRegistry(team_name=team_name, workspace=self.workspace)
 
     # ===========================
     # Phase 4 additions: Behavior system methods
@@ -911,9 +928,9 @@ Please retry the tool call using only the valid parameters listed above.
         Internal method to load behaviors from config dict.
 
         Also loads system_prompt and blurb if present.
-        Auto-adds DelegationBehavior based on agents.yaml.
+        Auto-adds DelegationBehavior based on team config.
 
-        Behavior parameters are merged from global defaults (agent_config.yaml)
+        Behavior parameters are merged from global defaults (config/behavior_defaults.yaml)
         and agent-specific overrides (this config dict).
 
         Args:
@@ -986,27 +1003,16 @@ Please retry the tool call using only the valid parameters listed above.
 
     def _load_global_behavior_defaults(self) -> dict[str, dict[str, Any]]:
         """
-        Load global behavior parameter defaults from agent_config.yaml.
+        Load global behavior parameter defaults from config/behavior_defaults.yaml.
 
         Returns:
             Dict mapping behavior type name to parameter dict
             Example: {"LoopDetectionBehavior": {"max_repeats": 5}, ...}
         """
-        import yaml
-
-        config_path = Path(__file__).parent / "agent_config.yaml"
-
-        if not config_path.exists():
-            return {}
+        from agent_config import load_behavior_defaults
 
         try:
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-
-            if not config:
-                return {}
-
-            return config.get("behavior_defaults", {})
+            return load_behavior_defaults()
         except Exception as e:
             print(f"[{self.name}] Warning: Failed to load global behavior defaults: {e}")
             return {}
@@ -1017,22 +1023,17 @@ Please retry the tool call using only the valid parameters listed above.
 
         Args:
             target_agent: Name of target agent
-            agents: Agents dict from agents.yaml
+            agents: Agents dict from team config
 
         Returns:
             Agent info dict with delegation_tool and blurb (if available)
         """
-        import yaml
+        from agent_config import load_agent_config
 
         agent_info = agents.get(target_agent, {})
-        agent_config_file = Path(f"{target_agent}_config.yaml")
-
-        if not agent_config_file.exists():
-            return agent_info
 
         try:
-            with open(agent_config_file) as f:
-                target_config = yaml.safe_load(f)
+            target_config = load_agent_config(target_agent)
 
             # Add delegation_tool if present
             if target_config and "delegation_tool" in target_config:
@@ -1043,7 +1044,7 @@ Please retry the tool call using only the valid parameters listed above.
                 agent_info["blurb"] = target_config["blurb"]
 
         except Exception as e:
-            print(f"[{self.name}] Warning: Failed to load {agent_config_file}: {e}")
+            print(f"[{self.name}] Warning: Failed to load config for {target_agent}: {e}")
 
         return agent_info
 
@@ -1054,30 +1055,24 @@ Please retry the tool call using only the valid parameters listed above.
         DelegationBehavior is delegator-only - provides tools for delegating TO other agents.
         For being delegated to, use core goal tracking (available in ALL agents).
 
-        Reads agents.yaml to check if this agent has can_delegate_to list.
+        Reads team config to check if this agent has can_delegate_to list.
         If yes, adds DelegationBehavior with delegation tools (consult_X, delegate_to_X).
         """
-        import yaml
-
-        # Early return: agents.yaml must exist
-        agents_yaml = Path("agents.yaml")
-        if not agents_yaml.exists():
-            return
+        from agent_config import load_team_config
 
         # Early return: DelegationBehavior already added
         if any(b.get_name() == "delegation" for b in self._behaviors):
             return
 
         try:
-            # Load agents config
-            with open(agents_yaml) as f:
-                agents_config = yaml.safe_load(f)
+            # Load team config (default team)
+            team_config = load_team_config("default")
 
             # Early return: invalid config structure
-            if not agents_config or "agents" not in agents_config:
+            if not team_config or "agents" not in team_config:
                 return
 
-            agents = agents_config["agents"]
+            agents = team_config["agents"]
 
             # Early return: agent not found in config
             agent_config = agents.get(self.name)
@@ -1212,6 +1207,10 @@ Please retry the tool call using only the valid parameters listed above.
         """
         Generate tool documentation from loaded behaviors.
 
+        DEPRECATED: Tool documentation should now be injected by behaviors via
+        on_initial_context() method. This method is kept for backward compatibility
+        but is no longer called by get_system_prompt().
+
         Returns a formatted string listing all available tools with their
         signatures and descriptions. This is dynamically generated based on
         which behaviors are loaded.
@@ -1260,7 +1259,7 @@ Please retry the tool call using only the valid parameters listed above.
 
         Tries multiple sources in order:
         1. config_blurb (from agent config file)
-        2. blurb from agents.yaml
+        2. blurb from team config
         3. Fallback: agent name + first 100 words of system prompt
 
         Returns:
@@ -1270,19 +1269,16 @@ Please retry the tool call using only the valid parameters listed above.
         if self.config_blurb:
             return self.config_blurb.strip()
 
-        # Try agents.yaml
-        import yaml
-        agents_yaml = Path("agents.yaml")
-        if agents_yaml.exists():
-            try:
-                with open(agents_yaml) as f:
-                    agents_config = yaml.safe_load(f)
-                if agents_config and "agents" in agents_config:
-                    agent_config = agents_config["agents"].get(self.name)
-                    if agent_config and "blurb" in agent_config:
-                        return agent_config["blurb"].strip()
-            except Exception:
-                pass
+        # Try team config
+        from agent_config import load_team_config
+        try:
+            team_config = load_team_config("default")
+            if team_config and "agents" in team_config:
+                agent_config = team_config["agents"].get(self.name)
+                if agent_config and "blurb" in agent_config:
+                    return agent_config["blurb"].strip()
+        except Exception:
+            pass
 
         # Fallback: agent name + truncated system prompt
         system_prompt = self.get_system_prompt()
@@ -1482,6 +1478,55 @@ Please retry the tool call using only the valid parameters listed above.
                     behavior.on_llm_response(agent=self, response=response)
             except Exception as e:
                 print(f"[{self.name}] Behavior {behavior.get_name()} on_llm_response error: {e}")
+
+    def _trigger_on_goal_complete(self, success: bool, summary: str) -> None:
+        """
+        Trigger on_goal_complete event on all behaviors.
+
+        Called when goal completes (via mark_complete or mark_failed).
+
+        Args:
+            success: True if goal succeeded, False if failed
+            summary: Summary message (from mark_complete or mark_failed)
+        """
+        for behavior in self._behaviors:
+            try:
+                if hasattr(behavior, 'on_goal_complete') and callable(behavior.on_goal_complete):
+                    behavior.on_goal_complete(agent=self, success=success, summary=summary)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_goal_complete error: {e}")
+
+    def _trigger_on_round_end(self, round_number: int) -> None:
+        """
+        Trigger on_round_end event on all behaviors.
+
+        Called at end of each round, after all tool calls executed.
+
+        Args:
+            round_number: Current round number (1-indexed)
+        """
+        for behavior in self._behaviors:
+            try:
+                if hasattr(behavior, 'on_round_end') and callable(behavior.on_round_end):
+                    behavior.on_round_end(agent=self, round_number=round_number)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_round_end error: {e}")
+
+    def _trigger_on_timeout(self, elapsed_seconds: float) -> None:
+        """
+        Trigger on_timeout event on all behaviors.
+
+        Called when goal times out (circuit breaker triggered).
+
+        Args:
+            elapsed_seconds: Time elapsed since goal start
+        """
+        for behavior in self._behaviors:
+            try:
+                if hasattr(behavior, 'on_timeout') and callable(behavior.on_timeout):
+                    behavior.on_timeout(agent=self, elapsed_seconds=elapsed_seconds)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_timeout error: {e}")
 
     def _handle_goal_set(self, goal: str, **kwargs) -> None:
         """
@@ -1968,7 +2013,7 @@ Please retry the tool call using only the valid parameters listed above.
             max_rounds = getattr(self.config.rounds, 'max_per_subtask', 128) if self.config else 128
 
         # Get model and temperature from config or defaults
-        model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
+        model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'qwen3:8b') if self.config else 'qwen3:8b'
         temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
         # Trigger onGoalStart event (DEPRECATED - kept for backwards compatibility)
@@ -2029,6 +2074,9 @@ Please retry the tool call using only the valid parameters listed above.
         # Check for mark_complete (success=True + summary)
         if result.get("success") is True and "summary" in result:
             print(f"[{self.name}] Goal marked complete")
+            # Trigger new on_goal_complete event
+            self._trigger_on_goal_complete(success=True, summary=result.get("summary", ""))
+            # Keep old event for backwards compatibility
             self.trigger_behavior_event(
                 "onGoalComplete",
                 success=True,
@@ -2046,6 +2094,9 @@ Please retry the tool call using only the valid parameters listed above.
         # Check for mark_failed (success=False + reason)
         if result.get("success") is False and "reason" in result:
             print(f"[{self.name}] Goal marked failed")
+            # Trigger new on_goal_complete event
+            self._trigger_on_goal_complete(success=False, summary=result.get("reason", ""))
+            # Keep old event for backwards compatibility
             self.trigger_behavior_event(
                 "onGoalComplete",
                 success=False,
@@ -2064,6 +2115,9 @@ Please retry the tool call using only the valid parameters listed above.
         actual_result = result.get("result", result)
         if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
             print(f"[{self.name}] Goal completed (legacy signal)")
+            # Trigger new on_goal_complete event
+            self._trigger_on_goal_complete(success=True, summary=actual_result.get("message", "Goal completed"))
+            # Keep old event for backwards compatibility
             self.trigger_behavior_event(
                 "onGoalComplete",
                 success=True,
@@ -2190,6 +2244,12 @@ Please retry the tool call using only the valid parameters listed above.
         # Check for circuit breaker (consecutive timeouts)
         if response.get("_circuit_breaker"):
             print(f"[{self.name}] Circuit breaker triggered - saving partial progress")
+
+            # Trigger timeout event (NEW)
+            if self.goal_start_time:
+                elapsed = time.time() - self.goal_start_time
+                self._trigger_on_timeout(elapsed)
+
             return self._save_partial_progress()
 
         # Check for timeout (will retry)
@@ -2218,8 +2278,11 @@ Please retry the tool call using only the valid parameters listed above.
         if self.enable_completion_nudging and round_no >= self.min_rounds_before_nudge:
             self._check_completion_signals(response, msg.get("tool_calls", []) if "message" in response else [])
 
-        # Trigger onRoundEnd with tool call info for idle detection
+        # Trigger onRoundEnd (DEPRECATED - kept for backwards compatibility)
         self.trigger_behavior_event("onRoundEnd", round_number=round_no, had_tool_calls=had_tool_calls)
+
+        # Trigger on_round_end (NEW API - preferred)
+        self._trigger_on_round_end(round_no)
 
         # Increment round counter
         self.increment_round()
@@ -2338,7 +2401,7 @@ Please retry the tool call using only the valid parameters listed above.
         self.add_message({"role": "user", "content": user_message})
 
         # Get model and temperature from config
-        model = getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
+        model = getattr(self.config.llm, 'model', 'qwen3:8b') if self.config else 'qwen3:8b'
         temperature = getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
         # Execute rounds until completion

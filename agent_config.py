@@ -58,6 +58,7 @@ class LLMConfig:
     model: str
     temperature: float
     system_prompt: str
+    max_tokens: int | None = None  # Context window size (num_ctx for Ollama)
     timeout: LLMTimeoutConfig | None = None
 
 @dataclass
@@ -89,6 +90,17 @@ class AgentConfig:
     @classmethod
     def load(cls, config_path = "agent_config.yaml"):
         import os
+
+        def deep_merge(base: dict, override: dict) -> dict:
+            """Deep merge two dicts, recursively merging nested dicts."""
+            result = base.copy()
+            for key, value in override.items():
+                if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                    result[key] = deep_merge(result[key], value)
+                else:
+                    result[key] = value
+            return result
+
         config_dict = DEFAULT_CONFIG.copy()
         config_file = Path(config_path)
         if config_file.exists() and YAML_AVAILABLE:
@@ -96,13 +108,16 @@ class AgentConfig:
                 with open(config_file) as f:
                     yaml_config = yaml.safe_load(f)
                     if yaml_config:
-                        config_dict = {**config_dict, **yaml_config}
-            except: pass
+                        config_dict = deep_merge(config_dict, yaml_config)
+            except (yaml.YAMLError, IOError, OSError) as e:
+                print(f"Warning: Failed to load {config_file}: {e}")
+            except Exception as e:
+                print(f"Unexpected error loading {config_file}: {e}")
 
         # Provide defaults for new sections if not in config
         if "llm" not in config_dict:
             config_dict["llm"] = {
-                "model": "gpt-oss:20b",
+                "model": "qwen3:8b",
                 "temperature": 0.2,
                 "system_prompt": "You are a coding agent."
             }
@@ -155,4 +170,172 @@ class AgentConfig:
             timeouts=TimeoutsConfig(**config_dict["timeouts"]),
         )
 
+
+# ============================================================================
+# New Config System - Multi-file Structure
+# ============================================================================
+
+def load_behavior_defaults() -> dict:
+    """
+    Load behavior parameter defaults from config/behavior_defaults.yaml.
+
+    Returns:
+        Dictionary of behavior parameter defaults
+    """
+    config_path = Path("config/behavior_defaults.yaml")
+
+    if not config_path.exists():
+        return {}
+
+    if not YAML_AVAILABLE:
+        return {}
+
+    try:
+        with open(config_path) as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        print(f"Warning: Failed to load {config_path}: {e}")
+        return {}
+
+
+def load_llm_config() -> dict:
+    """
+    Load LLM configuration from config/llm_config.yaml.
+
+    Returns:
+        Dictionary of LLM configuration (model, temperature, timeout, system_prompt)
+    """
+    import os
+
+    config_path = Path("config/llm_config.yaml")
+
+    # Defaults if file doesn't exist or YAML not available
+    defaults = {
+        "model": os.environ.get("OLLAMA_MODEL", "qwen3:8b"),
+        "temperature": 0.2,
+        "system_prompt": "You are a coding agent.",
+        "timeout": {
+            "inactivity_timeout": 30,
+            "max_call_time": 180,
+            "max_consecutive_timeouts": 3,
+            "auto_restart_ollama": True
+        }
+    }
+
+    if not config_path.exists() or not YAML_AVAILABLE:
+        return defaults
+
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f) or {}
+            # Allow environment variable override
+            if "OLLAMA_MODEL" in os.environ:
+                config["model"] = os.environ["OLLAMA_MODEL"]
+            return config
+    except Exception as e:
+        print(f"Warning: Failed to load {config_path}: {e}")
+        return defaults
+
+
+def load_runtime_config() -> dict:
+    """
+    Load runtime configuration from config/agent_runtime.yaml.
+
+    Returns:
+        Dictionary with rounds, timeouts, hierarchy, escalation, loop_detection,
+        decomposition, approach_retry, context sections
+    """
+    config_path = Path("config/agent_runtime.yaml")
+
+    if not config_path.exists() or not YAML_AVAILABLE:
+        return DEFAULT_CONFIG.copy()
+
+    try:
+        with open(config_path) as f:
+            return yaml.safe_load(f) or DEFAULT_CONFIG.copy()
+    except Exception as e:
+        print(f"Warning: Failed to load {config_path}: {e}")
+        return DEFAULT_CONFIG.copy()
+
+
+def list_available_teams() -> list[dict]:
+    """
+    List all available team configurations.
+
+    Returns:
+        List of dicts with keys: name, file, description, agents
+    """
+    teams_dir = Path("config/teams")
+
+    if not teams_dir.exists() or not YAML_AVAILABLE:
+        return []
+
+    teams = []
+    for team_file in sorted(teams_dir.glob("*.yaml")):
+        try:
+            with open(team_file) as f:
+                team_config = yaml.safe_load(f)
+                if not team_config:
+                    continue
+
+                teams.append({
+                    "name": team_config.get("name", team_file.stem),
+                    "file": team_file.stem,
+                    "description": team_config.get("description", ""),
+                    "agents": list(team_config.get("agents", {}).keys())
+                })
+        except Exception as e:
+            print(f"Warning: Failed to load team config {team_file}: {e}")
+
+    return teams
+
+
+def load_team_config(team_name: str = "default") -> dict:
+    """
+    Load a team configuration by name.
+
+    Args:
+        team_name: Name of team file (without .yaml extension)
+
+    Returns:
+        Dictionary with team configuration (name, description, agents)
+    """
+    config_path = Path(f"config/teams/{team_name}.yaml")
+
+    if not config_path.exists() or not YAML_AVAILABLE:
+        return {}
+
+    try:
+        with open(config_path) as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        print(f"Warning: Failed to load team config {config_path}: {e}")
+        return {}
+
+
+def load_agent_config(agent_name: str) -> dict:
+    """
+    Load an individual agent configuration by name.
+
+    Args:
+        agent_name: Name of agent config file (without .yaml extension)
+
+    Returns:
+        Dictionary with agent configuration (role, blurb, delegation_tool,
+        system_prompt, behaviors)
+    """
+    config_path = Path(f"config/agents/{agent_name}.yaml")
+
+    if not config_path.exists() or not YAML_AVAILABLE:
+        return {}
+
+    try:
+        with open(config_path) as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        print(f"Warning: Failed to load agent config {config_path}: {e}")
+        return {}
+
+
+# Keep backward compatibility - load from old location by default
 config = AgentConfig.load()

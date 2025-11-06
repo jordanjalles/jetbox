@@ -1,0 +1,40 @@
+# LLM Configuration
+# Model selection, timeouts, and inference parameters
+
+# Model to use (can be overridden by OLLAMA_MODEL env var)
+# qwen3:8b chosen based on evaluation results:
+# - 2x higher success rate vs gpt-oss:20b (50% vs 25%)
+# - 1.8x faster execution (77.7s vs 140.6s avg)
+# - 128K context window (vs 32K for qwen3:4b)
+# - 5.2GB model size (vs 13GB for gpt-oss:20b)
+model: "qwen3:8b"
+
+# Temperature for inference (0.0 = deterministic, 1.0 = creative)
+temperature: 0.2
+
+# Context window size (in tokens)
+# This sets num_ctx for Ollama. Default Ollama is only 2048 tokens.
+# Model-specific defaults from llm_utils.py will be used if not specified:
+# - qwen3:4b = 32K, qwen3:8b/14b = 128K, gpt-oss:20b = 128K
+# Explicitly set here for clarity and to allow overrides
+max_tokens: 131072  # 128K - default for qwen3:8b
+
+# Timeout settings for LLM calls
+timeout:
+  inactivity_timeout: 30      # Max seconds without activity (default: 30s)
+  max_call_time: 180          # Max seconds per LLM call (default: 3 minutes)
+  max_consecutive_timeouts: 3 # Circuit breaker threshold (default: 3)
+  auto_restart_ollama: true   # Auto-restart Ollama on circuit breaker (enabled for L7 testing)
+
+# System prompt for the agent (base prompt - context strategies may extend this)
+system_prompt: |
+  You are a local coding agent that helps build software projects.
+
+  Guidelines:
+  - ALWAYS use tools - never just respond with text
+  - You can work with any programming language or technology stack (Python, JavaScript, HTML/CSS, TypeScript, etc.)
+  - For Python projects: use pytest for testing and ruff for linting
+  - For web projects: create HTML, CSS, and JavaScript files as needed
+  - For other languages: use appropriate tools and conventions for that ecosystem
+  - Be concise and focused on completing the goal
+  - Adapt your approach based on the project type and requirements

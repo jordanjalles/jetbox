@@ -33,19 +33,20 @@ class CompactWhenNearFullBehavior(AgentBehavior):
 
     def __init__(
         self,
-        max_tokens: int = 8000,
         compact_threshold: float = 0.75,
-        keep_recent: int = 20,
+        keep_recent: int = 5,
     ):
         """
         Initialize compact-when-near-full behavior.
 
         Args:
-            max_tokens: Maximum context tokens before compaction (default: 8000)
             compact_threshold: Trigger compaction at this fraction of max_tokens (default: 0.75)
-            keep_recent: Number of recent messages to keep intact during compaction (default: 20)
+            keep_recent: Number of recent messages to keep intact during compaction (default: 5)
+
+        Note:
+            max_tokens is now retrieved from agent's llm_config at runtime, not passed as parameter.
+            This ensures it matches the actual Ollama context window setting.
         """
-        self.max_tokens = max_tokens
         self.compact_threshold = compact_threshold
         self.keep_recent = keep_recent
 
@@ -69,13 +70,26 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         4. Returns modified context
 
         Args:
-            agent: Agent instance (not currently used by this behavior)
+            agent: Agent instance (used to get max_tokens from llm_config)
             round_number: Current round number
             context: Current context (system + messages)
 
         Returns:
             Modified context (possibly compacted)
         """
+        # Get max_tokens from agent's llm_config
+        # Fallback chain: llm_config -> model-specific default -> 128K default
+        max_tokens = None
+        if hasattr(agent, 'config') and agent.config:
+            if hasattr(agent.config, 'llm') and agent.config.llm:
+                max_tokens = agent.config.llm.max_tokens
+
+        if max_tokens is None:
+            # Try to get model-specific default from llm_utils
+            from llm_utils import MODEL_CONTEXT_WINDOWS
+            model = getattr(agent, 'model', 'qwen3:8b')
+            max_tokens = MODEL_CONTEXT_WINDOWS.get(model, 131072)  # 128K default
+
         # Early exit if no messages to compact
         if len(context) <= 2:  # Just system + goal
             return context
@@ -98,15 +112,15 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         # Check if context exceeds threshold
         estimated_tokens = self._estimate_context_size(context)
 
-        if estimated_tokens > self.max_tokens * self.compact_threshold:
-            percent_used = estimated_tokens / self.max_tokens * 100
+        if estimated_tokens > max_tokens * self.compact_threshold:
+            percent_used = estimated_tokens / max_tokens * 100
             print(f"[compact_when_near_full] Context at {estimated_tokens:,} tokens "
-                  f"({percent_used:.1f}% of {self.max_tokens:,}) "
+                  f"({percent_used:.1f}% of {max_tokens:,}) "
                   f"- triggering compaction")
 
             # AGGRESSIVE: If already way over limit (>100%), keep only 5 recent messages
             # Otherwise use configured keep_recent
-            if estimated_tokens > self.max_tokens:
+            if estimated_tokens > max_tokens:
                 keep_recent = min(5, self.keep_recent)
                 print(f"[compact_when_near_full] ⚠️  OVER LIMIT ({percent_used:.0f}%) - emergency compaction, keeping only {keep_recent} messages")
             else:
@@ -132,10 +146,10 @@ class CompactWhenNearFullBehavior(AgentBehavior):
 
                 new_tokens = self._estimate_context_size(context_base)
                 print(f"[compact_when_near_full] Reduced from {estimated_tokens:,} to {new_tokens:,} tokens "
-                      f"({new_tokens/self.max_tokens*100:.1f}%)")
+                      f"({new_tokens/max_tokens*100:.1f}%)")
 
                 # HARD LIMIT: If still over max_tokens, aggressively drop messages
-                if new_tokens > self.max_tokens:
+                if new_tokens > max_tokens:
                     print("[compact_when_near_full] ⚠️  STILL OVER LIMIT after compaction - dropping oldest messages")
                     # Keep system + goal + last 5 messages only
                     system_and_goal = context_base[:messages_start_idx]
