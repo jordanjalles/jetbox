@@ -66,19 +66,20 @@ class StatusDisplayBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "status_display"
 
-    def onGoalStart(self, goal: str, **kwargs: Any) -> None:
+    def on_goal_start(self, agent: Any, goal: str, workspace: Any = None) -> None:
         """
         Called when goal starts.
 
         Initializes the StatusDisplay with the context manager.
 
         Args:
+            agent: Agent instance
             goal: The goal string
-            **kwargs: Additional context (context_manager, etc.)
+            workspace: Optional workspace path
         """
-        # Get context manager
-        if "context_manager" in kwargs:
-            self.context_manager = kwargs["context_manager"]
+        # Get context manager from agent
+        if hasattr(agent, 'context_manager'):
+            self.context_manager = agent.context_manager
 
             # Initialize display
             if self.display is None and self.context_manager:
@@ -90,10 +91,10 @@ class StatusDisplayBehavior(AgentBehavior):
 
     def on_tool_call(
         self,
+        agent: Any,
         tool_name: str,
         args: dict[str, Any],
-        result: Any,
-        **kwargs: Any
+        result: Any
     ) -> None:
         """
         Called after each tool execution.
@@ -101,10 +102,10 @@ class StatusDisplayBehavior(AgentBehavior):
         Records action statistics for performance tracking.
 
         Args:
+            agent: Agent instance
             tool_name: Name of tool that was called
             args: Arguments passed to the tool
             result: Result returned by the tool
-            **kwargs: Additional context
         """
         if not self.display:
             return
@@ -123,23 +124,27 @@ class StatusDisplayBehavior(AgentBehavior):
         # Update activity
         self.display.set_activity(f"called tool: {tool_name}")
 
-    def onRoundEnd(self, round_number: int, **kwargs: Any) -> None:
+    def on_round_end(self, agent: Any, round_number: int) -> None:
         """
         Called at end of each round.
 
         Renders the status display showing progress and performance.
 
         Args:
+            agent: Agent instance
             round_number: Current round number
-            **kwargs: Additional context (context_stats, subtask_rounds, max_rounds, etc.)
         """
         if not self.display:
             return
 
-        # Get context stats if available
-        context_stats = kwargs.get("context_stats", None)
-        subtask_rounds = kwargs.get("subtask_rounds", 0)
-        max_rounds = kwargs.get("max_rounds", 6)
+        # Get context stats from agent if available
+        context_stats = None
+        if hasattr(agent, 'get_context_stats'):
+            context_stats = agent.get_context_stats()
+
+        # Get subtask rounds and max rounds from agent config
+        subtask_rounds = getattr(agent, 'subtask_rounds', 0)
+        max_rounds = getattr(agent, 'max_rounds', 6)
 
         # Render status display
         status_output = self.display.render(
@@ -154,15 +159,15 @@ class StatusDisplayBehavior(AgentBehavior):
         # Print to console
         print(status_output)
 
-    def on_timeout(self, elapsed_seconds: float, **kwargs: Any) -> None:
+    def on_timeout(self, agent: Any, elapsed_seconds: float) -> None:
         """
         Called when goal times out.
 
         Updates runtime and shows final status.
 
         Args:
+            agent: Agent instance
             elapsed_seconds: Time elapsed since goal start
-            **kwargs: Additional context
         """
         if not self.display:
             return
@@ -173,15 +178,15 @@ class StatusDisplayBehavior(AgentBehavior):
 
         print(f"\n[status_display] Goal timed out after {elapsed_seconds:.1f}s")
 
-    def onGoalComplete(self, success: bool, **kwargs: Any) -> None:
+    def on_goal_complete(self, agent: Any, success: bool) -> None:
         """
         Called when goal completes.
 
         Shows final performance summary.
 
         Args:
+            agent: Agent instance
             success: True if goal succeeded, False if failed
-            **kwargs: Additional context
         """
         if not self.display:
             return

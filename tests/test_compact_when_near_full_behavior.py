@@ -40,7 +40,7 @@ class TestCompactWhenNearFullBehavior:
         assert behavior.compact_threshold == 0.8
         assert behavior.keep_recent == 30
 
-    def test_enhance_context_no_compaction_needed(self):
+    def test_on_round_start_no_compaction_needed(self):
         """Test context is not modified when under threshold."""
         behavior = CompactWhenNearFullBehavior(max_tokens=100000)  # High limit
         context = [
@@ -50,13 +50,14 @@ class TestCompactWhenNearFullBehavior:
             {"role": "assistant", "content": "Hi there!"}
         ]
 
-        result = behavior.enhance_context(context)
+        mock_agent = Mock()
+        result = behavior.on_round_start(mock_agent, round_number=1, context=context)
 
         # Should return context unchanged
         assert len(result) == len(context)
         assert result == context
 
-    def test_enhance_context_triggers_compaction(self):
+    def test_on_round_start_triggers_compaction(self):
         """Test compaction triggers when context exceeds threshold."""
         behavior = CompactWhenNearFullBehavior(max_tokens=100, keep_recent=2)  # Low limit
 
@@ -69,14 +70,15 @@ class TestCompactWhenNearFullBehavior:
             {"role": "user", "content": "GOAL: Test"},
         ] + messages
 
+        mock_agent = Mock()
         with patch.object(behavior, '_summarize_messages', return_value="Summary of old messages"):
-            result = behavior.enhance_context(context)
+            result = behavior.on_round_start(mock_agent, round_number=1, context=context)
 
             # Should have: system + goal + summary + recent 2 messages
             assert len(result) == 5  # system + goal + summary + 2 recent
             assert any("Summary of old messages" in msg.get("content", "") for msg in result)
 
-    def test_enhance_context_preserves_recent_messages(self):
+    def test_on_round_start_preserves_recent_messages(self):
         """Test recent messages are preserved during compaction."""
         behavior = CompactWhenNearFullBehavior(max_tokens=100, keep_recent=3)
 
@@ -94,8 +96,9 @@ class TestCompactWhenNearFullBehavior:
             {"role": "user", "content": "GOAL: Test"},
         ] + messages
 
+        mock_agent = Mock()
         with patch.object(behavior, '_summarize_messages', return_value="Summary of old messages"):
-            result = behavior.enhance_context(context)
+            result = behavior.on_round_start(mock_agent, round_number=1, context=context)
 
             # Check recent messages are preserved
             assert any("Recent 1" in msg.get("content", "") for msg in result)
@@ -162,65 +165,20 @@ class TestCompactWhenNearFullBehavior:
         # Should be approximately 300 tokens (1200 chars / 4)
         assert estimated == 300
 
-    def test_get_tools_returns_mark_goal_complete(self):
-        """Test get_tools returns mark_goal_complete tool definition."""
-        behavior = CompactWhenNearFullBehavior()
-        tools = behavior.get_tools()
-
-        assert len(tools) == 1
-        assert tools[0]["type"] == "function"
-        assert tools[0]["function"]["name"] == "mark_goal_complete"
-        assert "summary" in tools[0]["function"]["parameters"]["properties"]
-
-    def test_dispatch_tool_mark_goal_complete(self):
-        """Test dispatch_tool handles mark_goal_complete."""
-        behavior = CompactWhenNearFullBehavior()
-
-        # Mock context manager
-        mock_cm = Mock()
-        mock_goal = Mock()
-        mock_cm.state.goal = mock_goal
-
-        result = behavior.dispatch_tool(
-            "mark_goal_complete",
-            {"summary": "All tests pass"},
-            context_manager=mock_cm
-        )
-
-        assert result["success"] is True
-        assert "All tests pass" in result["result"]
-        assert result["summary"] == "All tests pass"
-        mock_goal.mark_complete.assert_called_once_with(success=True)
-
-    def test_dispatch_tool_unknown_tool(self):
-        """Test dispatch_tool raises NotImplementedError for unknown tools."""
-        behavior = CompactWhenNearFullBehavior()
-
-        with pytest.raises(NotImplementedError):
-            behavior.dispatch_tool("unknown_tool", {})
-
-    def test_get_instructions_returns_workflow(self):
-        """Test get_instructions returns workflow guidance."""
-        behavior = CompactWhenNearFullBehavior()
-        instructions = behavior.get_instructions()
-
-        assert "WORKFLOW" in instructions
-        assert "mark_goal_complete" in instructions
-        assert "write_file" in instructions
-
-    def test_enhance_context_with_no_messages(self):
-        """Test enhance_context handles empty message list."""
+    def test_on_round_start_with_no_messages(self):
+        """Test on_round_start handles empty message list."""
         behavior = CompactWhenNearFullBehavior()
         context = [
             {"role": "system", "content": "System prompt"}
         ]
 
-        result = behavior.enhance_context(context)
+        mock_agent = Mock()
+        result = behavior.on_round_start(mock_agent, round_number=1, context=context)
 
         # Should return unchanged
         assert result == context
 
-    def test_enhance_context_compaction_not_enough_messages(self):
+    def test_on_round_start_compaction_not_enough_messages(self):
         """Test compaction handles case where not enough messages to summarize."""
         behavior = CompactWhenNearFullBehavior(max_tokens=10, keep_recent=20)  # keep_recent > messages
 
@@ -230,7 +188,8 @@ class TestCompactWhenNearFullBehavior:
             {"role": "user", "content": "Message 1"},
         ]
 
-        result = behavior.enhance_context(context)
+        mock_agent = Mock()
+        result = behavior.on_round_start(mock_agent, round_number=1, context=context)
 
         # Should keep recent messages without summarization
         assert len(result) == 3
@@ -252,8 +211,8 @@ class TestCompactWhenNearFullBehavior:
             # Tool results should be truncated to ~100 chars
             assert "..." in prompt or len(prompt) < 500
 
-    def test_enhance_context_prints_compaction_stats(self, capsys):
-        """Test enhance_context prints compaction statistics."""
+    def test_on_round_start_prints_compaction_stats(self, capsys):
+        """Test on_round_start prints compaction statistics."""
         behavior = CompactWhenNearFullBehavior(max_tokens=100, keep_recent=2)
 
         messages = [
@@ -264,8 +223,9 @@ class TestCompactWhenNearFullBehavior:
             {"role": "user", "content": "GOAL: Test"},
         ] + messages
 
+        mock_agent = Mock()
         with patch.object(behavior, '_summarize_messages', return_value="Summary"):
-            behavior.enhance_context(context)
+            behavior.on_round_start(mock_agent, round_number=1, context=context)
 
             captured = capsys.readouterr()
             assert "compact_when_near_full" in captured.out

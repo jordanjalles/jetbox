@@ -107,24 +107,24 @@ class CommandToolsBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Dispatch bash command tool calls.
 
         Args:
+            agent: Agent instance
             tool_name: Tool being called
             args: Tool arguments
-            **kwargs: Additional context (workspace_manager, ledger_file)
 
         Returns:
             Dict with returncode, stdout, stderr
         """
-        # Allow runtime override of workspace_manager and ledger_file
-        workspace_manager = kwargs.get('workspace_manager', self.workspace_manager)
-        ledger_file = kwargs.get('ledger_file', self.ledger_file)
+        # Get workspace_manager and ledger_file from agent
+        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
+        ledger_file = getattr(agent, 'ledger_file', self.ledger_file)
 
         if tool_name == "run_bash":
             return self._run_bash(
@@ -134,7 +134,7 @@ class CommandToolsBehavior(AgentBehavior):
                 ledger_file=ledger_file
             )
         else:
-            return super().dispatch_tool(tool_name, args, **kwargs)
+            return super().dispatch_tool(agent, tool_name, args)
 
     def _ledger_append(self, kind: str, detail: str, ledger_file: Path | None) -> None:
         """Append action to ledger file for audit trail."""

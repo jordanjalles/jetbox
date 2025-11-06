@@ -53,13 +53,14 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "compact_when_near_full"
 
-    def enhance_context(
+    def on_round_start(
         self,
-        context: list[dict[str, Any]],
-        **kwargs: Any
+        agent: Any,
+        round_number: int,
+        context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Enhance context by appending all messages and compacting if needed.
+        Called at start of every round - compact context if needed.
 
         This method:
         1. Assumes context already has system prompt + goal + messages
@@ -68,8 +69,9 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         4. Returns modified context
 
         Args:
+            agent: Agent instance (not currently used by this behavior)
+            round_number: Current round number
             context: Current context (system + messages)
-            **kwargs: Additional context (context_manager, workspace, etc.)
 
         Returns:
             Modified context (possibly compacted)

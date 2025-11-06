@@ -127,17 +127,17 @@ class TaskManagementBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> Any:
         """
         Dispatch task management tool calls.
 
         Args:
+            agent: Agent instance
             tool_name: Tool name (read_task_breakdown, get_next_task, etc.)
             args: Tool arguments
-            **kwargs: Additional context
 
         Returns:
             Tool execution result
@@ -160,7 +160,7 @@ class TaskManagementBehavior(AgentBehavior):
                 updates=args["updates"]
             )
         else:
-            return {"status": "error", "message": f"Unknown tool: {tool_name}"}
+            return super().dispatch_tool(agent, tool_name, args)
 
     def _read_task_breakdown(self) -> dict[str, Any]:
         """

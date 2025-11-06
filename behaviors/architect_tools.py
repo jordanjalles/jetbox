@@ -198,23 +198,23 @@ class ArchitectToolsBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Dispatch architecture tool calls.
 
         Args:
+            agent: Agent instance
             tool_name: Tool being called
             args: Tool arguments
-            **kwargs: Additional context (workspace_manager)
 
         Returns:
             Tool result dict
         """
-        # Allow runtime override
-        workspace_manager = kwargs.get('workspace_manager', self.workspace_manager)
+        # Get workspace_manager from agent
+        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
 
         if tool_name == "write_architecture_doc":
             return self._write_architecture_doc(
@@ -245,7 +245,7 @@ class ArchitectToolsBehavior(AgentBehavior):
                 workspace_manager=workspace_manager
             )
         else:
-            return super().dispatch_tool(tool_name, args, **kwargs)
+            return super().dispatch_tool(agent, tool_name, args)
 
     def _slugify(self, text: str) -> str:
         """Convert text to filesystem-safe slug."""

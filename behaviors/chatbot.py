@@ -3,27 +3,27 @@ ChatbotBehavior - Enables interactive chat mode when no goal is provided.
 
 This behavior allows agents to enter chat mode when invoked without a goal:
 - Activated when NO goal provided to the agent
-- Enters interactive conversation loop with user
-- Extracts requirements and forms goal from conversation
-- Transitions to execution mode once goal is clear
+- Provides set_goal tool for transitioning to execution mode
+- Manages chat mode state
 
 Key features:
-- Interactive chat loop (input/output)
-- Requirements extraction from conversation
-- Goal formation and transition to execution
+- Provides set_goal and clarify_with_user tools
+- Injects chat instructions once when chat mode activates
+- Transitions to execution mode when set_goal is called
 - Works with any agent type (TaskExecutor, Orchestrator, Architect)
 
 COMPOSITION:
 - This behavior does NOT handle execution mode (core BaseAgent functionality)
 - This behavior does NOT handle delegation (use DelegationBehavior)
-- This behavior ONLY manages interactive chat mode and goal extraction
+- This behavior does NOT implement its own chat loop (agent handles input/output)
+- This behavior ONLY manages chat mode state and provides chat tools
 
 Usage:
     When agent runs without a goal, this behavior:
-    1. Enters chat loop
-    2. Converses with user to clarify requirements
-    3. Forms a clear goal statement
-    4. Triggers on_goal_set event to transition to execution mode
+    1. Provides set_goal tool
+    2. Injects chat instructions once
+    3. Waits for agent to call set_goal
+    4. Transitions to execution mode when set_goal is called
 """
 
 from typing import Any
@@ -39,7 +39,6 @@ class ChatbotBehavior(AgentBehavior):
     - Tool call: agent.run() (no goal parameter)
 
     Features:
-    - Interactive chat loop for requirement gathering
     - Provides set_goal tool for transitioning to execution mode
     - Conversational interface for clarifying ambiguous requests
     - Supports multi-turn conversations to refine requirements
@@ -47,16 +46,14 @@ class ChatbotBehavior(AgentBehavior):
     This behavior is COMPOSABLE:
     - Does NOT handle execution (core BaseAgent functionality)
     - Does NOT handle delegation (delegate to DelegationBehavior)
-    - ONLY manages chat mode and goal extraction
+    - Does NOT implement its own chat loop (agent handles I/O)
+    - ONLY manages chat mode state and provides chat tools
     """
 
     def __init__(self):
         """Initialize chatbot behavior."""
         self.chat_mode_active = False
-        self.conversation_history: list[dict[str, Any]] = []
-        self.consecutive_empty_rounds = 0
-        self.task_complete_flag = False
-        self.pending_nudge = None
+        self.chat_instructions_injected = False  # Track if chat instructions already injected
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -130,22 +127,21 @@ class ChatbotBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Handle tool calls for this behavior.
 
         Args:
+            agent: Agent instance
             tool_name: Tool being called
             args: Tool arguments
-            **kwargs: Additional context (agent)
 
         Returns:
             Tool result dict
         """
-        agent = kwargs.get('agent')
 
         if tool_name == "set_goal":
             goal = args.get('goal', '')
@@ -189,25 +185,27 @@ class ChatbotBehavior(AgentBehavior):
                 "question": question
             }
 
-        return super().dispatch_tool(tool_name, args, **kwargs)
+        return super().dispatch_tool(agent, tool_name, args)
 
-    def enhance_context(
+    def on_round_start(
         self,
-        context: list[dict[str, Any]],
-        **kwargs: Any
+        agent: Any,
+        round_number: int,
+        context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Enhance context with chat mode instructions.
+        Inject chat mode instructions once when chat mode becomes active.
 
         Args:
-            context: Current context (system + messages)
-            **kwargs: Additional context
+            agent: Agent instance
+            round_number: Current round number
+            context: Current context
 
         Returns:
-            Modified context with chat mode info
+            Modified context with chat instructions
         """
-        if self.chat_mode_active:
-            # Insert chat mode instructions after system prompt
+        # Inject chat instructions ONCE when chat mode first becomes active
+        if self.chat_mode_active and not self.chat_instructions_injected:
             chat_instructions = """CHAT MODE ACTIVE:
 
 No goal has been provided yet. Your job is to:
@@ -223,51 +221,14 @@ Guidelines:
 - When requirements are clear, form a concise goal statement
 - Use set_goal tool to transition to execution mode
 """
-            self.inject_user_message_after_system(context, chat_instructions)
-
-        # Inject pending nudge if set (for idle detection)
-        if self.pending_nudge:
-            nudge_message = {
+            # Append to messages (not inject after system)
+            context.append({
                 "role": "user",
-                "content": self.pending_nudge
-            }
-            context.append(nudge_message)
-            # Clear nudge after injecting
-            self.pending_nudge = None
+                "content": chat_instructions
+            })
+            self.chat_instructions_injected = True
 
         return context
-
-    def on_tool_call(self, tool_name: str, args: dict, result: Any, agent: Any, **kwargs) -> None:
-        """
-        Track tool calls to detect when agent becomes idle.
-
-        When agent makes tool calls, it's actively working, so reset empty round counter.
-        """
-        # Agent is doing something - reset idle counter
-        self.consecutive_empty_rounds = 0
-
-    def onRoundEnd(self, round_number: int, agent: Any = None, had_tool_calls: bool = False, **kwargs) -> None:
-        """
-        Detect consecutive empty rounds (agent is idle).
-
-        After 2 consecutive rounds with no tool calls, agent is idle and should
-        return to user for next task.
-        """
-        if not had_tool_calls:
-            self.consecutive_empty_rounds += 1
-
-            # After 2 consecutive empty rounds, task is complete
-            if self.consecutive_empty_rounds >= 2:
-                self.task_complete_flag = True
-                # Inject nudge for next round
-                self.pending_nudge = (
-                    "💡 TASK COMPLETE: You have been idle for 2 rounds with no actions. "
-                    "The current task is complete. If you have nothing more to do, "
-                    "simply respond with confirmation that the task is done and you're ready for the next request."
-                )
-        else:
-            # Had tool calls - already reset in on_tool_call, but ensure consistency
-            self.consecutive_empty_rounds = 0
 
     def get_instructions(self) -> str:
         """
@@ -318,196 +279,3 @@ Agent: [calls set_goal(goal="Create a web scraper for CNN and BBC news articles"
 
 After set_goal is called, you will automatically transition to execution mode.
 """
-
-    def onAgentStart(self, agent: Any, **kwargs: Any) -> None:
-        """
-        Handle agent start event.
-
-        Check if agent has a goal. If not, activate chat mode.
-
-        Args:
-            agent: Agent instance
-            **kwargs: Additional context
-        """
-        # Check if agent has a goal already set
-        has_goal = False
-
-        if hasattr(agent, 'context_manager') and agent.context_manager:
-            if hasattr(agent.context_manager, 'state') and agent.context_manager.state.goal:
-                has_goal = True
-
-        # Check if agent.goal is set (core agent functionality)
-        if not has_goal and hasattr(agent, 'goal') and agent.goal:
-            has_goal = True
-
-        # Activate chat mode if no goal
-        if not has_goal:
-            self.chat_mode_active = True
-            print("[chatbot] Chat mode activated (no goal provided)")
-        else:
-            self.chat_mode_active = False
-            print("[chatbot] Execution mode (goal already set)")
-
-    def run_chat_loop(self, agent: Any) -> str | None:
-        """
-        Run interactive chat loop until goal is set.
-
-        This is a blocking function that:
-        1. Enters chat loop
-        2. Gets user input
-        3. Calls LLM with conversation history
-        4. Displays responses
-        5. Exits when set_goal is called
-
-        Args:
-            agent: Agent instance with LLM capabilities
-
-        Returns:
-            Goal string if extracted, None if chat ended without goal
-        """
-        print("\n" + "=" * 60)
-        print("CHAT MODE")
-        print("=" * 60)
-        print("Hi! I'm ready to help. What would you like to work on?")
-        print("(Type 'quit' or 'exit' to end chat)")
-        print()
-
-        goal_extracted = None
-
-        while self.chat_mode_active:
-            try:
-                # Get user input
-                user_input = input("You: ").strip()
-
-                if not user_input:
-                    continue
-
-                if user_input.lower() in ["quit", "exit", "q"]:
-                    print("\nEnding chat session...")
-                    break
-
-                # Add user message to agent history
-                agent.add_message({
-                    "role": "user",
-                    "content": user_input
-                })
-
-                # Call LLM
-                response = agent.call_llm(
-                    model=agent.config.llm.model if hasattr(agent, 'config') else "gpt-oss:20b",
-                    temperature=0.7,  # Higher temp for more natural conversation
-                )
-
-                if "message" in response:
-                    msg = response["message"]
-
-                    # Show content if present
-                    if msg.get("content"):
-                        print(f"\nAgent: {msg['content']}\n")
-
-                    # Handle tool calls
-                    if "tool_calls" in msg and msg["tool_calls"]:
-                        for tool_call in msg["tool_calls"]:
-                            tool_name = tool_call["function"]["name"]
-                            args = tool_call["function"]["arguments"]
-
-                            # Dispatch tool call
-                            result = agent.dispatch_tool(tool_call)
-
-                            # Check if set_goal was called
-                            if tool_name == "set_goal" and result.get("success"):
-                                goal_extracted = result.get("goal")
-                                print(f"\n✅ Goal extracted: {goal_extracted}")
-                                print("Transitioning to execution mode...")
-                                return goal_extracted
-
-                            # Add tool result to history
-                            agent.add_message({
-                                "role": "tool",
-                                "content": str(result)
-                            })
-
-            except (EOFError, KeyboardInterrupt):
-                print("\nShutting down...")
-                break
-            except Exception as e:
-                print(f"\nError in chat loop: {e}")
-                import traceback
-                traceback.print_exc()
-                break
-
-        return goal_extracted
-
-    def run_multi_task_chat_loop(
-        self,
-        agent: Any,
-        execute_task_callback: Any,
-        initial_message: str | None = None
-    ) -> None:
-        """
-        Run interactive chat loop for multi-task execution mode.
-
-        Unlike run_chat_loop which extracts a single goal and exits,
-        this loop continues indefinitely, allowing multiple tasks in sequence.
-
-        Each user input is treated as a task request that gets executed immediately
-        via the execute_task_callback, then returns to prompt for next task.
-
-        Args:
-            agent: Agent instance (any agent type)
-            execute_task_callback: Function(user_input) that executes a task and returns when done
-            initial_message: Optional first message to execute before entering loop
-
-        Workflow:
-            1. User enters task description
-            2. Callback executes task (may delegate, run tools, etc.)
-            3. Show completion message
-            4. Return to prompt for next task
-            5. Repeat until user types 'quit'
-
-        This method works with any agent that needs continuous multi-task interaction:
-        - Orchestrator: delegates tasks to sub-agents
-        - TaskExecutor: executes tasks directly
-        - Architect: generates architecture for multiple projects
-        - Custom agents: any agent with task execution logic
-        """
-        # Execute initial message if provided
-        if initial_message:
-            execute_task_callback(initial_message)
-            print("\n✅ Task completed. Ready for next request.\n")
-
-        # Interactive loop
-        agent_name = getattr(agent, 'name', 'Agent').upper()
-        print("=" * 60)
-        print(f"{agent_name} CHAT MODE")
-        print("=" * 60)
-        print("Enter task descriptions and I'll execute them.")
-        print("(Type 'quit' or 'exit' to end session)")
-        print()
-
-        while True:
-            try:
-                # Get user input
-                user_input = input("You: ").strip()
-
-                if not user_input:
-                    continue
-
-                if user_input.lower() in ["quit", "exit", "q"]:
-                    print("\nShutting down...")
-                    break
-
-                # Execute task via callback
-                execute_task_callback(user_input)
-
-                # Show completion
-                print("\n✅ Task completed. Ready for next request.\n")
-
-            except (EOFError, KeyboardInterrupt):
-                print("\nShutting down...")
-                break
-            except Exception as e:
-                print(f"\nError: {e}")
-                import traceback
-                traceback.print_exc()
-                print("\nReturning to prompt...\n")

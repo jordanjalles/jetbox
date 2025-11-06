@@ -11,8 +11,12 @@ Used by:
 NOT used by:
 - Architect: Only designs systems, doesn't run code
 """
-from typing import Any
+from __future__ import annotations
+from typing import Any, TYPE_CHECKING
 from behaviors.base import AgentBehavior
+
+if TYPE_CHECKING:
+    pass
 
 
 class ServerManagementBehavior(AgentBehavior):

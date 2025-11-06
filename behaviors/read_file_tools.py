@@ -75,23 +75,23 @@ class ReadFileToolsBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> str:
         """
         Dispatch file reading tool calls.
 
         Args:
+            agent: Agent instance
             tool_name: Tool being called
             args: Tool arguments
-            **kwargs: Additional context (workspace_manager)
 
         Returns:
             Tool result (file contents string)
         """
-        # Allow runtime override of workspace_manager
-        workspace_manager = kwargs.get('workspace_manager', self.workspace_manager)
+        # Get workspace_manager from agent
+        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
 
         if tool_name == "read_file":
             return self._read_file(
@@ -102,7 +102,7 @@ class ReadFileToolsBehavior(AgentBehavior):
                 extra_kwargs=args
             )
         else:
-            return super().dispatch_tool(tool_name, args, **kwargs)
+            return super().dispatch_tool(agent, tool_name, args)
 
     def _read_file(
         self,

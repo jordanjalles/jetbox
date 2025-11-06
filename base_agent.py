@@ -329,8 +329,10 @@ class BaseAgent:
         if self.goal:
             context = self._inject_goal_context(context)
 
-        # Let behaviors enhance context
-        context = self.enhance_context_with_behaviors(context)
+        # NOTE: Context enhancement by behaviors is now handled by lifecycle events:
+        # - on_initial_context() for first-time setup
+        # - on_round_start() for per-round modifications
+        # These are called from run() method, not here.
 
         return context
 
@@ -500,7 +502,35 @@ class BaseAgent:
         """
         Call LLM with current context and tools.
 
+        DEPRECATED: This method builds context internally using build_context().
+        New code should use _call_llm_with_context() which accepts context as a parameter.
+
         Args:
+            model: Model name (e.g., "gpt-oss:20b")
+            temperature: Sampling temperature
+            timeout: Timeout in seconds
+
+        Returns:
+            LLM response dict with 'message' key
+        """
+        context = self.build_context()
+        return self._call_llm_with_context(context, model, temperature, timeout)
+
+    def _call_llm_with_context(
+        self,
+        context: list[dict[str, Any]],
+        model: str,
+        temperature: float,
+        timeout: int = 120,
+    ) -> dict[str, Any]:
+        """
+        Call LLM with provided context and tools.
+
+        This is the preferred internal method that accepts context as a parameter,
+        allowing lifecycle events to modify context before the LLM call.
+
+        Args:
+            context: Context messages to send to LLM
             model: Model name (e.g., "gpt-oss:20b")
             temperature: Sampling temperature
             timeout: Timeout in seconds
@@ -510,7 +540,6 @@ class BaseAgent:
         """
         from llm_utils import chat_with_inactivity_timeout
 
-        context = self.build_context()
         tools = self.get_tools()
 
         try:
@@ -1263,32 +1292,6 @@ Please retry the tool call using only the valid parameters listed above.
             truncated += "..."
         return f"{self.name}: {truncated}"
 
-    def enhance_context_with_behaviors(
-        self,
-        context: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """
-        Let all behaviors enhance the context.
-
-        Args:
-            context: Current context (system prompt + messages)
-
-        Returns:
-            Enhanced context after all behavior modifications
-        """
-        # Let each behavior modify context in registration order
-        for behavior in self._behaviors:
-            context = behavior.enhance_context(
-                context,
-                agent=self,
-                workspace=self.workspace,
-                round_number=self.state.total_rounds,
-                context_manager=self.context_manager,
-                workspace_manager=self.workspace_manager,
-            )
-
-        return context
-
     def dispatch_tool_to_behavior(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
         """
         Dispatch tool call to appropriate behavior.
@@ -1308,17 +1311,12 @@ Please retry the tool call using only the valid parameters listed above.
         if not behavior:
             return {"error": f"Unknown tool: {tool_name}"}
 
-        # Dispatch to behavior with standard context + extra context
+        # Dispatch to behavior with new lifecycle API (agent as first parameter)
         try:
             result = behavior.dispatch_tool(
-                tool_name=tool_name,
-                args=args,
-                agent=self,
-                workspace=self.workspace,
-                context_manager=self.context_manager,
-                workspace_manager=self.workspace_manager,
-                ledger_file=getattr(self, 'ledger_file', None),
-                **extra_context  # Pass through additional context (registry, server_manager, etc.)
+                self,       # agent (positional)
+                tool_name,  # tool_name (positional)
+                args        # args (positional)
             )
         except Exception as e:
             return {"error": f"Tool {tool_name} failed: {e}"}
@@ -1326,12 +1324,29 @@ Please retry the tool call using only the valid parameters listed above.
         # Notify all behaviors of tool call (for loop detection, etc.)
         for beh in self._behaviors:
             try:
-                beh.on_tool_call(
-                    tool_name=tool_name,
-                    args=args,
-                    result=result,
-                    agent=self
-                )
+                # Try new API signature first (agent as first param)
+                if hasattr(beh, 'on_tool_call'):
+                    # Check signature to determine which API to use
+                    import inspect
+                    sig = inspect.signature(beh.on_tool_call)
+                    params = list(sig.parameters.keys())
+
+                    # New API: on_tool_call(agent, tool_name, args, result)
+                    if len(params) >= 4 and params[0] == 'agent':
+                        beh.on_tool_call(
+                            agent=self,
+                            tool_name=tool_name,
+                            args=args,
+                            result=result
+                        )
+                    # Old API: on_tool_call(tool_name, args, result, **kwargs)
+                    else:
+                        beh.on_tool_call(
+                            tool_name=tool_name,
+                            args=args,
+                            result=result,
+                            agent=self
+                        )
             except Exception as e:
                 print(f"[{self.name}] Behavior {beh.get_name()} on_tool_call error: {e}")
 
@@ -1340,6 +1355,14 @@ Please retry the tool call using only the valid parameters listed above.
     def trigger_behavior_event(self, event_name: str, **kwargs) -> None:
         """
         Trigger an event on all behaviors.
+
+        DEPRECATED: This method is kept for backwards compatibility with old event names.
+        New code should use the specific event trigger methods:
+        - _trigger_on_goal_start()
+        - _trigger_initial_context_setup()
+        - _trigger_on_round_start()
+        - _trigger_on_llm_response()
+        - etc.
 
         Args:
             event_name: Event method name (e.g., "on_goal_start")
@@ -1357,6 +1380,108 @@ Please retry the tool call using only the valid parameters listed above.
                     event_method(agent=self, **kwargs)
             except Exception as e:
                 print(f"[{self.name}] Behavior {behavior.get_name()} {event_name} error: {e}")
+
+    def _trigger_on_goal_start(self, goal: str) -> None:
+        """
+        Trigger on_goal_start event on all behaviors.
+
+        Called ONCE when a goal is set, before any rounds.
+
+        Args:
+            goal: Goal description string
+        """
+        for behavior in self._behaviors:
+            try:
+                # Try new API first
+                if hasattr(behavior, 'on_goal_start') and callable(behavior.on_goal_start):
+                    behavior.on_goal_start(agent=self, goal=goal)
+                # Fall back to old API if new one doesn't exist
+                elif hasattr(behavior, 'onGoalStart') and callable(behavior.onGoalStart):
+                    behavior.onGoalStart(goal=goal, agent=self)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_goal_start error: {e}")
+
+    def _trigger_initial_context_setup(self) -> None:
+        """
+        Trigger on_initial_context event on all behaviors ONCE.
+
+        Called at start of run(), before first LLM call.
+        This allows behaviors to inject static context that doesn't change per round.
+
+        NOTE: This modifies self.state.messages to inject initial context messages.
+        """
+        # Build initial context (system prompt only, no history yet)
+        initial_context = [
+            {"role": "system", "content": self.get_system_prompt()}
+        ]
+
+        # Inject goal context if goal is set (before behaviors)
+        if self.goal:
+            initial_context = self._inject_goal_context(initial_context)
+
+        # Let behaviors inject initial context
+        for behavior in self._behaviors:
+            try:
+                if hasattr(behavior, 'on_initial_context') and callable(behavior.on_initial_context):
+                    initial_context = behavior.on_initial_context(agent=self, context=initial_context)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_initial_context error: {e}")
+
+        # Extract any user messages that were injected (skip system prompt)
+        # and prepend them to message history
+        if len(initial_context) > 1:
+            injected_messages = initial_context[1:]  # Everything after system prompt
+            # Prepend to existing messages (if any)
+            self.state.messages = injected_messages + self.state.messages
+
+    def _trigger_on_round_start(self, round_number: int, context: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        Trigger on_round_start event on all behaviors.
+
+        Called at the start of EVERY round, before LLM call.
+
+        Args:
+            round_number: Current round number (1-indexed)
+            context: Current context to be sent to LLM
+
+        Returns:
+            Modified context after all behaviors have processed it
+        """
+        for behavior in self._behaviors:
+            try:
+                # Try new API first
+                if hasattr(behavior, 'on_round_start') and callable(behavior.on_round_start):
+                    context = behavior.on_round_start(agent=self, round_number=round_number, context=context)
+                # Fall back to enhance_context if on_round_start doesn't exist
+                elif hasattr(behavior, 'enhance_context') and callable(behavior.enhance_context):
+                    context = behavior.enhance_context(
+                        context,
+                        agent=self,
+                        workspace=self.workspace,
+                        round_number=round_number,
+                        context_manager=self.context_manager,
+                        workspace_manager=self.workspace_manager,
+                    )
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_round_start error: {e}")
+
+        return context
+
+    def _trigger_on_llm_response(self, response: dict[str, Any]) -> None:
+        """
+        Trigger on_llm_response event on all behaviors.
+
+        Called after LLM responds but before tool dispatch.
+
+        Args:
+            response: LLM response dict (contains 'message' with role/content/tool_calls)
+        """
+        for behavior in self._behaviors:
+            try:
+                if hasattr(behavior, 'on_llm_response') and callable(behavior.on_llm_response):
+                    behavior.on_llm_response(agent=self, response=response)
+            except Exception as e:
+                print(f"[{self.name}] Behavior {behavior.get_name()} on_llm_response error: {e}")
 
     def _handle_goal_set(self, goal: str, **kwargs) -> None:
         """
@@ -1846,11 +1971,18 @@ Please retry the tool call using only the valid parameters listed above.
         model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'gpt-oss:20b') if self.config else 'gpt-oss:20b'
         temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
-        # Trigger onGoalStart event
+        # Trigger onGoalStart event (DEPRECATED - kept for backwards compatibility)
         # This event should fire whenever there's a goal, regardless of context_manager
         goal_desc = self._get_goal_description()
         if goal_desc:
             self.trigger_behavior_event("onGoalStart", goal=goal_desc)
+
+        # Trigger new on_goal_start event (preferred API)
+        if goal_desc:
+            self._trigger_on_goal_start(goal_desc)
+
+        # Trigger on_initial_context ONCE for first-round setup
+        self._trigger_initial_context_setup()
 
         print(f"[{self.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
         return max_rounds, model, temperature
@@ -2042,12 +2174,18 @@ Please retry the tool call using only the valid parameters listed above.
         Returns:
             Completion dict if goal completed/failed, None to continue
         """
-        # Trigger onRoundStart
+        # Trigger onRoundStart (DEPRECATED - kept for backwards compatibility)
         self.trigger_behavior_event("onRoundStart", round_number=round_no)
 
-        # Call LLM
+        # Build context for this round
+        context = self.build_context()
+
+        # Trigger on_round_start (NEW API - called every round before LLM)
+        context = self._trigger_on_round_start(round_no, context)
+
+        # Call LLM with modified context
         print(f"\n[{self.name}] Round {round_no}/{max_rounds}")
-        response = self.call_llm(model=model, temperature=temperature)
+        response = self._call_llm_with_context(context, model=model, temperature=temperature)
 
         # Check for circuit breaker (consecutive timeouts)
         if response.get("_circuit_breaker"):
@@ -2058,6 +2196,10 @@ Please retry the tool call using only the valid parameters listed above.
         if response.get("_timeout"):
             print(f"[{self.name}] LLM timeout - retrying next round")
             return None
+
+        # Trigger on_llm_response (NEW API - after LLM responds, before tool dispatch)
+        if "message" in response:
+            self._trigger_on_llm_response(response["message"])
 
         # Add assistant message to history
         had_tool_calls = False

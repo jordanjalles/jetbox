@@ -190,17 +190,17 @@ Use these tools to help decide:
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Handle workspace management tool calls.
 
         Args:
+            agent: Agent instance
             tool_name: Tool being called
             args: Tool arguments
-            **kwargs: Additional context
 
         Returns:
             Tool result dict
@@ -217,7 +217,7 @@ Use these tools to help decide:
         elif tool_name == "find_workspace":
             return self._find_workspace(args["project_name"])
 
-        return super().dispatch_tool(tool_name, args, **kwargs)
+        return super().dispatch_tool(agent, tool_name, args)
 
     def _list_workspaces(self, limit: int = 20, sort_by: str = "newest") -> dict[str, Any]:
         """

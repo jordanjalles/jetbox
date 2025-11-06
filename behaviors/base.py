@@ -2,7 +2,7 @@
 Base class for composable agent behaviors.
 
 Behaviors extend agent capabilities through:
-- Context injection (enhance_context)
+- Context injection (on_initial_context, on_round_start)
 - Tool registration (get_tools, dispatch_tool)
 - Event handling (on_* methods)
 
@@ -10,10 +10,22 @@ All behaviors are:
 - Self-contained (no dependencies on other behaviors)
 - Composable (multiple behaviors work together)
 - Optional (agents choose which behaviors to use)
+
+Lifecycle Events (in order):
+1. on_goal_start() - Once at goal start
+2. on_initial_context() - Once for initial context injection
+3. on_round_start() - Every round before LLM
+4. on_llm_response() - After LLM responds
+5. on_tool_call() - After each tool execution
+6. on_round_end() - After all tools in round
+7. on_goal_complete() or on_timeout() - At goal end
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from behaviors.base_agent import BaseAgent
 
 
 class AgentBehavior(ABC):
@@ -21,16 +33,36 @@ class AgentBehavior(ABC):
     Base class for composable agent behaviors.
 
     Behaviors extend agent capabilities by providing:
-    - Context modifications (enhance_context)
+    - Context modifications (on_initial_context, on_round_start)
     - Tool definitions and dispatch (get_tools, dispatch_tool)
     - System prompt instructions (get_instructions)
-    - Event handlers (on_goal_start, on_tool_call, etc.)
+    - Event handlers (on_goal_start, on_tool_call, on_round_end, etc.)
+
+    Lifecycle Events (in chronological order):
+    1. on_goal_start(agent, goal) - Once at goal start
+    2. on_initial_context(agent, context) - Once for initial setup
+    3. on_round_start(agent, round_number, context) - Every round before LLM
+    4. on_llm_response(agent, response) - After LLM responds
+    5. on_tool_call(agent, tool_name, args, result) - After each tool execution
+    6. on_round_end(agent, round_number) - After all tools in round
+    7. on_goal_complete(agent, success, summary) or on_timeout(agent, elapsed) - At goal end
 
     Example:
         ```python
         class MyBehavior(AgentBehavior):
             def get_name(self) -> str:
                 return "my_behavior"
+
+            def on_goal_start(self, agent, goal):
+                self.start_time = time.time()
+                print(f"Starting goal: {goal}")
+
+            def on_round_start(self, agent, round_number, context):
+                # Inject dynamic warnings based on state
+                if self.should_warn:
+                    warning = "⚠️ Consider a different approach"
+                    return self.inject_user_message_after_system(context, warning)
+                return context
 
             def get_tools(self) -> list[dict[str, Any]]:
                 return [{
@@ -42,20 +74,22 @@ class AgentBehavior(ABC):
                             "type": "object",
                             "properties": {
                                 "arg": {"type": "string"}
-                            }
+                            },
+                            "required": ["arg"]
                         }
                     }
                 }]
 
-            def dispatch_tool(
-                self,
-                tool_name: str,
-                args: dict[str, Any],
-                **kwargs
-            ) -> dict[str, Any]:
+            def dispatch_tool(self, agent, tool_name, args):
                 if tool_name == "my_tool":
-                    return {"result": f"Processed: {args['arg']}"}
-                return super().dispatch_tool(tool_name, args, **kwargs)
+                    # Can access agent.workspace directly
+                    result = f"Processed: {args['arg']}"
+                    return {"result": result, "success": True}
+                return super().dispatch_tool(agent, tool_name, args)
+
+            def on_tool_call(self, agent, tool_name, args, result):
+                self.tool_count += 1
+                print(f"Tool called: {tool_name}")
         ```
     """
 
@@ -80,47 +114,304 @@ class AgentBehavior(ABC):
         """
         pass
 
-    # Context injection
+    # =================================================================
+    # LIFECYCLE EVENTS (new API - preferred)
+    # =================================================================
 
-    def enhance_context(
-        self,
-        context: list[dict[str, Any]],
-        **kwargs: Any
-    ) -> list[dict[str, Any]]:
+    def on_goal_start(self, agent: "BaseAgent", goal: str) -> None:
         """
-        Modify context before LLM call.
+        Called ONCE when goal is set (beginning of agent execution).
 
-        Called by the agent before each LLM invocation to allow behaviors
-        to inject additional information, modify system prompts, or
-        transform message history.
+        TIMING: Called once at goal start, before any rounds.
+        FREQUENCY: Once per goal.
+
+        Use for:
+        - Initializing behavior state
+        - Setting up resources
+        - Preparing workspace
+        - Logging goal start
 
         Args:
-            context: Current context as list of message dicts with 'role' and 'content'
-                    Typically: [{"role": "system", "content": "..."}, {"role": "user", ...}, ...]
-            **kwargs: Additional context information that may include:
-                - agent: The agent instance
-                - workspace: Workspace path
-                - round_number: Current round number
-                - context_manager: ContextManager instance (if applicable)
-                - goal: Current goal string
-                - Any other agent-specific data
+            agent: Agent instance (access agent.workspace, agent.state, etc.)
+            goal: Goal string
+
+        Default Implementation:
+            Does nothing (no-op).
+
+        Example:
+            ```python
+            def on_goal_start(self, agent, goal):
+                self.start_time = time.time()
+                self.action_count = 0
+                print(f"Starting goal: {goal}")
+            ```
+        """
+        pass
+
+    def on_initial_context(
+        self,
+        agent: "BaseAgent",
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Called ONCE to inject initial context (first round only).
+
+        TIMING: Called once at start of goal, after system prompt is built,
+                before first LLM call.
+        FREQUENCY: Once per goal (not repeated on subsequent rounds).
+
+        Use for:
+        - Injecting goal description
+        - Adding initial instructions
+        - Loading workspace notes
+        - Setting up delegation options
+        - Any one-time context injection
+
+        Args:
+            agent: Agent instance
+            context: Initial context (system prompt only)
+                    Format: [{"role": "system", "content": "..."}]
 
         Returns:
-            Modified context (same format as input)
+            Modified context with initial messages injected
 
         Default Implementation:
             Returns context unchanged.
 
         Example:
             ```python
-            def enhance_context(self, context, **kwargs):
-                # Inject additional information into system prompt
-                if context and context[0]["role"] == "system":
-                    context[0]["content"] += "\\n\\nNote: Remember to check files exist."
+            def on_initial_context(self, agent, context):
+                # Inject goal description
+                goal_msg = f"GOAL: {agent.goal}"
+                return self.inject_user_message_after_system(context, goal_msg)
+            ```
+        """
+        return context
+
+    def on_round_start(
+        self,
+        agent: "BaseAgent",
+        round_number: int,
+        context: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Called at start of EVERY round (before LLM call).
+
+        A round is one LLM call + tool execution cycle.
+
+        TIMING: Called every round, after context is built, before LLM call.
+        FREQUENCY: Every round (1, 2, 3, ...).
+
+        Use for:
+        - Resetting per-round state
+        - Injecting dynamic warnings/guidance
+        - Modifying context based on current state
+        - Adding loop detection warnings
+        - Any per-round context modification
+
+        Args:
+            agent: Agent instance
+            round_number: Current round number (1-indexed)
+            context: Current context to be sent to LLM
+
+        Returns:
+            Modified context
+
+        Default Implementation:
+            Returns context unchanged (no-op).
+
+        Example:
+            ```python
+            def on_round_start(self, agent, round_number, context):
+                # Inject warning if loops detected
+                if self.consecutive_empty_rounds > 2:
+                    warning = "⚠️ Empty rounds detected - call a tool!"
+                    context = self.inject_user_message_after_system(context, warning)
+
+                self.round_start_time = time.time()
                 return context
             ```
         """
         return context
+
+    def on_llm_response(
+        self,
+        agent: "BaseAgent",
+        response: dict[str, Any]
+    ) -> None:
+        """
+        Called after LLM responds, before tool dispatch.
+
+        TIMING: Called after LLM API call returns, before tools are dispatched.
+        FREQUENCY: Every round.
+
+        Use for:
+        - Analyzing LLM response
+        - Detecting empty rounds (no tool_calls)
+        - Logging LLM behavior
+        - Tracking reasoning patterns
+
+        Args:
+            agent: Agent instance
+            response: LLM response dict (contains 'content', 'tool_calls', etc.)
+
+        Default Implementation:
+            Does nothing (no-op).
+
+        Example:
+            ```python
+            def on_llm_response(self, agent, response):
+                if not response.get('tool_calls'):
+                    self.empty_round_count += 1
+                    print(f"Empty round: LLM didn't call tools")
+            ```
+        """
+        pass
+
+    def on_tool_call(
+        self,
+        agent: "BaseAgent",
+        tool_name: str,
+        args: dict[str, Any],
+        result: dict[str, Any]
+    ) -> None:
+        """
+        Called after each tool execution.
+
+        TIMING: Called immediately after any tool is executed (regardless of
+                which behavior owns it).
+        FREQUENCY: Once per tool call (multiple times per round if LLM calls
+                   multiple tools).
+
+        Use for:
+        - Tracking tool usage
+        - Detecting loops (repeated tool calls)
+        - Logging actions
+        - Updating statistics
+        - Recording action history
+
+        Args:
+            agent: Agent instance
+            tool_name: Name of the tool that was called
+            args: Arguments passed to the tool
+            result: Result returned by the tool
+
+        Default Implementation:
+            Does nothing (no-op).
+
+        Example:
+            ```python
+            def on_tool_call(self, agent, tool_name, args, result):
+                self.action_count += 1
+                if "error" in result:
+                    self.error_count += 1
+                print(f"Tool called: {tool_name}")
+            ```
+        """
+        pass
+
+    def on_round_end(self, agent: "BaseAgent", round_number: int) -> None:
+        """
+        Called at end of each round, after all tool calls.
+
+        TIMING: Called after all tools in the round have been executed.
+        FREQUENCY: Every round.
+
+        Use for:
+        - Rendering status displays
+        - Persisting state
+        - Checking timeout conditions
+        - Updating progress tracking
+        - Detecting empty rounds (no tools called)
+
+        Args:
+            agent: Agent instance
+            round_number: Current round number (1-indexed)
+
+        Default Implementation:
+            Does nothing (no-op).
+
+        Example:
+            ```python
+            def on_round_end(self, agent, round_number):
+                if round_number % 5 == 0:
+                    print(f"Round {round_number}: {self.action_count} actions")
+                self.persist_state()
+            ```
+        """
+        pass
+
+    def on_timeout(self, agent: "BaseAgent", elapsed_seconds: float) -> None:
+        """
+        Called when goal times out.
+
+        TIMING: Called when the agent exceeds its time budget for a goal.
+        FREQUENCY: Once per goal (only if timeout occurs).
+
+        Use for:
+        - Generating timeout summaries
+        - Saving partial progress
+        - Cleaning up resources
+        - Logging timeout reason
+
+        Args:
+            agent: Agent instance
+            elapsed_seconds: Time elapsed since goal start
+
+        Default Implementation:
+            Calls deprecated on_timeout() with old signature for backwards
+            compatibility.
+
+        Example:
+            ```python
+            def on_timeout(self, agent, elapsed_seconds):
+                print(f"Goal timed out after {elapsed_seconds:.1f}s")
+                self.save_partial_results()
+            ```
+        """
+        pass
+
+    def on_goal_complete(
+        self,
+        agent: "BaseAgent",
+        success: bool,
+        summary: str
+    ) -> None:
+        """
+        Called when goal completes (successfully or with failure).
+
+        TIMING: Called when the agent finishes a goal (either successfully
+                or with failure).
+        FREQUENCY: Once per goal.
+
+        Use for:
+        - Generating completion summaries
+        - Cleaning up resources
+        - Saving final results
+        - Logging completion status
+        - Passing summaries to parent agent
+
+        Args:
+            agent: Agent instance
+            success: True if goal completed successfully, False if failed
+            summary: Summary message (from mark_complete or mark_failed)
+
+        Default Implementation:
+            Does nothing (no-op).
+
+        Example:
+            ```python
+            def on_goal_complete(self, agent, success, summary):
+                status = "SUCCESS" if success else "FAILED"
+                elapsed = time.time() - self.start_time
+                print(f"{status}: {self.action_count} actions in {elapsed:.1f}s")
+            ```
+        """
+        pass
+
+    # =================================================================
+    # CONTEXT HELPER METHODS
+    # =================================================================
 
     def inject_user_message_after_system(
         self,
@@ -198,9 +489,9 @@ class AgentBehavior(ABC):
 
     def dispatch_tool(
         self,
+        agent: "BaseAgent",
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Handle tool call for this behavior's tools.
@@ -210,13 +501,9 @@ class AgentBehavior(ABC):
         return the result.
 
         Args:
+            agent: Agent instance (access agent.workspace, agent.state, etc.)
             tool_name: Name of the tool being called
             args: Tool arguments (parsed from LLM's function call)
-            **kwargs: Additional context that may include:
-                - agent: The agent instance
-                - workspace: Workspace path
-                - context_manager: ContextManager instance
-                - Any other agent-specific data
 
         Returns:
             Tool result as a dict. Common patterns:
@@ -230,18 +517,20 @@ class AgentBehavior(ABC):
 
         Example:
             ```python
-            def dispatch_tool(self, tool_name, args, **kwargs):
+            def dispatch_tool(self, agent, tool_name, args):
                 if tool_name == "read_file":
                     path = args["path"]
                     try:
-                        with open(path) as f:
+                        # Can access agent.workspace directly
+                        full_path = agent.workspace / path
+                        with open(full_path) as f:
                             content = f.read()
                         return {"content": content, "success": True}
                     except Exception as e:
                         return {"error": str(e)}
 
                 # Fall through to parent for unknown tools
-                return super().dispatch_tool(tool_name, args, **kwargs)
+                return super().dispatch_tool(agent, tool_name, args)
             ```
         """
         raise NotImplementedError(
@@ -280,150 +569,3 @@ class AgentBehavior(ABC):
             ```
         """
         return ""
-
-    # Event handlers
-
-    def onGoalStart(self, goal: str, **kwargs: Any) -> None:
-        """
-        Called when goal starts.
-
-        Triggered when the agent begins working on a new goal. Use this to:
-        - Initialize behavior state
-        - Set up resources
-        - Log goal start
-        - Prepare workspace
-
-        Args:
-            goal: The goal string
-            **kwargs: Additional context (agent, workspace, etc.)
-
-        Default Implementation:
-            Does nothing (no-op).
-
-        Example:
-            ```python
-            def onGoalStart(self, goal, **kwargs):
-                self.start_time = time.time()
-                self.action_count = 0
-                print(f"Starting goal: {goal}")
-            ```
-        """
-        pass
-
-    def on_tool_call(
-        self,
-        tool_name: str,
-        args: dict[str, Any],
-        result: dict[str, Any],
-        **kwargs: Any
-    ) -> None:
-        """
-        Called after each tool execution.
-
-        Triggered immediately after any tool is executed (regardless of which
-        behavior owns it). Use this to:
-        - Track tool usage
-        - Detect loops (repeated tool calls)
-        - Log actions
-        - Update statistics
-
-        Args:
-            tool_name: Name of the tool that was called
-            args: Arguments passed to the tool
-            result: Result returned by the tool
-            **kwargs: Additional context (agent, workspace, etc.)
-
-        Default Implementation:
-            Does nothing (no-op).
-
-        Example:
-            ```python
-            def on_tool_call(self, tool_name, args, result, **kwargs):
-                self.action_count += 1
-                if "error" in result:
-                    self.error_count += 1
-                print(f"Tool called: {tool_name}")
-            ```
-        """
-        pass
-
-    def onRoundEnd(self, round_number: int, **kwargs: Any) -> None:
-        """
-        Called at end of each round.
-
-        A round is one LLM call + tool execution cycle. Use this to:
-        - Render status displays
-        - Persist state
-        - Check timeout conditions
-        - Update progress tracking
-
-        Args:
-            round_number: Current round number (1-indexed)
-            **kwargs: Additional context (agent, workspace, etc.)
-
-        Default Implementation:
-            Does nothing (no-op).
-
-        Example:
-            ```python
-            def onRoundEnd(self, round_number, **kwargs):
-                if round_number % 5 == 0:
-                    print(f"Round {round_number}: {self.action_count} actions")
-                self.persist_state()
-            ```
-        """
-        pass
-
-    def on_timeout(self, elapsed_seconds: float, **kwargs: Any) -> None:
-        """
-        Called when goal times out.
-
-        Triggered when the agent exceeds its time budget for a goal. Use this to:
-        - Generate timeout summaries
-        - Save partial progress
-        - Clean up resources
-        - Log timeout reason
-
-        Args:
-            elapsed_seconds: Time elapsed since goal start
-            **kwargs: Additional context (agent, workspace, goal, etc.)
-
-        Default Implementation:
-            Does nothing (no-op).
-
-        Example:
-            ```python
-            def on_timeout(self, elapsed_seconds, **kwargs):
-                print(f"Goal timed out after {elapsed_seconds:.1f}s")
-                self.save_partial_results()
-            ```
-        """
-        pass
-
-    def onGoalComplete(self, success: bool, **kwargs: Any) -> None:
-        """
-        Called when goal completes.
-
-        Triggered when the agent finishes a goal (either successfully or with failure).
-        Use this to:
-        - Generate completion summaries
-        - Clean up resources
-        - Save final results
-        - Log completion status
-
-        Args:
-            success: True if goal completed successfully, False if failed
-            **kwargs: Additional context (agent, workspace, goal, etc.)
-
-        Default Implementation:
-            Does nothing (no-op).
-
-        Example:
-            ```python
-            def onGoalComplete(self, success, **kwargs):
-                status = "SUCCESS" if success else "FAILED"
-                print(f"Goal {status}: {self.action_count} actions in {elapsed}s")
-                self.generate_summary(success)
-            ```
-        """
-        pass

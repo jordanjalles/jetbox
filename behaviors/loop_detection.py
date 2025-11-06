@@ -6,7 +6,9 @@ repeating the same actions (infinite loops). When loops are detected,
 it injects warnings into context to nudge the agent toward different approaches.
 
 Features:
-- Event: on_tool_call(tool_name, args, result, **kwargs)
+- Event: on_tool_call(agent, tool_name, args, result)
+- Event: on_round_end(agent, round_number)
+- Event: on_round_start(agent, round_number, context)
 - Track action signatures (tool_name + args)
 - Track result signatures
 - Detect repeated failures (same action, same error)
@@ -62,19 +64,19 @@ class LoopDetectionBehavior(AgentBehavior):
 
     def on_tool_call(
         self,
+        agent: Any,
         tool_name: str,
         args: dict[str, Any],
-        result: dict[str, Any],
-        **kwargs: Any
+        result: dict[str, Any]
     ) -> None:
         """
         Called after each tool execution to track actions.
 
         Args:
+            agent: Agent instance
             tool_name: Name of tool that was called
             args: Arguments passed to the tool
             result: Result returned by the tool
-            **kwargs: Additional context
         """
         # Reset empty rounds counter - a tool was called
         self.consecutive_empty_rounds = 0
@@ -129,13 +131,13 @@ class LoopDetectionBehavior(AgentBehavior):
             if warning not in self.loop_warnings:
                 self.loop_warnings.append(warning)
 
-    def onRoundEnd(self, round_number: int, **kwargs: Any) -> None:
+    def on_round_end(self, agent: Any, round_number: int) -> None:
         """
         Called at end of each round to detect empty rounds.
 
         Args:
+            agent: Agent instance
             round_number: Current round number
-            **kwargs: Additional context
         """
         # Check if action count changed this round
         current_action_count = len(self.action_history)
@@ -146,7 +148,6 @@ class LoopDetectionBehavior(AgentBehavior):
             print(f"[loop_detection] ⚠️  Empty round #{self.consecutive_empty_rounds} - LLM did not call any tools")
 
             # Log diagnostic info
-            agent = kwargs.get('agent')
             if agent and hasattr(agent, 'state') and agent.state.messages:
                 # Get last assistant message
                 last_msg = None
@@ -219,13 +220,12 @@ class LoopDetectionBehavior(AgentBehavior):
 
         return delegation_nudge
 
-    def _detect_goal(self, agent: Any, context_manager: Any) -> tuple[str, bool]:
+    def _detect_goal(self, agent: Any) -> tuple[str, bool]:
         """
         Try multiple sources to detect agent's goal and execution mode.
 
         Args:
             agent: Agent instance
-            context_manager: Context manager instance
 
         Returns:
             Tuple of (goal_description, has_goal)
@@ -234,6 +234,7 @@ class LoopDetectionBehavior(AgentBehavior):
         has_goal = False
 
         # Source 1: context_manager
+        context_manager = getattr(agent, 'context_manager', None)
         if context_manager and hasattr(context_manager, 'state') and context_manager.state.goal:
             goal_desc = context_manager.state.goal.description
             has_goal = True
@@ -348,23 +349,24 @@ class LoopDetectionBehavior(AgentBehavior):
 
         return warnings_text
 
-    def enhance_context(
+    def on_round_start(
         self,
-        context: list[dict[str, Any]],
-        **kwargs: Any
+        agent: Any,
+        round_number: int,
+        context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
         Inject loop warnings and recovery prompts into context.
 
         Args:
+            agent: Agent instance
+            round_number: Current round number
             context: Current context
-            **kwargs: Additional context (agent, context_manager)
 
         Returns:
             Modified context with warnings/recovery prompts (if any)
         """
         warnings_to_inject = []
-        agent = kwargs.get('agent')
 
         # DELEGATION NUDGE: For orchestrator-type agents that should delegate rather than implement
         if self.delegation_tool_names and self.consecutive_empty_rounds >= 2 and not self.recovery_prompt_injected:
@@ -382,10 +384,8 @@ class LoopDetectionBehavior(AgentBehavior):
 
         # EMPTY ROUND RECOVERY: For general agents
         else:
-            context_manager = kwargs.get('context_manager')
-
             # Detect goal and execution mode
-            goal_desc, has_goal = self._detect_goal(agent, context_manager)
+            goal_desc, has_goal = self._detect_goal(agent)
 
             # CRITICAL: In execute mode (has_goal=True), inject after 1 empty round
             # In chatbot mode (has_goal=False), inject after max_empty_rounds (default 3)

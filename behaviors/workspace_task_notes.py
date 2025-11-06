@@ -5,9 +5,10 @@ This behavior provides auto-summarization and context persistence functionality
 by managing workspace_task_notes.md files within agent workspaces.
 
 Features:
-- Event: on_goal_complete(success, **kwargs)
-- Event: on_timeout(elapsed_seconds, **kwargs)
-- Context enhancement: loads existing notes
+- Event: on_goal_start(agent, goal) - Initialize workspace and file snapshots
+- Event: on_initial_context(agent, context) - Load existing notes once at start
+- Event: on_goal_complete(agent, success, summary) - Generate changelog-style summaries
+- Event: on_timeout(agent, elapsed_seconds) - Generate timeout summaries
 - No tools (utility behavior)
 
 All implementation is self-contained in this module.
@@ -254,7 +255,7 @@ def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history
     action_history instead of hierarchical task trees.
 
     Args:
-        goal: Goal object (optional, uses goal.description if provided)
+        goal: Goal description string or goal object (optional, uses goal.description if object)
         elapsed_seconds: Total elapsed time
         action_history: List of Action objects from context manager (optional)
         workspace_manager: WorkspaceManager instance for file access
@@ -262,8 +263,13 @@ def create_timeout_summary(goal=None, elapsed_seconds: float = 0, action_history
     if not workspace_manager:
         return
 
-    # Extract goal description
-    goal_description = goal.description if goal else workspace_manager.goal
+    # Extract goal description (handle both string and object)
+    if isinstance(goal, str):
+        goal_description = goal
+    elif goal and hasattr(goal, 'description'):
+        goal_description = goal.description
+    else:
+        goal_description = workspace_manager.goal if workspace_manager else "Unknown goal"
 
     # Build action summary from action_history (strategy-agnostic)
     if action_history:
@@ -386,13 +392,20 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
     Behavior that provides persistent workspace task notes (context summaries).
 
     Automatically:
-    - Loads existing notes on context enhancement
-    - Creates summaries on goal completion/failure
+    - Loads existing notes on initial context (once at start)
+    - Captures file snapshots on goal start for change tracking
+    - Creates changelog-style summaries on goal completion/failure
     - Creates timeout summaries when agent times out
     - Persists summaries to workspace_task_notes.md in workspace
 
     This is a utility behavior (no tools) that integrates the
     workspace task notes system with the behavior framework.
+
+    Lifecycle:
+    1. on_goal_start(agent, goal) - Initialize workspace and snapshots
+    2. on_initial_context(agent, context) - Load existing notes once
+    3. on_goal_complete(agent, success, summary) - Generate summaries
+    4. on_timeout(agent, elapsed_seconds) - Generate timeout summaries
     """
 
     def __init__(self, **kwargs):
@@ -410,31 +423,30 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "workspace_task_notes"
 
-    def enhance_context(
+    def on_initial_context(
         self,
-        context: list[dict[str, Any]],
-        **kwargs: Any
+        agent: Any,
+        context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Load existing notes and inject into context.
+        Load existing notes and inject into context ONCE at start.
 
         Warns if notes exceed 10% of max context.
 
         Args:
-            context: Current context
-            **kwargs: Additional context (agent, workspace, etc.)
+            agent: Agent instance
+            context: Initial context (system prompt only)
 
         Returns:
             Modified context with notes injected (if notes exist)
         """
-        # Get workspace_manager from kwargs
-        agent = kwargs.get("agent")
-        if agent and hasattr(agent, "workspace_manager"):
+        # Get workspace_manager from agent
+        if hasattr(agent, "workspace_manager"):
             workspace_manager = agent.workspace_manager
             if not self.workspace_manager:
                 self.workspace_manager = workspace_manager
         else:
-            workspace_manager = kwargs.get("workspace_manager") or self.workspace_manager
+            workspace_manager = self.workspace_manager
 
         # Load notes (cached)
         if self.notes_content is None:
@@ -443,16 +455,15 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         # Inject notes into context if they exist
         if self.notes_content and len(context) > 0:
             # Check if notes are too large (warning threshold: 10% of max context)
-            if agent:
-                max_tokens = self._get_max_tokens(agent)
-                if max_tokens:
-                    # Estimate tokens (chars / 4 is rough heuristic)
-                    notes_tokens = len(self.notes_content) // 4
-                    threshold_tokens = max_tokens * 0.10
+            max_tokens = self._get_max_tokens(agent)
+            if max_tokens:
+                # Estimate tokens (chars / 4 is rough heuristic)
+                notes_tokens = len(self.notes_content) // 4
+                threshold_tokens = max_tokens * 0.10
 
-                    if notes_tokens > threshold_tokens:
-                        pct = (notes_tokens / max_tokens) * 100
-                        print(f"⚠️  Workspace task notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
+                if notes_tokens > threshold_tokens:
+                    pct = (notes_tokens / max_tokens) * 100
+                    print(f"⚠️  Workspace task notes file is {pct:.1f}% of max context ({notes_tokens}/{max_tokens} tokens)")
 
             # Insert after system prompt with clear delimiters
             notes_with_delimiters = (
@@ -608,7 +619,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
 
         return changes
 
-    def onGoalStart(self, goal: str, **kwargs: Any) -> None:
+    def on_goal_start(self, agent: Any, goal: str) -> None:
         """
         Called when goal starts.
 
@@ -616,18 +627,15 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         Captures initial file snapshot for change tracking.
 
         Args:
+            agent: Agent instance
             goal: The goal string
-            **kwargs: Additional context (agent, workspace_manager, llm_call_func, etc.)
         """
-        # Get workspace manager from agent (primary) or kwargs (fallback)
-        agent = kwargs.get("agent")
-        if agent and hasattr(agent, "workspace_manager"):
+        # Get workspace manager from agent
+        if hasattr(agent, "workspace_manager"):
             workspace_manager = agent.workspace_manager
             self.workspace_manager = workspace_manager
         else:
-            workspace_manager = kwargs.get("workspace_manager")
-            if workspace_manager:
-                self.workspace_manager = workspace_manager
+            workspace_manager = None
 
         # Clear cached notes to force reload
         self.notes_content = None
@@ -649,28 +657,29 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
             # Save snapshot for future reuse
             self._save_snapshot(self.initial_files, workspace_manager)
 
-    def onGoalComplete(self, success: bool, **kwargs: Any) -> None:
+    def on_goal_complete(self, agent: Any, success: bool, summary: str) -> None:
         """
         Called when goal completes.
 
         Generates and saves changelog-style summary to workspace_task_notes.md.
 
         Args:
+            agent: Agent instance
             success: True if goal succeeded, False if failed
-            **kwargs: Additional context (agent, goal, reason, workspace_manager, llm_call_func, etc.)
+            summary: Summary message (from mark_complete or mark_failed)
         """
-        # Get workspace manager from agent (primary) or kwargs (fallback)
-        agent = kwargs.get("agent")
-        if agent and hasattr(agent, "workspace_manager"):
+        # Get workspace manager from agent
+        if hasattr(agent, "workspace_manager"):
             workspace_manager = agent.workspace_manager
             self.workspace_manager = workspace_manager
         else:
-            workspace_manager = kwargs.get("workspace_manager")
-            if workspace_manager:
-                self.workspace_manager = workspace_manager
+            workspace_manager = self.workspace_manager
 
-        goal_description = kwargs.get("goal", "Unknown goal")
-        reason = kwargs.get("reason", "")
+        # Get goal description from agent
+        goal_description = agent.goal if hasattr(agent, "goal") else "Unknown goal"
+
+        # Use summary as reason for failures
+        reason = summary if not success else ""
 
         # Get final file snapshot
         final_files = self._get_workspace_files(workspace_manager)
@@ -759,28 +768,28 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         print(summary)
         print("="*70 + "\n")
 
-    def on_timeout(self, elapsed_seconds: float, **kwargs: Any) -> None:
+    def on_timeout(self, agent: Any, elapsed_seconds: float) -> None:
         """
         Called when goal times out.
 
         Generates and saves timeout summary to workspace_task_notes.md.
 
         Args:
+            agent: Agent instance
             elapsed_seconds: Time elapsed since goal start
-            **kwargs: Additional context (agent, goal, action_history, workspace_manager, llm_call_func, etc.)
         """
-        # Get workspace manager from agent (primary) or kwargs (fallback)
-        agent = kwargs.get("agent")
-        if agent and hasattr(agent, "workspace_manager"):
+        # Get workspace manager from agent
+        if hasattr(agent, "workspace_manager"):
             workspace_manager = agent.workspace_manager
             self.workspace_manager = workspace_manager
         else:
-            workspace_manager = kwargs.get("workspace_manager")
-            if workspace_manager:
-                self.workspace_manager = workspace_manager
+            workspace_manager = self.workspace_manager
 
-        goal = kwargs.get("goal", None)
-        action_history = kwargs.get("action_history", None)
+        # Get goal and action history from agent
+        goal = agent.goal if hasattr(agent, "goal") else None
+        action_history = None
+        if hasattr(agent, "state") and hasattr(agent.state, "action_history"):
+            action_history = agent.state.action_history
 
         # Generate timeout summary via module functions
         create_timeout_summary(

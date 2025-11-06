@@ -70,23 +70,23 @@ class DirectoryToolsBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> list[str]:
         """
         Dispatch directory operation tool calls.
 
         Args:
+            agent: Agent instance
             tool_name: Tool being called
             args: Tool arguments
-            **kwargs: Additional context (workspace_manager)
 
         Returns:
             Tool result (list of filenames or error message list)
         """
-        # Allow runtime override of workspace_manager
-        workspace_manager = kwargs.get('workspace_manager', self.workspace_manager)
+        # Get workspace_manager from agent
+        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
 
         if tool_name == "list_dir":
             return self._list_dir(
@@ -96,7 +96,7 @@ class DirectoryToolsBehavior(AgentBehavior):
                 extra_kwargs=args
             )
         else:
-            return super().dispatch_tool(tool_name, args, **kwargs)
+            return super().dispatch_tool(agent, tool_name, args)
 
     def _list_dir(
         self,

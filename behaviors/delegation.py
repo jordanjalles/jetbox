@@ -146,31 +146,30 @@ class DelegationBehavior(AgentBehavior):
 
     def dispatch_tool(
         self,
+        agent: Any,
         tool_name: str,
-        args: dict[str, Any],
-        **kwargs: Any
+        args: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Dispatch delegation tool calls.
 
         Args:
+            agent: Agent instance (calling agent)
             tool_name: Tool name (consult_architect, delegate_to_executor, etc.)
             args: Tool arguments
-            **kwargs: Additional context (agent, workspace, registry, server_manager, etc.)
 
         Returns:
             Delegation result
         """
-        agent = kwargs.get("agent")
         # Get registry and server_manager from agent if available (orchestrator has these)
         # Initialize them lazily if agent supports it but hasn't initialized yet
-        registry = kwargs.get("registry") or getattr(agent, 'registry', None)
-        if not registry and agent and hasattr(agent, 'init_registry'):
+        registry = getattr(agent, 'registry', None)
+        if not registry and hasattr(agent, 'init_registry'):
             agent.init_registry()
             registry = agent.registry
 
-        server_manager = kwargs.get("server_manager") or getattr(agent, 'server_manager', None)
-        if not server_manager and agent and hasattr(agent, 'init_server_manager'):
+        server_manager = getattr(agent, 'server_manager', None)
+        if not server_manager and hasattr(agent, 'init_server_manager'):
             agent.init_server_manager()
             server_manager = agent.server_manager
 
@@ -960,19 +959,19 @@ The delegated task did not complete. Consider:
                 "error": f"Failed to delegate to {target_agent_name}: {e}"
             }
 
-    def enhance_context(
+    def on_initial_context(
         self,
-        context: list[dict[str, Any]],
-        **kwargs: Any
+        agent: Any,
+        context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Inject delegation information into context.
+        Inject delegation information into initial context.
 
-        Adds descriptions of delegatable agents after system prompt.
+        Adds descriptions of delegatable agents after system prompt (ONCE at start).
 
         Args:
-            context: Current context
-            **kwargs: Additional context
+            agent: Agent instance
+            context: Initial context (system prompt only)
 
         Returns:
             Modified context with delegation info
