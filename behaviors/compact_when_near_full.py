@@ -116,7 +116,7 @@ class CompactWhenNearFullBehavior(AgentBehavior):
 
             if to_summarize:
                 # Use LLM to summarize old messages
-                summary = self._summarize_messages(to_summarize)
+                summary = self._summarize_messages(agent, to_summarize)
 
                 # Rebuild context: base (system + goal) + summary + recent messages
                 context_base = context[:messages_start_idx]
@@ -186,11 +186,12 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         # 4 chars per token is standard heuristic
         return total_chars // 4
 
-    def _summarize_messages(self, messages: list[dict[str, Any]]) -> str:
+    def _summarize_messages(self, agent: Any, messages: list[dict[str, Any]]) -> str:
         """
         Use LLM to summarize a sequence of messages.
 
         Args:
+            agent: Agent instance (to get configured model)
             messages: List of message dicts to summarize
 
         Returns:
@@ -198,10 +199,13 @@ class CompactWhenNearFullBehavior(AgentBehavior):
         """
         from utils.llm_utils import summarize_messages
 
+        # Get model from agent (fallback to gpt-oss:20b if not available)
+        model = getattr(agent, 'model', 'gpt-oss:20b')
+
         try:
             summary = summarize_messages(
                 messages=messages,
-                model="gpt-oss:20b",
+                model=model,
                 temperature=0.2,
             )
             return summary if summary else "Unable to generate summary."
