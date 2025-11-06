@@ -219,9 +219,16 @@ class CreateBehaviorBehavior(AgentBehavior):
         behavior_file = staging_result["behavior_file"]
         test_file = staging_result["test_file"]
 
+        # Build class name (needed for validation)
+        if behavior_name.endswith("Behavior"):
+            class_name = behavior_name
+        else:
+            words = behavior_name.replace("-", "_").split("_")
+            class_name = "".join(word.capitalize() for word in words) + "Behavior"
+
         # Step 4: Validate generated code
         print("[create_behavior] Step 4/6: Validating generated code...")
-        validation_result = self._validate_generated_code(agent, behavior_file)
+        validation_result = self._validate_generated_code(agent, behavior_file, class_name)
 
         # Step 5: Run sandbox tests
         print("[create_behavior] Step 5/6: Testing in sandbox...")
@@ -496,7 +503,8 @@ Generate the complete test file now:"""
     def _validate_generated_code(
         self,
         agent: Any,
-        behavior_file: str
+        behavior_file: str,
+        class_name: str
     ) -> dict[str, Any]:
         """
         Validate generated behavior code.
@@ -506,6 +514,7 @@ Generate the complete test file now:"""
         Args:
             agent: Agent instance
             behavior_file: Path to behavior file
+            class_name: Expected class name
 
         Returns:
             Validation result dict
