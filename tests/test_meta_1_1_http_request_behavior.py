@@ -128,24 +128,31 @@ def test_generate_http_request_behavior():
     # Step 4: Validate generated code
     print("\n[4/6] Validating generated code...")
 
+    # Read the generated code
+    with open(behavior_file, 'r') as f:
+        generated_code = f.read()
+
     validation = ValidationBehavior()
     validation_result = validation.dispatch_tool(
         agent=meta_programmer,
         tool_name="validate_behavior_class",
         args={
-            "behavior_file": str(behavior_file)
+            "code": generated_code,
+            "expected_name": "HttpRequestBehavior"
         }
     )
 
-    is_valid = validation_result.get('valid', False)
-    issues = validation_result.get('issues', [])
+    # Extract result from nested structure
+    validation_data = validation_result.get('result', {})
+    is_valid = validation_data.get('valid', False)
+    issues = validation_data.get('issues', [])
 
     print(f"\nValidation result: {validation_result}")
     print(f"Valid: {is_valid}")
     print(f"Issues: {issues}")
 
     # Check if behavior file exists (validation may have different semantics)
-    if behavior_file.exists():
+    if Path(behavior_file).exists():
         print("✓ Behavior file exists, treating as valid")
         is_valid = True
 

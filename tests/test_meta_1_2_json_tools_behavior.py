@@ -120,17 +120,24 @@ def test_generate_json_tools_behavior():
     # Step 4: Validate
     print("\n[4/6] Validating generated code...")
 
+    # Read the behavior file content
+    with open(behavior_file, 'r') as f:
+        behavior_code = f.read()
+
     validation = ValidationBehavior()
     validation_result = validation.dispatch_tool(
         agent=meta_programmer,
         tool_name="validate_behavior_class",
         args={
-            "behavior_file": str(behavior_file)
+            "code": behavior_code,
+            "expected_name": "JsonToolsBehavior"
         }
     )
 
-    if not validation_result.get('valid', False):
-        issues = validation_result.get('issues', [])
+    # Extract result from the wrapper
+    result = validation_result.get('result', {})
+    if not result.get('valid', False):
+        issues = result.get('issues', [])
         pytest.fail(f"Validation failed: {issues}")
 
     print("✓ Validation passed")
