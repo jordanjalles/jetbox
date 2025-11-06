@@ -1,0 +1,116 @@
+
+============================================================
+PHASE 1: BASELINE VALIDATION
+============================================================
+Testing MetaProgrammer's ability to generate:
+- 3 simple behaviors (no hooks)
+- 2 simple agents (standard behaviors)
+
+
+============================================================
+Running: Test 1.1: HttpRequestBehavior
+============================================================
+
+❌ FAIL: Test 1.1: HttpRequestBehavior (22.9s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_1_1_http_request_behavior.py", line 240, in <module>
+    success = test_generate_http_request_behavior()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/tests/test_meta_1_1_http_request_behavior.py", line 148, in test_generate_http_request_behavior
+    if behavior_file.exists():
+       ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'exists'
+
+
+============================================================
+Running: Test 1.2: JsonToolsBehavior
+============================================================
+
+❌ FAIL: Test 1.2: JsonToolsBehavior (28.3s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_1_2_json_tools_behavior.py", line 210, in <module>
+    success = test_generate_json_tools_behavior()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/tests/test_meta_1_2_json_tools_behavior.py", line 134, in test_generate_json_tools_behavior
+    pytest.fail(f"Validation failed: {issues}")
+  File "/usr/local/lib/python3.11/site-packages/_pytest/outcomes.py", line 166, in fail
+    raise Failed(msg=reason, pyt
+
+============================================================
+Running: Test 1.3: EnvironmentBehavior
+============================================================
+
+❌ FAIL: Test 1.3: EnvironmentBehavior (22.3s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_1_3_environment_behavior.py", line 222, in <module>
+    success = test_generate_environment_behavior()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/tests/test_meta_1_3_environment_behavior.py", line 121, in test_generate_environment_behavior
+    pytest.fail(f"Validation failed: {issues}")
+  File "/usr/local/lib/python3.11/site-packages/_pytest/outcomes.py", line 166, in fail
+    raise Failed(msg=reason
+
+============================================================
+Running: Test 3.2: DocGeneratorAgent
+============================================================
+
+❌ FAIL: Test 3.2: DocGeneratorAgent (0.5s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_3_2_doc_generator_agent.py", line 232, in <module>
+    success = test_generate_doc_generator_agent()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/tests/test_meta_3_2_doc_generator_agent.py", line 132, in test_generate_doc_generator_agent
+    pytest.fail(f"Validation failed: {issues}")
+  File "/usr/local/lib/python3.11/site-packages/_pytest/outcomes.py", line 166, in fail
+    raise Failed(msg=reason, pyt
+
+============================================================
+Running: Test 3.3: TestGeneratorAgent
+============================================================
+
+❌ FAIL: Test 3.3: TestGeneratorAgent (0.4s)
+  Last error output:
+Traceback (most recent call last):
+  File "/workspace/tests/test_meta_3_3_test_generator_agent.py", line 227, in <module>
+    success = test_generate_test_generator_agent()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/tests/test_meta_3_3_test_generator_agent.py", line 135, in test_generate_test_generator_agent
+    pytest.fail(f"Validation failed: {validation_result.get('issues')}")
+  File "/usr/local/lib/python3.11/site-packages/_pytest/outcomes.py", line 166, in fail
+  
+
+============================================================
+PHASE 1 SUMMARY
+============================================================
+
+Results: 0/5 tests passed
+Duration: 74.4s
+
+❌ Test 1.1: HttpRequestBehavior: 22.9s
+❌ Test 1.2: JsonToolsBehavior: 28.3s
+❌ Test 1.3: EnvironmentBehavior: 22.3s
+❌ Test 3.2: DocGeneratorAgent: 0.5s
+❌ Test 3.3: TestGeneratorAgent: 0.4s
+
+Success Gate (4/5): ❌ FAIL
+
+Detailed results saved to: evaluation_results/phase1_test_results.json
+
+============================================================
+GENERATED ARTIFACTS
+============================================================
+
+Behaviors:
+  ✓ HttpRequestBehavior.py
+  ✓ JsonToolsBehavior.py
+  ✓ EnvironmentBehavior.py
+
+Agent Configs:
+  ✗ DocGeneratorAgent.yaml
+  ✗ TestGeneratorAgent.yaml
+
+❌ PHASE 1 INCOMPLETE - Review failures before proceeding
