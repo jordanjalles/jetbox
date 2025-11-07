@@ -237,7 +237,7 @@ def main():
 
         @classmethod
         def create_with_config(cls, workspace, args):
-            """Override to pass custom config file from team config."""
+            """Override to pass custom config file and agent name from team config."""
             initial_message = args.get("initial_message")
             force_chat_mode = args.get("force_chat_mode", False)
             timeout_seconds = args.get("timeout_seconds", 600)
@@ -248,12 +248,16 @@ def main():
                 # Autonomous mode: exclude chatbot to run goal directly
                 exclude_behaviors = ["ChatbotBehavior"]
 
-            # Create agent with custom config file
-            return cls(
+            # Create agent with custom config file and agent name from team
+            # NOTE: TaskExecutorAgent.__init__ has name="task_executor" hardcoded,
+            # but BaseAgent.__init__ will override it if we instantiate BaseAgent directly
+            from base_agent import BaseAgent
+            return BaseAgent(
+                name=agent_name,  # Use team config name, not hardcoded class name
                 workspace=workspace,
                 config_file=config_file,
+                timeout_seconds=timeout_seconds,
                 exclude_behaviors=exclude_behaviors,
-                timeout_seconds=timeout_seconds
             )
 
         # Temporarily replace the method

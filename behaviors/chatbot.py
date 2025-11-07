@@ -296,14 +296,14 @@ Guidelines:
         # Execute initial message if provided
         if initial_message:
             execute_task_callback(initial_message)
-            print("\n✅ Task completed. Ready for next request.\n")
+            # No completion message for initial - response is inline
 
         # Interactive loop
-        agent_name = getattr(agent, 'name', 'Agent').upper()
+        agent_name = getattr(agent, 'name', 'Agent').replace('_', ' ').title()
+        print("\n" + "=" * 60)
+        print(f"{agent_name}")
         print("=" * 60)
-        print(f"{agent_name} CHAT MODE")
-        print("=" * 60)
-        print("Enter task descriptions and I'll execute them.")
+        print("Chat mode - ask me anything!")
         print("(Type 'quit' or 'exit' to end session)")
         print()
 
@@ -322,8 +322,8 @@ Guidelines:
                 # Execute task via callback
                 execute_task_callback(user_input)
 
-                # Show completion message
-                print("\n✅ Task completed. Ready for next request.\n")
+                # No completion message - response is inline
+                print()  # Just add spacing
 
             except KeyboardInterrupt:
                 print("\n\nInterrupted by user. Shutting down...")
