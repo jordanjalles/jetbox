@@ -2397,6 +2397,9 @@ Please retry the tool call using only the valid parameters listed above.
         Used by simple chatbots that just need conversation without
         workspace setup, tool loops, or completion detection.
 
+        This method calls the LLM WITHOUT tools to ensure pure conversational
+        responses. Tools like set_goal would confuse the chat-only flow.
+
         Args:
             user_message: User's message/question
         """
@@ -2410,19 +2413,39 @@ Please retry the tool call using only the valid parameters listed above.
         model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'qwen3:8b') if self.config else 'qwen3:8b'
         temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
-        # Call LLM
-        response = self._call_llm_with_context(
-            context,
-            model=model,
-            temperature=temperature
-        )
+        # Call LLM WITHOUT tools (pure chat mode)
+        from llm_utils import chat_with_inactivity_timeout
+
+        options = {"temperature": temperature}
+        if hasattr(self, 'config') and self.config:
+            if hasattr(self.config, 'llm') and self.config.llm:
+                if self.config.llm.max_tokens is not None:
+                    options["num_ctx"] = self.config.llm.max_tokens
+
+        try:
+            response = chat_with_inactivity_timeout(
+                model=model,
+                messages=context,
+                options=options,
+                tools=None,  # NO TOOLS - pure conversation mode
+                timeout=120
+            )
+        except Exception as e:
+            print(f"\n{self.name}: [Error calling LLM: {e}]\n")
+            return
 
         # Add assistant response to history
         if "message" in response:
             self.add_message(response["message"])
             # Print assistant response
-            if "content" in response["message"]:
-                print(f"\n{self.name}: {response['message']['content']}\n")
+            content = response["message"].get("content", "")
+            if content:
+                print(f"\n{self.name}: {content}\n")
+            else:
+                # Debug: LLM returned no content
+                print(f"\n{self.name}: [No response generated]\n")
+                import json
+                print(f"[DEBUG] Full response: {json.dumps(response, indent=2)}")
 
     def run_task_round_loop(
         self,
