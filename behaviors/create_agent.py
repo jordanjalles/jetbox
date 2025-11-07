@@ -294,10 +294,13 @@ class CreateAgentBehavior(AgentBehavior):
         system_prompt = guidelines_text.strip()
 
         # Assemble full YAML with metadata header
+        # Indent description lines for blurb section
+        description_indented = '\n'.join('  ' + line for line in description.split('\n'))
+
         yaml_content = f"""{metadata}
 role: "{role}"
 blurb: |
-  {description}
+{description_indented}
 {delegation_tool_section}
 system_prompt: |
 {chr(10).join('  ' + line for line in system_prompt.split(chr(10)))}
