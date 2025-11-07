@@ -1,0 +1,53 @@
+
+============================================================
+END-TO-END TEST: MetaProgrammer Direct User Interaction
+============================================================
+
+[1/5] Loading MetaProgrammerAgent...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded with 12 behaviors
+✓ ChatbotBehavior present - direct user interaction enabled
+
+[2/5] User request: Create a simple calculator behavior...
+
+[3/5] MetaProgrammer generating CalculatorBehavior...
+[create_behavior] Generating behavior: CalculatorBehavior
+[create_behavior] Description: Provides basic arithmetic calculation tools (add, subtract, multiply, divide)
+[create_behavior] Tools: 2
+[create_behavior] Safety mode: auto
+[create_behavior] Step 1/6: Generating behavior code...
+[create_behavior] Found class name: CalculatorBehavior, expected: CalculatorBehavior
+[create_behavior] Class name already correct
+[create_behavior] Step 2/6: Generating test code...
+[create_behavior] Step 3/6: Saving to staging...
+[create_behavior] Saved behavior to: .agent_generated/staging/CalculatorBehavior.py
+[create_behavior] Saved test to: .agent_generated/staging/test_CalculatorBehavior.py
+[create_behavior] Step 4/6: Validating generated code...
+[create_behavior] Step 5/6: Testing in sandbox...
+[create_behavior] Step 6/6: Handling safety mode 'auto'...
+[installer] Installed: behaviors/CalculatorBehavior.py
+[installer] Installed: tests/test_CalculatorBehavior.py
+
+[4/5] Verifying generation results...
+✓ Behavior generated: .agent_generated/staging/CalculatorBehavior.py
+✓ Tests generated: .agent_generated/staging/test_CalculatorBehavior.py
+
+[5/5] Checking validation results...
+
+✓ Cleanup complete
+
+❌ Test failed: No validation results
