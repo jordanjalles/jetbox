@@ -1909,10 +1909,10 @@ Please retry the tool call using only the valid parameters listed above.
             )
 
         try:
-            # Use ChatbotBehavior's multi-task chat loop
+            # Use ChatbotBehavior's chat loop
             if not exit_after_initial:
                 # Multi-task chat mode
-                chatbot_behavior.run_multi_task_chat_loop(
+                chatbot_behavior.run_chat_loop(
                     agent=agent,
                     execute_task_callback=execute_task,
                     initial_message=initial_message
@@ -1924,7 +1924,7 @@ Please retry the tool call using only the valid parameters listed above.
                 print("\nTask completed. Exiting...")
             else:
                 # Interactive mode without initial message - use chat loop
-                chatbot_behavior.run_multi_task_chat_loop(
+                chatbot_behavior.run_chat_loop(
                     agent=agent,
                     execute_task_callback=execute_task,
                     initial_message=None

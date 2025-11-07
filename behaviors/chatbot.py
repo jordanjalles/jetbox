@@ -266,6 +266,72 @@ Guidelines:
 
         return context
 
+    def run_chat_loop(
+        self,
+        agent: Any,
+        execute_task_callback: Any,
+        initial_message: str | None = None
+    ) -> None:
+        """
+        OPTIONAL CONVENIENCE METHOD: Provide default CLI chat loop implementation.
+
+        This is NOT the core responsibility of ChatbotBehavior (which is tools + hooks).
+        This is a convenience method for quick CLI setup. Advanced users can:
+        - Use this for simple CLI chat mode
+        - Implement custom loop using this behavior's tools
+        - Ignore this entirely in non-CLI contexts (web, API, Discord)
+
+        Args:
+            agent: Agent instance
+            execute_task_callback: Function(task_description) that executes a task
+            initial_message: Optional first message to execute before entering loop
+
+        Workflow:
+            1. Execute initial message if provided
+            2. Show prompt and get user input
+            3. Execute via callback
+            4. Return to prompt for next task
+            5. Repeat until user types 'quit'
+        """
+        # Execute initial message if provided
+        if initial_message:
+            execute_task_callback(initial_message)
+            print("\n✅ Task completed. Ready for next request.\n")
+
+        # Interactive loop
+        agent_name = getattr(agent, 'name', 'Agent').upper()
+        print("=" * 60)
+        print(f"{agent_name} CHAT MODE")
+        print("=" * 60)
+        print("Enter task descriptions and I'll execute them.")
+        print("(Type 'quit' or 'exit' to end session)")
+        print()
+
+        while True:
+            try:
+                # Get user input
+                user_input = input("You: ").strip()
+
+                if not user_input:
+                    continue
+
+                if user_input.lower() in ["quit", "exit", "q"]:
+                    print("\nShutting down...")
+                    break
+
+                # Execute task via callback
+                execute_task_callback(user_input)
+
+                # Show completion message
+                print("\n✅ Task completed. Ready for next request.\n")
+
+            except KeyboardInterrupt:
+                print("\n\nInterrupted by user. Shutting down...")
+                break
+            except Exception as e:
+                print(f"\n❌ Error: {e}\n")
+                print("Ready for next request.\n")
+
     def get_instructions(self) -> str:
         """
         Return chat mode workflow instructions.
