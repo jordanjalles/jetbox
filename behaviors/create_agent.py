@@ -138,9 +138,10 @@ class CreateAgentBehavior(AgentBehavior):
         # Support both parameter styles for delegation tool
         delegation_tool_params = args.get("delegation_tool_params")
         if delegation_tool_params is None:
+            # If full delegation_tool dict is provided, use it directly
             delegation_tool = args.get("delegation_tool", {})
             if delegation_tool:
-                delegation_tool_params = delegation_tool.get("parameters", {})
+                delegation_tool_params = delegation_tool
             else:
                 delegation_tool_params = {}
 
@@ -183,11 +184,152 @@ class CreateAgentBehavior(AgentBehavior):
     ) -> dict[str, Any]:
         """Run the full agent generation workflow."""
         agent_name = params["agent_name"]
-        
-        # For now, return a simple success result
-        # Full implementation would generate YAML, validate, etc.
+        role = params["role"]
+        description = params["description"]
+        behaviors = params["behaviors"]
+        system_prompt_guidelines = params.get("system_prompt_guidelines", "")
+        delegation_tool_params = params.get("delegation_tool_params", None)
+        safety_mode = params.get("safety_mode", "auto")
+
+        # 1. Generate YAML configuration
+        config_result = self._generate_agent_config(
+            agent, agent_name, role, description, behaviors,
+            system_prompt_guidelines, delegation_tool_params
+        )
+
+        if "error" in config_result:
+            return config_result
+
+        yaml_content = config_result["yaml_content"]
+
+        # 2. Determine output path based on safety_mode
+        staging_dir = Path(".agent_generated/staging")
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        staging_path = staging_dir / f"{agent_name}.yaml"
+
+        # 3. Write YAML to staging
+        try:
+            with open(staging_path, "w", encoding="utf-8") as f:
+                f.write(yaml_content)
+        except Exception as e:
+            return {"error": f"Failed to write config file: {e}"}
+
+        # 4. Validate the generated YAML
+        validation_result = self._validate_agent_config(agent, str(staging_path))
+        if "error" in validation_result:
+            return {
+                "error": f"Generated config failed validation: {validation_result['error']}",
+                "config_file": str(staging_path)
+            }
+
+        # 5. Return success with config file path
         return {
             "success": True,
+            "config_file": str(staging_path),
             "agent_name": agent_name,
-            "message": "Agent generation workflow placeholder"
+            "message": f"Agent config generated and validated at {staging_path}"
         }
+
+    def _generate_agent_config(
+        self,
+        agent: Any,
+        agent_name: str,
+        role: str,
+        description: str,
+        behaviors: list[str],
+        system_prompt_guidelines: list[str],
+        delegation_tool_params: dict[str, Any] = None
+    ) -> dict[str, Any]:
+        """Generate agent YAML configuration content."""
+        # Build behaviors list in YAML format
+        behaviors_yaml = []
+        for behavior in behaviors:
+            behaviors_yaml.append(f"  - type: {behavior}")
+        behaviors_str = "\n".join(behaviors_yaml)
+
+        # Build delegation tool section if provided
+        delegation_tool_section = ""
+        if delegation_tool_params:
+            tool_name = delegation_tool_params.get("name", f"delegate_to_{agent_name.replace('-', '_')}")
+            tool_desc = delegation_tool_params.get("description", f"Delegate tasks to {agent_name}")
+
+            # Build parameters section
+            params_yaml = []
+            for param_name, param_config in delegation_tool_params.get("parameters", {}).items():
+                param_type = param_config.get("type", "string")
+                param_desc = param_config.get("description", "")
+                param_required = param_config.get("required", False)
+                params_yaml.append(f"    {param_name}:")
+                params_yaml.append(f"      type: {param_type}")
+                params_yaml.append(f"      description: \"{param_desc}\"")
+                params_yaml.append(f"      required: {str(param_required).lower()}")
+            params_str = "\n".join(params_yaml) if params_yaml else "    task_description:\n      type: string\n      description: \"Task to delegate\"\n      required: true"
+
+            delegation_tool_section = f"""delegation_tool:
+  name: "{tool_name}"
+  description: "{tool_desc}"
+  parameters:
+{params_str}
+"""
+
+        # Build system prompt - handle list of guidelines
+        if isinstance(system_prompt_guidelines, list) and len(system_prompt_guidelines) == 1:
+            # If single string passed as list, use it directly
+            guidelines_text = system_prompt_guidelines[0]
+        elif isinstance(system_prompt_guidelines, list):
+            # If multiple strings, join with newlines
+            guidelines_text = "\n\n".join(system_prompt_guidelines)
+        else:
+            # Fallback for string input
+            guidelines_text = str(system_prompt_guidelines) if system_prompt_guidelines else ""
+
+        system_prompt = guidelines_text.strip()
+
+        # Assemble full YAML
+        yaml_content = f"""role: "{role}"
+blurb: |
+  {description}
+{delegation_tool_section}
+system_prompt: |
+{chr(10).join('  ' + line for line in system_prompt.split(chr(10)))}
+
+behaviors:
+{behaviors_str}
+"""
+
+        return {"yaml_content": yaml_content}
+
+    def _validate_agent_config(
+        self,
+        agent: Any,
+        config_path: str
+    ) -> dict[str, Any]:
+        """Validate agent configuration file."""
+        try:
+            # Load YAML
+            import yaml
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+
+            # Check required fields
+            required_fields = ["role", "blurb", "system_prompt", "behaviors"]
+            for field in required_fields:
+                if field not in config:
+                    return {"error": f"Missing required field: {field}"}
+
+            # Validate behaviors is a list
+            if not isinstance(config["behaviors"], list):
+                return {"error": "behaviors must be a list"}
+
+            # Validate delegation_tool if present
+            if "delegation_tool" in config:
+                dt = config["delegation_tool"]
+                if not isinstance(dt, dict):
+                    return {"error": "delegation_tool must be a dict"}
+                if "name" not in dt or "description" not in dt:
+                    return {"error": "delegation_tool must have name and description"}
+
+            return {"success": True, "config": config}
+
+        except Exception as e:
+            return {"error": f"Validation failed: {e}"}

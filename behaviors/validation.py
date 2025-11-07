@@ -213,11 +213,15 @@ class ValidationBehavior(AgentBehavior):
                         "properties": {
                             "config": {
                                 "type": "object",
-                                "description": "Agent config dictionary to validate (use this OR config_yaml)"
+                                "description": "Agent config dictionary to validate (use this OR config_yaml OR config_file)"
                             },
                             "config_yaml": {
                                 "type": "string",
-                                "description": "Agent config YAML string to validate (use this OR config)"
+                                "description": "Agent config YAML string to validate (use this OR config OR config_file)"
+                            },
+                            "config_file": {
+                                "type": "string",
+                                "description": "Path to agent config YAML file (use this OR config OR config_yaml)"
                             },
                             "behaviors_dir": {
                                 "type": "string",
@@ -332,15 +336,20 @@ class ValidationBehavior(AgentBehavior):
         try:
             import yaml
 
-            # Support both dict and YAML string input
+            # Support dict, YAML string, or file path input
             config = args.get("config")
             config_yaml = args.get("config_yaml")
+            config_file = args.get("config_file")
 
-            if config_yaml:
+            if config_file:
+                # Load from file
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+            elif config_yaml:
                 # Parse YAML string to dict
                 config = yaml.safe_load(config_yaml)
             elif not config:
-                return {"error": "Either 'config' or 'config_yaml' parameter required"}
+                return {"error": "Either 'config', 'config_yaml', or 'config_file' parameter required"}
 
             behaviors_dir = args.get("behaviors_dir")
 
@@ -350,8 +359,11 @@ class ValidationBehavior(AgentBehavior):
                 behaviors_dir = workspace / behaviors_dir
 
             result = validate_agent_config(config, behaviors_dir)
-            return {"result": result}
+            # Return result directly (not wrapped) for consistency
+            return result
         except yaml.YAMLError as e:
             return {"error": f"YAML parse error: {str(e)}"}
+        except FileNotFoundError as e:
+            return {"error": f"Config file not found: {str(e)}"}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
