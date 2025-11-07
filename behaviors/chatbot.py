@@ -78,6 +78,10 @@ class ChatbotBehavior(AgentBehavior):
                 return []
 
         # No goal set - provide set_goal tool for chat mode
+        # Note: We used to provide clarify_with_user tool, but removed it because:
+        # 1. LLM can ask questions conversationally without needing a tool
+        # 2. It added unnecessary tool call overhead
+        # 3. Questions are clearer when in plain text responses
         return [
             {
                 "type": "function",
@@ -97,23 +101,6 @@ class ChatbotBehavior(AgentBehavior):
                             }
                         },
                         "required": ["goal"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "clarify_with_user",
-                    "description": "Ask a specific technical clarification question about task requirements. ONLY use when user has expressed intent to build something and you need specific details. For general chat, just respond conversationally.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "question": {
-                                "type": "string",
-                                "description": "A specific technical question about requirements (e.g., 'Should the API use REST or GraphQL?')"
-                            }
-                        },
-                        "required": ["question"]
                     }
                 }
             }
