@@ -1961,6 +1961,12 @@ Please retry the tool call using only the valid parameters listed above.
                         else:
                             args = args_raw
 
+                        # Special handling for clarify_with_user - display question to user
+                        if tool_name == "clarify_with_user":
+                            question = args.get("question", "")
+                            if question:
+                                print(f"\n{agent.name}: {question}\n")
+
                         # Dispatch tool (dispatch_tool expects tool_call dict)
                         result = agent.dispatch_tool(tool_call)
                         print(f"[DEBUG] Tool result: {result.get('success', False)}")
