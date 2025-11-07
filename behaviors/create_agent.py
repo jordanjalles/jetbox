@@ -6,8 +6,6 @@ This behavior provides tools for generating agent configuration YAML files.
 
 from typing import Any
 from pathlib import Path
-import json
-import yaml
 from behaviors.base import AgentBehavior
 
 
@@ -189,7 +187,7 @@ class CreateAgentBehavior(AgentBehavior):
         behaviors = params["behaviors"]
         system_prompt_guidelines = params.get("system_prompt_guidelines", "")
         delegation_tool_params = params.get("delegation_tool_params", None)
-        safety_mode = params.get("safety_mode", "auto")
+        # Note: safety_mode param exists but not used in this method yet
 
         # 1. Generate YAML configuration
         config_result = self._generate_agent_config(
@@ -238,9 +236,20 @@ class CreateAgentBehavior(AgentBehavior):
         description: str,
         behaviors: list[str],
         system_prompt_guidelines: list[str],
-        delegation_tool_params: dict[str, Any] = None
+        delegation_tool_params: dict[str, Any] = None,
+        author: str = "MetaProgrammer"
     ) -> dict[str, Any]:
-        """Generate agent YAML configuration content."""
+        """Generate agent YAML configuration content with metadata header."""
+        from utils.generation_metadata import generate_metadata_header
+
+        # Generate metadata header
+        metadata = generate_metadata_header(
+            generator="CreateAgentBehavior",
+            author=author,
+            parent_request=description,
+            version="1.0.0"
+        )
+
         # Build behaviors list in YAML format
         behaviors_yaml = []
         for behavior in behaviors:
@@ -285,8 +294,9 @@ class CreateAgentBehavior(AgentBehavior):
 
         system_prompt = guidelines_text.strip()
 
-        # Assemble full YAML
-        yaml_content = f"""role: "{role}"
+        # Assemble full YAML with metadata header
+        yaml_content = f"""{metadata}
+role: "{role}"
 blurb: |
   {description}
 {delegation_tool_section}
