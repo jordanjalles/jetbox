@@ -104,13 +104,13 @@ class ChatbotBehavior(AgentBehavior):
                 "type": "function",
                 "function": {
                     "name": "clarify_with_user",
-                    "description": "Ask the user a clarifying question. The question will be displayed in the assistant's response.",
+                    "description": "Ask a specific technical clarification question about task requirements. ONLY use when user has expressed intent to build something and you need specific details. For general chat, just respond conversationally.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "question": {
                                 "type": "string",
-                                "description": "The question to ask the user"
+                                "description": "A specific technical question about requirements (e.g., 'Should the API use REST or GraphQL?')"
                             }
                         },
                         "required": ["question"]
@@ -244,18 +244,23 @@ class ChatbotBehavior(AgentBehavior):
         if self.chat_mode_active and not self.chat_instructions_injected:
             chat_instructions = """CHAT MODE ACTIVE:
 
-No goal has been provided yet. Your job is to:
-1. Engage in conversation with the user
-2. Ask clarifying questions to understand their requirements
-3. Extract a clear goal from the conversation
-4. Call set_goal(goal, requirements) when you have sufficient clarity
+No goal has been provided yet. You can have a normal conversation with the user.
+
+**How to respond:**
+- If user is just chatting or asking general questions → Respond naturally (no tools needed)
+- If user wants to build/create something → Ask clarifying questions to understand requirements
+- When requirements are clear and user is ready → Call set_goal(goal, requirements) to start execution
+
+**Available tools:**
+- set_goal: Call this when you're ready to start working on a task
+- clarify_with_user: Use ONLY if you need to ask a very specific question about requirements
+  (But you can also just respond conversationally - tools are optional!)
 
 Guidelines:
 - Be conversational and helpful
-- Ask questions to clarify ambiguous requests
-- Suggest approaches based on user's needs
-- When requirements are clear, form a concise goal statement
-- Use set_goal tool to transition to execution mode
+- Don't force tools - respond naturally when appropriate
+- Ask questions to clarify ambiguous requests when user wants to build something
+- When requirements are clear, call set_goal to transition to execution mode
 """
             # Append to messages (not inject after system)
             context.append({
