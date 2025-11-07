@@ -2406,11 +2406,15 @@ Please retry the tool call using only the valid parameters listed above.
         # Build context
         context = self.build_context()
 
+        # Get model and temperature from config (same logic as _setup_run)
+        model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'qwen3:8b') if self.config else 'qwen3:8b'
+        temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
+
         # Call LLM
         response = self._call_llm_with_context(
             context,
-            model=self.model,
-            temperature=self.temperature
+            model=model,
+            temperature=temperature
         )
 
         # Add assistant response to history

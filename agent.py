@@ -151,15 +151,15 @@ def get_team_name() -> str:
     return select_team_interactively(teams)
 
 
-def get_first_agent_class(team_name: str):
+def get_first_agent_info(team_name: str) -> tuple:
     """
-    Load team config and return the first agent's class.
+    Load team config and return the first agent's class and config file.
 
     Args:
         team_name: Team file name (without .yaml extension)
 
     Returns:
-        The agent class to instantiate
+        Tuple of (agent_class, config_file_path or None, agent_name)
     """
     # Load team config
     team_config = load_team_config(team_name)
@@ -184,9 +184,16 @@ def get_first_agent_class(team_name: str):
         print(f"Error: No class defined for agent '{first_agent_name}' in team '{team_name}'")
         sys.exit(1)
 
+    # Get config file if specified
+    config_file = None
+    if "config" in first_agent_config:
+        config_file = f"config/agents/{first_agent_config['config']}.yaml"
+
     team_display_name = team_config.get("name", team_name)
     print(f"[agent.py] Using team: {team_display_name}")
     print(f"[agent.py] Starting agent: {first_agent_name} ({class_name})")
+    if config_file:
+        print(f"[agent.py] Using config: {config_file}")
 
     # Import the class dynamically
     # Map class names to modules
@@ -205,7 +212,7 @@ def get_first_agent_class(team_name: str):
     try:
         module = __import__(module_name, fromlist=[class_name])
         agent_class = getattr(module, class_name)
-        return agent_class
+        return (agent_class, config_file, first_agent_name)
     except ImportError as e:
         print(f"Error: Could not import {class_name} from {module_name}: {e}")
         sys.exit(1)
@@ -220,7 +227,37 @@ def main():
     team_name = get_team_name()
 
     # Load first agent from team
-    agent_class = get_first_agent_class(team_name)
+    agent_class, config_file, agent_name = get_first_agent_info(team_name)
+
+    # If team config specifies a custom config file, we need to override
+    # the agent class's create_agent_instance to pass it
+    if config_file:
+        # Create a wrapper that overrides create_agent_instance to pass config_file
+        original_create = agent_class.create_agent_instance
+
+        @classmethod
+        def create_with_config(cls, workspace, args):
+            """Override to pass custom config file from team config."""
+            initial_message = args.get("initial_message")
+            force_chat_mode = args.get("force_chat_mode", False)
+            timeout_seconds = args.get("timeout_seconds", 600)
+
+            # Determine if ChatbotBehavior should be excluded
+            exclude_behaviors = []
+            if initial_message and not force_chat_mode:
+                # Autonomous mode: exclude chatbot to run goal directly
+                exclude_behaviors = ["ChatbotBehavior"]
+
+            # Create agent with custom config file
+            return cls(
+                workspace=workspace,
+                config_file=config_file,
+                exclude_behaviors=exclude_behaviors,
+                timeout_seconds=timeout_seconds
+            )
+
+        # Temporarily replace the method
+        agent_class.create_agent_instance = create_with_config
 
     # Call the agent's main() method, which handles all CLI parsing and execution
     agent_class.main()
