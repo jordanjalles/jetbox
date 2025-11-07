@@ -105,8 +105,9 @@ class YourBehaviorName(AgentBehavior):
             except Exception as e:
                 return {"error": str(e)}
 
-        # Not our tool, pass to parent
-        return super().dispatch_tool(agent, tool_name, args)
+        # Unknown tool - return error
+        # IMPORTANT: Do NOT call super().dispatch_tool() as it causes double-dispatch
+        return {"error": f"Unknown tool: {tool_name}"}
 
     def _do_work(self, param, optional):
         """

@@ -118,9 +118,10 @@ class {BEHAVIOR_CLASS_NAME}Behavior(AgentBehavior):
         """
         if tool_name == "{TOOL_NAME}":
             return self._execute_{TOOL_NAME}(agent, args)
-        else:
-            # Fall through to parent for unknown tools
-            return super().dispatch_tool(agent, tool_name, args)
+
+        # Unknown tool - return error
+        # IMPORTANT: Do NOT call super().dispatch_tool() as it causes double-dispatch
+        return {"error": f"Unknown tool: {tool_name}"}
 
     def _execute_{TOOL_NAME}(
         self,
