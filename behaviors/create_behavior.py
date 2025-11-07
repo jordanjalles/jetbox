@@ -510,8 +510,7 @@ Generate the complete test file now:"""
             metadata = generate_metadata_header(
                 generator="CreateBehaviorBehavior",
                 author=author,
-                parent_request=description,
-                version="1.0.0"
+                parent_request=description
             )
 
             # Inject metadata at the top of behavior code

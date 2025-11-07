@@ -1,0 +1,16 @@
+# META: GENERATED_BY=MetaProgrammer
+# META: GENERATOR=CreateAgentBehavior
+# META: AUTHOR=MetaProgrammer
+# META: TIMESTAMP=2025-11-07T01:00:25.241401
+# META: VERSION=1.0.0
+# META: PARENT_REQUEST="A simple test agent to verify metadata injection"
+
+role: "Test agent for metadata validation"
+blurb: |
+  A simple test agent to verify metadata injection
+
+system_prompt: |
+  You are a helpful test agent.
+
+behaviors:
+  - type: ChatbotBehavior

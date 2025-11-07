@@ -236,13 +236,17 @@ This test demonstrates:
 All generated files include provenance metadata headers for queries and cleanup:
 
 ```python
-# META: GENERATED_BY=MetaProgrammer
-# META: GENERATOR=CreateBehaviorBehavior
 # META: AUTHOR=MetaProgrammer
+# META: GENERATOR=CreateBehaviorBehavior
 # META: TIMESTAMP=2025-11-07T12:34:56
-# META: VERSION=1.0.0
 # META: PARENT_REQUEST="Create a calculator behavior"
 ```
+
+Fields:
+- **AUTHOR**: Agent that created the file (e.g., MetaProgrammer)
+- **GENERATOR**: Tool used to generate (CreateBehaviorBehavior or CreateAgentBehavior)
+- **TIMESTAMP**: UTC timestamp of creation
+- **PARENT_REQUEST**: Original user request that triggered generation
 
 ### Query Generated Files
 

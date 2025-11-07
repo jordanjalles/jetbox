@@ -246,8 +246,7 @@ class CreateAgentBehavior(AgentBehavior):
         metadata = generate_metadata_header(
             generator="CreateAgentBehavior",
             author=author,
-            parent_request=description,
-            version="1.0.0"
+            parent_request=description
         )
 
         # Build behaviors list in YAML format
