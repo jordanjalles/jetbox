@@ -1895,35 +1895,93 @@ Please retry the tool call using only the valid parameters listed above.
         def execute_task(user_message: str) -> None:
             """Execute a single task in multi-task mode."""
             if chat_only_mode:
-                # Pure chat mode - just run a single LLM round
+                # Pure chat mode - just run a single LLM round without tools
                 agent.run_single_llm_round(user_message)
             else:
-                # Task execution mode - full workspace/tool setup
-                # Call pre-task hooks (agent and behaviors)
-                if hasattr(agent, 'pre_task_hook'):
-                    agent.pre_task_hook()
-                for behavior in agent.behaviors:
-                    if hasattr(behavior, 'pre_task_hook'):
-                        behavior.pre_task_hook(agent)
+                # Task-capable mode - agent can clarify requirements OR execute tasks
+                # Let agent respond first (with tools like set_goal, clarify_with_user)
+                # If it calls set_goal, then start full execution
 
-                # Reset ChatbotBehavior flags for new task
-                chatbot_behavior.task_complete_flag = False
-                chatbot_behavior.consecutive_empty_rounds = 0
+                # Add user message
+                agent.add_message({"role": "user", "content": user_message})
 
-                # Trigger onGoalSet to initialize workspace and subsystems
-                # This is needed for agents like task_executor that need workspace setup
-                agent.trigger_behavior_event(
-                    "onGoalSet",
-                    goal=user_message,
-                    workspace=agent.workspace
+                # Build context
+                context = agent.build_context()
+
+                # Get model/temperature from config
+                model = getattr(agent, 'model', None) or getattr(agent.config.llm, 'model', 'qwen3:8b') if agent.config else 'qwen3:8b'
+                temperature = getattr(agent, 'temperature', None) or getattr(agent.config.llm, 'temperature', 0.2) if agent.config else 0.2
+
+                # Call LLM with tools available
+                response = agent._call_llm_with_context(
+                    context,
+                    model=model,
+                    temperature=temperature
                 )
 
-                # Execute task using base_agent's run_task_round_loop
-                agent.run_task_round_loop(
-                    user_message=user_message,
-                    max_rounds=100,
-                    check_completion_callback=lambda: chatbot_behavior.task_complete_flag
-                )
+                # Add response to history
+                if "message" not in response:
+                    return
+
+                agent.add_message(response["message"])
+
+                # Print response if any
+                if "content" in response["message"] and response["message"]["content"]:
+                    print(f"\n{agent.name}: {response['message']['content']}\n")
+
+                # Check if agent called set_goal tool
+                goal_set = False
+                goal_text = None
+
+                if "tool_calls" in response["message"]:
+                    for tool_call in response["message"]["tool_calls"]:
+                        tool_name = tool_call["function"]["name"]
+
+                        # Dispatch tool
+                        import json
+                        args = json.loads(tool_call["function"]["arguments"])
+                        result = agent.dispatch_tool(tool_name, args)
+
+                        # Add tool result to history
+                        agent.add_message({
+                            "role": "tool",
+                            "content": json.dumps(result),
+                            "name": tool_name
+                        })
+
+                        # Check if set_goal was called
+                        if tool_name == "set_goal" and result.get("success"):
+                            goal_set = True
+                            goal_text = args.get("goal")
+
+                # If set_goal was called, start full task execution
+                if goal_set and goal_text:
+                    # Call pre-task hooks
+                    if hasattr(agent, 'pre_task_hook'):
+                        agent.pre_task_hook()
+                    for behavior in agent.behaviors:
+                        if hasattr(behavior, 'pre_task_hook'):
+                            behavior.pre_task_hook(agent)
+
+                    # Reset ChatbotBehavior flags
+                    chatbot_behavior.task_complete_flag = False
+                    chatbot_behavior.consecutive_empty_rounds = 0
+
+                    # Trigger onGoalSet for workspace setup
+                    agent.trigger_behavior_event(
+                        "onGoalSet",
+                        goal=goal_text,
+                        workspace=agent.workspace
+                    )
+
+                    print(f"\n[Starting task execution: {goal_text}]\n")
+
+                    # Execute task
+                    agent.run_task_round_loop(
+                        user_message=goal_text,
+                        max_rounds=100,
+                        check_completion_callback=lambda: chatbot_behavior.task_complete_flag
+                    )
 
         try:
             # Use ChatbotBehavior's chat loop
