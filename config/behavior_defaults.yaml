@@ -37,3 +37,10 @@ WorkspaceTaskNotesBehavior:
 
 DelegationBehavior:
   # Parameters come from team configuration relationships
+
+ContextInspectorBehavior:
+  output_dir: ".context_inspection"
+  save_full_context: true
+  compress_large_contexts: false
+  capture_tools: true
+  capture_metrics: true

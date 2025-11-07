@@ -31,6 +31,46 @@ if "OLLAMA_MODEL" in os.environ:
 from agent_config import list_available_teams, load_team_config
 
 
+def parse_extra_behaviors(argv: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Parse --BehaviorName flags from argv for dynamic behavior injection.
+
+    Supports both:
+    - --ContextInspectorBehavior (full name)
+    - --ContextInspector (short name, appends 'Behavior')
+
+    Any flag starting with -- and a capital letter is treated as a behavior flag.
+    This enables CLI injection of any behavior for debugging/inspection.
+
+    Returns:
+        (extra_behaviors, remaining_args)
+    """
+    extra_behaviors = []
+    remaining_args = [argv[0]]  # Keep script name
+
+    i = 1
+    while i < len(argv):
+        arg = argv[i]
+
+        if arg.startswith('--'):
+            flag_name = arg[2:]  # Strip '--'
+
+            # Check if it's a behavior flag (starts with capital letter)
+            if flag_name and flag_name[0].isupper():
+                # Ensure it ends with 'Behavior'
+                if not flag_name.endswith('Behavior'):
+                    flag_name += 'Behavior'
+                extra_behaviors.append(flag_name)
+                i += 1
+                continue
+
+        # Not a behavior flag, keep in args
+        remaining_args.append(arg)
+        i += 1
+
+    return extra_behaviors, remaining_args
+
+
 def print_usage():
     """Print usage information."""
     print("Usage: python agent.py [OPTIONS] [goal]")
@@ -234,6 +274,17 @@ def get_first_agent_info(team_name: str) -> tuple:
 
 def main():
     """Main entry point - select team and run first agent."""
+    # Parse extra behaviors from CLI flags (e.g., --ContextInspector)
+    extra_behaviors, remaining_args = parse_extra_behaviors(sys.argv)
+
+    # Store in env var for session-wide propagation to sub-agents
+    if extra_behaviors:
+        os.environ['JETBOX_EXTRA_BEHAVIORS'] = ','.join(extra_behaviors)
+        print(f"[agent.py] Extra behaviors enabled: {', '.join(extra_behaviors)}")
+
+    # Update sys.argv to remove behavior flags
+    sys.argv = remaining_args
+
     # Determine which team to use
     team_name = get_team_name()
 
@@ -259,6 +310,10 @@ def main():
                 # Autonomous mode: exclude chatbot to run goal directly
                 exclude_behaviors = ["ChatbotBehavior"]
 
+            # Get extra behaviors from environment (set by parse_extra_behaviors in main)
+            extra_behaviors_env = os.environ.get('JETBOX_EXTRA_BEHAVIORS', '')
+            extra_behaviors = [b.strip() for b in extra_behaviors_env.split(',') if b.strip()] if extra_behaviors_env else None
+
             # Create agent with custom config file and agent name from team
             # NOTE: TaskExecutorAgent.__init__ has name="task_executor" hardcoded,
             # but BaseAgent.__init__ will override it if we instantiate BaseAgent directly
@@ -269,6 +324,7 @@ def main():
                 config_file=config_file,
                 timeout_seconds=timeout_seconds,
                 exclude_behaviors=exclude_behaviors,
+                extra_behaviors=extra_behaviors,
             )
 
         # Temporarily replace the method

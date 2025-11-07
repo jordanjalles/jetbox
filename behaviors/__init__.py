@@ -36,6 +36,7 @@ from behaviors.loop_detection import LoopDetectionBehavior
 from behaviors.workspace_task_notes import WorkspaceTaskNotesBehavior
 from behaviors.status_display import StatusDisplayBehavior
 from behaviors.delegation import DelegationBehavior
+from behaviors.context_inspector import ContextInspectorBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -51,4 +52,5 @@ __all__ = [
     "WorkspaceTaskNotesBehavior",
     "StatusDisplayBehavior",
     "DelegationBehavior",
+    "ContextInspectorBehavior",
 ]

@@ -1,0 +1,55 @@
+{
+  "agent_name": "orchestrator",
+  "round": 0,
+  "phase": "initial",
+  "timestamp": 1234567930.0,
+  "context": [
+    {
+      "role": "system",
+      "content": "You are an orchestrator agent that delegates tasks to specialized agents. DelegationBehavior allows you to spawn task_executor and architect agents. StatusDisplayBehavior shows progress. LoopDetectionBehavior prevents infinite delegation loops."
+    },
+    {
+      "role": "user",
+      "content": "Build a complete web application with backend and frontend"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "delegate_task",
+        "description": "Delegate a task to a specialized agent",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "agent": {"type": "string", "description": "Agent type: task_executor or architect"},
+            "goal": {"type": "string", "description": "Goal for the agent"}
+          },
+          "required": ["agent", "goal"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "mark_complete",
+        "description": "Mark the current task as complete",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "summary": {"type": "string", "description": "Completion summary"}
+          },
+          "required": ["summary"]
+        }
+      }
+    }
+  ],
+  "behaviors_loaded": ["DelegationBehavior", "StatusDisplayBehavior", "LoopDetectionBehavior"],
+  "metrics": {
+    "system_prompt_length": 250,
+    "total_messages": 2,
+    "total_context_length": 350,
+    "tool_count": 2,
+    "tool_definition_length": 400
+  }
+}

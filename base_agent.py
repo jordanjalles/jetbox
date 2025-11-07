@@ -94,6 +94,7 @@ class BaseAgent:
         workspace: Path,
         config_file: str,
         exclude_behaviors: list[str] | None = None,
+        extra_behaviors: list[str] | None = None,
         timeout_seconds: int = 600,
     ):
         """
@@ -104,6 +105,7 @@ class BaseAgent:
             workspace: Working directory for this agent
             config_file: Path to agent-specific config YAML (e.g., "config/agents/task_executor.yaml")
             exclude_behaviors: List of behavior names to exclude (e.g., ["ChatbotBehavior"])
+            extra_behaviors: List of behavior names to inject via CLI (e.g., ["ContextInspectorBehavior"])
             timeout_seconds: Subprocess timeout in seconds (default: 600 = 10 minutes)
         """
         import yaml
@@ -200,6 +202,9 @@ class BaseAgent:
         # Load behaviors from agent config
         # This must happen at the end of __init__ after all attributes are set
         self._load_behaviors_from_config_dict(agent_config)
+
+        # Load extra behaviors from CLI or environment (Phase 2)
+        self._load_extra_behaviors(extra_behaviors)
 
     # ===========================
     # Abstract methods (must implement)
@@ -1016,6 +1021,80 @@ Please retry the tool call using only the valid parameters listed above.
         except Exception as e:
             print(f"[{self.name}] Warning: Failed to load global behavior defaults: {e}")
             return {}
+
+    def _load_extra_behaviors(self, extra_behaviors: list[str] | None = None) -> None:
+        """
+        Load additional behaviors from CLI flags or environment variable.
+
+        Checks two sources (in priority order):
+        1. extra_behaviors parameter (from direct instantiation)
+        2. JETBOX_EXTRA_BEHAVIORS env var (for session-wide propagation)
+
+        Behaviors loaded via this method use global defaults from
+        config/behavior_defaults.yaml. If a behavior is already loaded
+        via config or is in the exclude list, it will be skipped.
+
+        Args:
+            extra_behaviors: List of behavior class names to load (e.g., ["ContextInspectorBehavior"])
+        """
+        behaviors_to_load = []
+
+        # From parameter (direct instantiation)
+        if extra_behaviors:
+            behaviors_to_load.extend(extra_behaviors)
+
+        # From environment (for session-wide propagation to sub-agents)
+        env_behaviors = os.environ.get('JETBOX_EXTRA_BEHAVIORS', '')
+        if env_behaviors:
+            behaviors_to_load.extend([b.strip() for b in env_behaviors.split(',') if b.strip()])
+
+        if not behaviors_to_load:
+            return
+
+        print(f"[{self.name}] Loading extra behaviors: {behaviors_to_load}")
+
+        # Load global behavior defaults
+        global_defaults = self._load_global_behavior_defaults()
+
+        for behavior_type in behaviors_to_load:
+            # Skip if already loaded or excluded
+            if behavior_type in self.exclude_behaviors:
+                print(f"[{self.name}] Skipping excluded extra behavior: {behavior_type}")
+                continue
+
+            # Check if already loaded (avoid duplicates)
+            behavior_name = self._behavior_name_from_type(behavior_type)
+            if any(b.get_name() == behavior_name for b in self._behaviors):
+                print(f"[{self.name}] Extra behavior {behavior_type} already loaded, skipping")
+                continue
+
+            # Get global defaults for this behavior
+            default_params = global_defaults.get(behavior_type, {})
+            if default_params is None:
+                default_params = {}
+
+            # Dynamically import and instantiate
+            try:
+                behavior_class = self._import_behavior_class(behavior_type)
+                behavior = behavior_class(**default_params)
+                self.add_behavior(behavior)
+                print(f"[{self.name}] Loaded extra behavior: {behavior_type}")
+            except Exception as e:
+                print(f"[{self.name}] Failed to load extra behavior {behavior_type}: {e}")
+
+    def _behavior_name_from_type(self, behavior_type: str) -> str:
+        """
+        Get behavior instance name from class type.
+
+        Example: LoopDetectionBehavior -> loop_detection
+
+        Args:
+            behavior_type: CamelCase behavior class name
+
+        Returns:
+            snake_case behavior name
+        """
+        return self._to_snake_case(behavior_type)
 
     def _load_target_agent_config(self, target_agent: str, agents: dict) -> dict:
         """
