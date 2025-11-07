@@ -2428,7 +2428,7 @@ Please retry the tool call using only the valid parameters listed above.
                 messages=context,
                 options=options,
                 tools=None,  # NO TOOLS - pure conversation mode
-                timeout=120
+                inactivity_timeout=30
             )
         except Exception as e:
             print(f"\n{self.name}: [Error calling LLM: {e}]\n")
