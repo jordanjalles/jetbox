@@ -231,6 +231,54 @@ This test demonstrates:
 3. **Experiment**: Use `dryrun` mode to see what gets generated
 4. **Build agents**: Once you have behaviors, create specialized agents
 
+## Metadata Tracking
+
+All generated files include provenance metadata headers for queries and cleanup:
+
+```python
+# META: GENERATED_BY=MetaProgrammer
+# META: GENERATOR=CreateBehaviorBehavior
+# META: AUTHOR=MetaProgrammer
+# META: TIMESTAMP=2025-11-07T12:34:56
+# META: VERSION=1.0.0
+# META: PARENT_REQUEST="Create a calculator behavior"
+```
+
+### Query Generated Files
+
+```python
+from utils.generation_metadata import (
+    get_files_today,
+    find_generated_files,
+    parse_metadata,
+    remove_generated_files
+)
+
+# Find all files created today
+files_today = get_files_today('.agent_generated')
+
+# Find files by generator
+behavior_files = find_generated_files(
+    '.agent_generated',
+    generator='CreateBehaviorBehavior'
+)
+
+# Find files by date range
+from datetime import datetime
+files = find_generated_files(
+    '.agent_generated',
+    since=datetime(2025, 11, 1),
+    before=datetime(2025, 11, 30)
+)
+
+# Parse metadata from file
+metadata = parse_metadata('behaviors/MyBehavior.py')
+print(metadata['timestamp'])  # 2025-11-07T12:34:56
+
+# Remove files with backup
+remove_generated_files(files_today, backup_dir='.agent_generated/removed')
+```
+
 ## Troubleshooting
 
 **Q: Validation fails with "cross-behavior dependency"**
@@ -244,6 +292,9 @@ A: Check permissions and that the behavior name is unique.
 
 **Q: How do I rollback?**
 A: Backups are in `.agent_generated/backups/` - copy back to `behaviors/` or `tests/`.
+
+**Q: How do I remove all behaviors created today?**
+A: Use `get_files_today()` and `remove_generated_files()` from `utils/generation_metadata`.
 
 ## Documentation
 
