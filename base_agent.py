@@ -1939,7 +1939,12 @@ Please retry the tool call using only the valid parameters listed above.
 
                         # Dispatch tool
                         import json
-                        args = json.loads(tool_call["function"]["arguments"])
+                        args_raw = tool_call["function"]["arguments"]
+                        # Arguments might be string or dict depending on LLM/ollama version
+                        if isinstance(args_raw, str):
+                            args = json.loads(args_raw)
+                        else:
+                            args = args_raw
                         result = agent.dispatch_tool(tool_name, args)
 
                         # Add tool result to history
