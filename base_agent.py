@@ -1974,10 +1974,11 @@ Please retry the tool call using only the valid parameters listed above.
                     chatbot_behavior.consecutive_empty_rounds = 0
 
                     # Trigger onGoalSet for workspace setup
+                    # Pass workspace=None to create new goal-slugged workspace
                     agent.trigger_behavior_event(
                         "onGoalSet",
                         goal=goal_text,
-                        workspace=agent.workspace
+                        workspace=None
                     )
 
                     print(f"\n[Starting task execution: {goal_text}]\n")
