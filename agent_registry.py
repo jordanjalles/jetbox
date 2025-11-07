@@ -74,8 +74,10 @@ class AgentRegistry:
         """
         Get or create agent by name using dynamic instantiation.
 
-        Dynamically imports and instantiates agent classes based on config.
-        No hardcoded agent class references.
+        When a team config specifies a config file, we instantiate BaseAgent directly
+        with that config. The wrapper classes (TaskExecutorAgent, OrchestratorAgent, etc.)
+        are only for CLI convenience with hardcoded defaults - they should NOT be used
+        when loading from team configs.
 
         Args:
             name: Agent name (e.g., "orchestrator", "task_executor")
@@ -85,7 +87,6 @@ class AgentRegistry:
 
         Raises:
             ValueError: If agent not found in config
-            ImportError: If agent module/class cannot be imported
         """
         # Return existing instance if already created
         if name in self.agents:
@@ -97,29 +98,42 @@ class AgentRegistry:
 
         # Get agent configuration
         agent_config = self.config["agents"][name]
-        agent_class_name = agent_config["class"]
 
-        # Determine module name from class name
-        # Convention: OrchestratorAgent → orchestrator_agent
-        # Convert CamelCase to snake_case and append .py convention
-        module_name = self._class_to_module(agent_class_name)
-
-        # Dynamically import agent class
-        try:
-            agent_module = importlib.import_module(module_name)
-            agent_class = getattr(agent_module, agent_class_name)
-        except (ImportError, AttributeError) as e:
-            raise ImportError(
-                f"Failed to import {agent_class_name} from {module_name}: {e}"
-            ) from e
-
-        # Instantiate agent
-        # If agent has a custom config, pass config_file parameter
+        # If agent has a custom config, instantiate BaseAgent directly with that config
+        # The wrapper classes (TaskExecutorAgent, etc.) are only CLI conveniences
         if "config" in agent_config:
             config_file = f"config/agents/{agent_config['config']}.yaml"
-            agent = agent_class(workspace=self.workspace, config_file=config_file)
+            agent = BaseAgent(
+                name=name,  # Use team config name, not hardcoded class name
+                workspace=self.workspace,
+                config_file=config_file
+            )
         else:
-            agent = agent_class(workspace=self.workspace)
+            # No custom config - use wrapper class with its default config
+            # This is for backward compatibility with old team configs
+            agent_class_name = agent_config.get("class", "BaseAgent")
+
+            # If class is BaseAgent, instantiate directly
+            if agent_class_name == "BaseAgent":
+                agent = BaseAgent(
+                    name=name,
+                    workspace=self.workspace
+                )
+            else:
+                # Use wrapper class (TaskExecutorAgent, etc.) with default config
+                # Determine module name from class name
+                module_name = self._class_to_module(agent_class_name)
+
+                # Dynamically import agent class
+                try:
+                    agent_module = importlib.import_module(module_name)
+                    agent_class = getattr(agent_module, agent_class_name)
+                except (ImportError, AttributeError) as e:
+                    raise ImportError(
+                        f"Failed to import {agent_class_name} from {module_name}: {e}"
+                    ) from e
+
+                agent = agent_class(workspace=self.workspace)
 
         # Store and return
         self.agents[name] = agent

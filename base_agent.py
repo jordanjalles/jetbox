@@ -1873,40 +1873,57 @@ Please retry the tool call using only the valid parameters listed above.
         This enables any agent with ChatbotBehavior to handle multiple tasks
         in a conversational interface.
 
+        Supports two modes:
+        - Execute mode: Full task execution with workspace/tools (TaskExecutorAgent)
+        - Chat mode: Pure conversation without task execution (simple chatbot)
+
         Args:
             agent: Agent instance
             chatbot_behavior: ChatbotBehavior instance
             initial_message: Optional initial message to execute
             exit_after_initial: Whether to exit after first task
         """
+        # Determine mode: chat-only or task-execution
+        # Chat-only if agent has no file/command tools
+        has_file_tools = any(
+            behavior.get_name() in ['read_file_tools', 'write_file_tools', 'directory_tools', 'command_tools']
+            for behavior in agent.behaviors
+        )
+        chat_only_mode = not has_file_tools
+
         # Define task execution callback
         def execute_task(user_message: str) -> None:
             """Execute a single task in multi-task mode."""
-            # Call pre-task hooks (agent and behaviors)
-            if hasattr(agent, 'pre_task_hook'):
-                agent.pre_task_hook()
-            for behavior in agent.behaviors:
-                if hasattr(behavior, 'pre_task_hook'):
-                    behavior.pre_task_hook(agent)
+            if chat_only_mode:
+                # Pure chat mode - just run a single LLM round
+                agent.run_single_llm_round(user_message)
+            else:
+                # Task execution mode - full workspace/tool setup
+                # Call pre-task hooks (agent and behaviors)
+                if hasattr(agent, 'pre_task_hook'):
+                    agent.pre_task_hook()
+                for behavior in agent.behaviors:
+                    if hasattr(behavior, 'pre_task_hook'):
+                        behavior.pre_task_hook(agent)
 
-            # Reset ChatbotBehavior flags for new task
-            chatbot_behavior.task_complete_flag = False
-            chatbot_behavior.consecutive_empty_rounds = 0
+                # Reset ChatbotBehavior flags for new task
+                chatbot_behavior.task_complete_flag = False
+                chatbot_behavior.consecutive_empty_rounds = 0
 
-            # Trigger onGoalSet to initialize workspace and subsystems
-            # This is needed for agents like task_executor that need workspace setup
-            agent.trigger_behavior_event(
-                "onGoalSet",
-                goal=user_message,
-                workspace=agent.workspace
-            )
+                # Trigger onGoalSet to initialize workspace and subsystems
+                # This is needed for agents like task_executor that need workspace setup
+                agent.trigger_behavior_event(
+                    "onGoalSet",
+                    goal=user_message,
+                    workspace=agent.workspace
+                )
 
-            # Execute task using base_agent's run_task_round_loop
-            agent.run_task_round_loop(
-                user_message=user_message,
-                max_rounds=100,
-                check_completion_callback=lambda: chatbot_behavior.task_complete_flag
-            )
+                # Execute task using base_agent's run_task_round_loop
+                agent.run_task_round_loop(
+                    user_message=user_message,
+                    max_rounds=100,
+                    check_completion_callback=lambda: chatbot_behavior.task_complete_flag
+                )
 
         try:
             # Use ChatbotBehavior's chat loop
@@ -2372,6 +2389,36 @@ Please retry the tool call using only the valid parameters listed above.
                 "reason": str(e),
                 "workspace": str(self.workspace) if self.workspace else None,
             }
+
+    def run_single_llm_round(self, user_message: str) -> None:
+        """
+        Run a single LLM round for chat-only mode (no task execution).
+
+        Used by simple chatbots that just need conversation without
+        workspace setup, tool loops, or completion detection.
+
+        Args:
+            user_message: User's message/question
+        """
+        # Add user message to context
+        self.add_message({"role": "user", "content": user_message})
+
+        # Build context
+        context = self.build_context()
+
+        # Call LLM
+        response = self._call_llm_with_context(
+            context,
+            model=self.model,
+            temperature=self.temperature
+        )
+
+        # Add assistant response to history
+        if "message" in response:
+            self.add_message(response["message"])
+            # Print assistant response
+            if "content" in response["message"]:
+                print(f"\n{self.name}: {response['message']['content']}\n")
 
     def run_task_round_loop(
         self,
