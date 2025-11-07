@@ -16,8 +16,6 @@ The actual agent implementation and CLI logic lives in the agent classes
 """
 import sys
 import os
-import yaml
-from pathlib import Path
 
 # IMPORTANT: Clear any OLLAMA_MODEL env var set by test scripts
 # Test files often set os.environ["OLLAMA_MODEL"] = "gpt-oss:20b" for benchmarking
@@ -25,7 +23,7 @@ from pathlib import Path
 # Users should use config/llm_config.yaml to set the model, not env vars
 if "OLLAMA_MODEL" in os.environ:
     print(f"[agent.py] Clearing OLLAMA_MODEL env var (was: {os.environ['OLLAMA_MODEL']})")
-    print(f"[agent.py] Will use model from config/llm_config.yaml")
+    print("[agent.py] Will use model from config/llm_config.yaml")
     del os.environ["OLLAMA_MODEL"]
 
 from agent_config import list_available_teams, load_team_config
@@ -295,8 +293,6 @@ def main():
     # the agent class's create_agent_instance to pass it
     if config_file:
         # Create a wrapper that overrides create_agent_instance to pass config_file
-        original_create = agent_class.create_agent_instance
-
         @classmethod
         def create_with_config(cls, workspace, args):
             """Override to pass custom config file and agent name from team config."""
