@@ -15,8 +15,19 @@ The actual agent implementation and CLI logic lives in the agent classes
 (orchestrator_agent.py, task_executor_agent.py, architect_agent.py).
 """
 import sys
+import os
 import yaml
 from pathlib import Path
+
+# IMPORTANT: Clear any OLLAMA_MODEL env var set by test scripts
+# Test files often set os.environ["OLLAMA_MODEL"] = "gpt-oss:20b" for benchmarking
+# This persists across shell sessions and overrides config files
+# Users should use config/llm_config.yaml to set the model, not env vars
+if "OLLAMA_MODEL" in os.environ:
+    print(f"[agent.py] Clearing OLLAMA_MODEL env var (was: {os.environ['OLLAMA_MODEL']})")
+    print(f"[agent.py] Will use model from config/llm_config.yaml")
+    del os.environ["OLLAMA_MODEL"]
+
 from agent_config import list_available_teams, load_team_config
 
 
