@@ -19,7 +19,8 @@ from utils.behavior_validator import (
     validate_python_syntax,
     validate_behavior_independence,
     validate_tool_schema,
-    validate_behavior_class
+    validate_behavior_class,
+    validate_no_super_in_dispatch
 )
 from utils.agent_validator import (
     validate_yaml_syntax,
@@ -172,6 +173,23 @@ class ValidationBehavior(AgentBehavior):
             {
                 "type": "function",
                 "function": {
+                    "name": "validate_no_super_in_dispatch",
+                    "description": "Validate that dispatch_tool does not call super().dispatch_tool() (causes double-dispatch bug)",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "description": "Python code to validate"
+                            }
+                        },
+                        "required": ["code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "validate_yaml_syntax",
                     "description": "Validate YAML syntax",
                     "parameters": {
@@ -259,6 +277,8 @@ class ValidationBehavior(AgentBehavior):
             return self._validate_tool_schema(agent, args)
         elif tool_name == "validate_behavior_class":
             return self._validate_behavior_class(agent, args)
+        elif tool_name == "validate_no_super_in_dispatch":
+            return self._validate_no_super_in_dispatch(agent, args)
         elif tool_name == "validate_yaml_syntax":
             return self._validate_yaml_syntax(agent, args)
         elif tool_name == "validate_agent_dag":
@@ -266,7 +286,9 @@ class ValidationBehavior(AgentBehavior):
         elif tool_name == "validate_agent_config":
             return self._validate_agent_config(agent, args)
         else:
-            return super().dispatch_tool(agent, tool_name, args)
+            # Unknown tool - return error
+            # IMPORTANT: Do NOT call super().dispatch_tool() as it causes double-dispatch
+            return {"error": f"Unknown tool: {tool_name}"}
 
     def _validate_python_syntax(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
         """Validate Python code syntax."""
@@ -309,6 +331,15 @@ class ValidationBehavior(AgentBehavior):
             code = args.get("code", "")
             expected_name = args.get("expected_name", "")
             result = validate_behavior_class(code, expected_name)
+            return {"result": result}
+        except Exception as e:
+            return {"error": f"Validation error: {str(e)}"}
+
+    def _validate_no_super_in_dispatch(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
+        """Validate no super() calls in dispatch_tool."""
+        try:
+            code = args.get("code", "")
+            result = validate_no_super_in_dispatch(code)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}

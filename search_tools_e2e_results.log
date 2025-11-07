@@ -1,0 +1,104 @@
+
+================================================================================
+DEEP E2E TEST: Self-Extensibility System
+Testing: SearchToolsBehavior + AllAgent
+================================================================================
+
+================================================================================
+STEP 1: Generate SearchToolsBehavior
+================================================================================
+
+[1.1] Loading MetaProgrammer...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded with 12 behaviors
+
+[1.2] Defining SearchToolsBehavior specification...
+✓ SearchToolsBehavior spec:
+  - Tools: 1
+  - Lifecycle hooks: ['on_initial_context']
+  - Context enhancement: Yes
+
+[1.3] Generating SearchToolsBehavior...
+[create_behavior] Generating behavior: SearchToolsBehavior
+[create_behavior] Description: Dynamic tool filtering for context management - removes all tools except search_tools, then adds only relevant tools when queried
+[create_behavior] Tools: 1
+[create_behavior] Safety mode: auto
+[create_behavior] Step 1/6: Generating behavior code...
+[create_behavior] Found class name: SearchToolsBehavior, expected: SearchToolsBehavior
+[create_behavior] Class name already correct
+[create_behavior] Step 2/6: Generating test code...
+[create_behavior] Step 3/6: Saving to staging...
+[create_behavior] Saved behavior to: .agent_generated/staging/SearchToolsBehavior.py
+[create_behavior] Saved test to: .agent_generated/staging/test_SearchToolsBehavior.py
+[create_behavior] Step 4/6: Validating generated code...
+[create_behavior] Step 5/6: Testing in sandbox...
+[create_behavior] Step 6/6: Handling safety mode 'auto'...
+[installer] Installed: behaviors/SearchToolsBehavior.py
+[installer] Installed: tests/test_SearchToolsBehavior.py
+
+[1.4] Verifying generation results...
+✓ Behavior generated: .agent_generated/staging/SearchToolsBehavior.py
+✓ Tests generated: .agent_generated/staging/test_SearchToolsBehavior.py
+✓ Validation: PASS
+✓ Installation: COMPLETED
+✓ Lifecycle hook present: on_initial_context
+✓ Tool method present: search_tools
+
+================================================================================
+✅ STEP 1 COMPLETE: SearchToolsBehavior generated successfully
+================================================================================
+
+================================================================================
+STEP 2: Generate AllAgent Configuration
+================================================================================
+
+[2.1] Loading MetaProgrammer...
+[task_executor] Loaded system prompt from config (9225 chars)
+[task_executor] Loaded blurb from config (411 chars)
+[task_executor] Loading behaviors from config
+[task_executor] Loaded behavior: ChatbotBehavior (no parameters)
+[task_executor] Loaded behavior: CompactWhenNearFullBehavior (using global defaults)
+[task_executor] Loaded behavior: CreateBehaviorBehavior (no parameters)
+[task_executor] Loaded behavior: CreateAgentBehavior (no parameters)
+[task_executor] Loaded behavior: ValidationBehavior (no parameters)
+[task_executor] Loaded behavior: SandboxTestBehavior (no parameters)
+[task_executor] Loaded behavior: ReadFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: WriteFileToolsBehavior (no parameters)
+[task_executor] Loaded behavior: DirectoryToolsBehavior (no parameters)
+[task_executor] Loaded behavior: CommandToolsBehavior (no parameters)
+[task_executor] Loaded behavior: LoopDetectionBehavior (using global defaults)
+[task_executor] Loaded behavior: WorkspaceTaskNotesBehavior (no parameters)
+✓ MetaProgrammer loaded
+
+[2.2] Collecting all available behaviors...
+✓ Found 25 behaviors
+  First 10: ['ArchitectToolsBehavior', 'CalculatorbehaviorBehavior', 'ChatbotBehavior', 'CommandToolsBehavior', 'CompactWhenNearFullBehavior', 'CreateAgentBehavior', 'CreateBehavior', 'DelegationBehavior', 'DirectoryToolsBehavior', 'DockerbehaviorBehavior']
+
+[2.3] Defining AllAgent specification...
+✓ AllAgent spec:
+  - Role: Universal agent with all available behaviors
+  - Behaviors: 25
+  - Safety mode: dryrun
+
+[2.4] Generating AllAgent config...
+
+[2.5] Verifying generation results...
+
+❌ Test failed: Generation failed: Generated config failed validation: Validation failed: while scanning a simple key
+  in ".agent_generated/staging/AllAgent.yaml", line 9, column 1
+could not find expected ':'
+  in ".agent_generated/staging/AllAgent.yaml", line 11, column 1

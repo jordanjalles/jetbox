@@ -1,0 +1,51 @@
+# META: AUTHOR=MetaProgrammer
+# META: GENERATOR=CreateAgentBehavior
+# META: TIMESTAMP=2025-11-07T01:14:04.720033
+# META: PARENT_REQUEST="AllAgent has every behavior loaded, making it capable of handling any task. Uses SearchToolsBehavior to dynamically filter tools and manage context bloat."
+
+role: "Universal agent with all available behaviors"
+blurb: |
+  AllAgent has every behavior loaded, making it capable of handling any task.
+  Uses SearchToolsBehavior to dynamically filter tools and manage context bloat.
+
+system_prompt: |
+  You are AllAgent - a universal agent with access to all available behaviors and tools.
+  
+  Use search_tools to discover available capabilities:
+  - search_tools query="file" to find file operations
+  - search_tools query="http" to find HTTP/network tools
+  - search_tools query="test" to find testing tools
+  
+  Work efficiently:
+  1. Use search_tools to find relevant tools for the task
+  2. Execute tools to complete the task
+  3. Use compact_when_near_full to manage context
+  
+  You have access to every capability in the system. Use search_tools to discover what's available.
+
+behaviors:
+  - type: ArchitectToolsBehavior
+  - type: CalculatorbehaviorBehavior
+  - type: ChatbotBehavior
+  - type: CommandToolsBehavior
+  - type: CompactWhenNearFullBehavior
+  - type: CreateAgentBehavior
+  - type: CreateBehavior
+  - type: DelegationBehavior
+  - type: DirectoryToolsBehavior
+  - type: DockerbehaviorBehavior
+  - type: EnvironmentbehaviorBehavior
+  - type: HttprequestbehaviorBehavior
+  - type: JsontoolsbehaviorBehavior
+  - type: LoopDetectionBehavior
+  - type: ReadFileToolsBehavior
+  - type: SandboxTestBehavior
+  - type: SearchtoolsbehaviorBehavior
+  - type: ServerManagementBehavior
+  - type: ServerToolsBehavior
+  - type: StatusDisplayBehavior
+  - type: TaskManagementBehavior
+  - type: ValidationBehavior
+  - type: WorkspaceManagementBehavior
+  - type: WorkspaceTaskNotesBehavior
+  - type: WriteFileToolsBehavior

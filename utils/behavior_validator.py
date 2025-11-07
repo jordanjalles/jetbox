@@ -260,3 +260,72 @@ def validate_behavior_class(code: str, expected_name: str) -> dict[str, Any]:
             "valid": False,
             "error": f"Unexpected error: {str(e)}"
         }
+
+
+def validate_no_super_in_dispatch(code: str) -> dict[str, Any]:
+    """
+    Validate that dispatch_tool does not call super().dispatch_tool().
+
+    Calling super().dispatch_tool() causes double-dispatch bugs because
+    AgentBehavior.dispatch_tool() is a final implementation that doesn't
+    chain to other behaviors.
+
+    Args:
+        code: Python source code
+
+    Returns:
+        dict with keys:
+        - valid (bool): True if no super() calls in dispatch_tool
+        - error (str): Error message if invalid (optional)
+        - line (int): Line number of problematic super() call (optional)
+    """
+    try:
+        tree = ast.parse(code)
+
+        # Find dispatch_tool method in AgentBehavior subclasses
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                # Check if this is a behavior class
+                is_behavior = any(
+                    isinstance(base, ast.Name) and base.id == "AgentBehavior"
+                    for base in node.bases
+                )
+
+                if not is_behavior:
+                    continue
+
+                # Find dispatch_tool method
+                for method in node.body:
+                    if isinstance(method, ast.FunctionDef) and method.name == "dispatch_tool":
+                        # Check for super().dispatch_tool() calls
+                        for call_node in ast.walk(method):
+                            if isinstance(call_node, ast.Call):
+                                # Check for super().dispatch_tool()
+                                if isinstance(call_node.func, ast.Attribute):
+                                    # call_node.func is Attribute(value=Call(func=Name(id='super')))
+                                    if (call_node.func.attr == "dispatch_tool" and
+                                        isinstance(call_node.func.value, ast.Call) and
+                                        isinstance(call_node.func.value.func, ast.Name) and
+                                        call_node.func.value.func.id == "super"):
+                                        return {
+                                            "valid": False,
+                                            "error": (
+                                                "dispatch_tool must not call super().dispatch_tool() - "
+                                                "this causes double-dispatch. Return {\"error\": ...} "
+                                                "for unknown tools instead."
+                                            ),
+                                            "line": call_node.lineno
+                                        }
+
+        return {"valid": True}
+
+    except SyntaxError as e:
+        return {
+            "valid": False,
+            "error": f"Syntax error: {e.msg}"
+        }
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": f"Unexpected error: {str(e)}"
+        }

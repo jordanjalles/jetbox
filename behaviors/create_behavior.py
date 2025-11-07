@@ -574,13 +574,29 @@ Generate the complete test file now:"""
             except Exception as e:
                 return {"valid": False, "error": f"Failed to read file for validation: {str(e)}"}
 
+            # Validate class structure
             result = validation_behavior.dispatch_tool(
                 agent,
                 "validate_behavior_class",
                 {"code": code, "expected_name": class_name}
             )
 
-            return result.get("result", {"valid": False, "error": "No validation result"})
+            class_result = result.get("result", {"valid": False, "error": "No validation result"})
+            if not class_result.get("valid"):
+                return class_result
+
+            # Validate no super() in dispatch_tool
+            super_result = validation_behavior.dispatch_tool(
+                agent,
+                "validate_no_super_in_dispatch",
+                {"code": code}
+            )
+
+            super_check = super_result.get("result", {"valid": False, "error": "No validation result"})
+            if not super_check.get("valid"):
+                return super_check
+
+            return {"valid": True}
 
         except Exception as e:
             return {"valid": False, "error": f"Validation failed: {str(e)}"}
