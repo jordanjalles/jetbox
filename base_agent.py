@@ -1913,29 +1913,45 @@ Please retry the tool call using only the valid parameters listed above.
                 temperature = getattr(agent, 'temperature', None) or getattr(agent.config.llm, 'temperature', 0.2) if agent.config else 0.2
 
                 # Call LLM with tools available
+                import time
+                start_time = time.time()
+                print(f"[DEBUG] Calling LLM with model={model}, temp={temperature}, tools={len(agent.get_tools())}")
                 response = agent._call_llm_with_context(
                     context,
                     model=model,
                     temperature=temperature
                 )
+                elapsed = time.time() - start_time
+                print(f"[DEBUG] LLM responded in {elapsed:.2f}s")
 
                 # Add response to history
                 if "message" not in response:
+                    print(f"[DEBUG] No message in LLM response")
                     return
 
                 agent.add_message(response["message"])
 
                 # Print response if any
-                if "content" in response["message"] and response["message"]["content"]:
-                    print(f"\n{agent.name}: {response['message']['content']}\n")
+                content = response["message"].get("content", "")
+                has_tool_calls = "tool_calls" in response["message"]
+
+                if content:
+                    print(f"\n{agent.name}: {content}\n")
+                elif not has_tool_calls:
+                    # No content and no tool calls - empty response
+                    print(f"[DEBUG] Empty LLM response - no content, no tool calls")
+                    import json
+                    print(f"[DEBUG] Full response: {json.dumps(response['message'], indent=2)}")
 
                 # Check if agent called set_goal tool
                 goal_set = False
                 goal_text = None
 
                 if "tool_calls" in response["message"]:
+                    print(f"[DEBUG] LLM called {len(response['message']['tool_calls'])} tool(s)")
                     for tool_call in response["message"]["tool_calls"]:
                         tool_name = tool_call["function"]["name"]
+                        print(f"[DEBUG] Tool: {tool_name}")
 
                         # Parse arguments (might be string or dict)
                         import json
@@ -1947,6 +1963,7 @@ Please retry the tool call using only the valid parameters listed above.
 
                         # Dispatch tool (dispatch_tool expects tool_call dict)
                         result = agent.dispatch_tool(tool_call)
+                        print(f"[DEBUG] Tool result: {result.get('success', False)}")
 
                         # Add tool result to history
                         agent.add_message({
@@ -1959,6 +1976,7 @@ Please retry the tool call using only the valid parameters listed above.
                         if tool_name == "set_goal" and result.get("success"):
                             goal_set = True
                             goal_text = args.get("goal")
+                            print(f"[DEBUG] Goal set: {goal_text}")
 
                 # If set_goal was called, start full task execution
                 if goal_set and goal_text:
