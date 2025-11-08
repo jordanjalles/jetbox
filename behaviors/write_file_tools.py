@@ -194,6 +194,53 @@ class WriteFileToolsBehavior(AgentBehavior):
         else:
             ledger_file.write_text(line, encoding="utf-8")
 
+    def _decode_escape_sequences(self, content: str) -> str:
+        """
+        Decode JSON-style escape sequences in content.
+
+        When LLMs send tool calls, JSON encoding escapes special characters:
+        - Newlines become literal \\n
+        - Tabs become literal \\t
+        - Quotes become literal \\" or \\'
+
+        This method converts these back to actual characters for proper file writing.
+
+        Args:
+            content: String potentially containing escape sequences
+
+        Returns:
+            String with escape sequences decoded
+        """
+        # Quick check: if no backslashes, no escaping possible
+        if '\\' not in content:
+            return content
+
+        # Count literal \n sequences (indicating JSON escaping)
+        literal_newlines = content.count('\\n')
+        actual_newlines = content.count('\n')
+
+        # Heuristic: If we have many more literal \n than actual newlines,
+        # this content is likely JSON-escaped and needs decoding
+        if literal_newlines > actual_newlines * 2:
+            try:
+                # Decode using Python's string-escape codec
+                # This handles: \n, \t, \r, \\, \", \', and other escapes
+                decoded = content.encode().decode('unicode_escape')
+
+                # Verify decoding made changes (safety check)
+                if decoded != content:
+                    logger.debug(
+                        f"Decoded {literal_newlines} escape sequences "
+                        f"(content size: {len(content)} -> {len(decoded)} chars)"
+                    )
+                    return decoded
+            except (UnicodeDecodeError, AttributeError) as e:
+                # Decoding failed, return original
+                logger.warning(f"Failed to decode escape sequences: {e}, using original content")
+                return content
+
+        return content
+
     def _write_file(
         self,
         path: str,
@@ -235,6 +282,11 @@ class WriteFileToolsBehavior(AgentBehavior):
             if unsupported:
                 ignored = ", ".join(unsupported)
                 print(f"[write_file_tools] write_file ignoring unsupported parameters: {ignored}")
+
+        # Decode JSON-style escape sequences if present
+        # LLM tool calls send content as JSON strings with escaped newlines/tabs
+        # We need to convert literal \n -> actual newline, \t -> actual tab, etc.
+        content = self._decode_escape_sequences(content)
 
         # Normalize line endings if requested
         if line_end is not None:
