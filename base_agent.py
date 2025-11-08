@@ -928,6 +928,38 @@ Please retry the tool call using only the valid parameters listed above.
 
         self._load_behaviors_from_config_dict(config)
 
+    def _validate_system_prompt(self, prompt: str) -> list[str]:
+        """
+        Validate system prompt for common configuration errors.
+
+        Args:
+            prompt: System prompt string
+
+        Returns:
+            List of validation error messages (empty if no issues)
+        """
+        errors = []
+
+        # Check for unresolved template placeholders
+        if "{goal}" in prompt:
+            errors.append(
+                "System prompt contains '{goal}' placeholder but base_agent doesn't perform template substitution. "
+                "Goal is automatically injected as a user message. Remove the placeholder."
+            )
+
+        # Check for other template-like syntax
+        template_matches = re.findall(r'\{([^}]+)\}', prompt)
+        if template_matches:
+            # Filter out {goal} since we already reported it
+            other_placeholders = [m for m in template_matches if m != "goal"]
+            if other_placeholders:
+                errors.append(
+                    f"System prompt contains template-like syntax: {{{', '.join(other_placeholders)}}}. "
+                    "If these are intentional placeholders, ensure they're being replaced before use."
+                )
+
+        return errors
+
     def _load_behaviors_from_config_dict(self, config: dict[str, Any]) -> None:
         """
         Internal method to load behaviors from config dict.
@@ -948,6 +980,13 @@ Please retry the tool call using only the valid parameters listed above.
         if "system_prompt" in config:
             self.config_system_prompt = config["system_prompt"]
             print(f"[{self.name}] Loaded system prompt from config ({len(self.config_system_prompt)} chars)")
+
+            # Validate system prompt for common errors
+            validation_errors = self._validate_system_prompt(self.config_system_prompt)
+            if validation_errors:
+                print(f"[{self.name}] ⚠️  WARNING: System prompt validation issues:")
+                for error in validation_errors:
+                    print(f"[{self.name}]    - {error}")
 
         # Load blurb if present
         if "blurb" in config:

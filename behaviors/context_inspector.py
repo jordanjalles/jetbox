@@ -8,6 +8,7 @@ for offline analysis.
 Features:
 - Event: on_initial_context() - Capture initial context (round 0)
 - Event: on_round_start() - Capture pre-LLM context (every round)
+- Event: on_round_end() - Capture post-LLM response with thinking tokens
 - Zero overhead when disabled (config-driven)
 - No context modification (pure observer)
 - Structured JSON snapshots with metrics
@@ -17,6 +18,7 @@ Use case:
 - Analyze duplication
 - Attribute token usage to behaviors
 - Optimize context management strategies
+- Capture LLM reasoning (thinking tokens) for analysis
 """
 
 from typing import Any
@@ -120,6 +122,94 @@ class ContextInspectorBehavior(AgentBehavior):
 
         # Return context unchanged (pure observer)
         return context
+
+    def on_round_end(self, agent: Any, round_number: int) -> None:
+        """
+        Capture post-LLM data (response, thinking tokens, tool calls).
+
+        Args:
+            agent: Agent instance
+            round_number: Current round number
+        """
+        try:
+            # Build post-LLM snapshot
+            snapshot = {
+                "agent_name": self.agent_name,
+                "round": round_number,
+                "phase": "post_llm",
+                "timestamp": time.time(),
+            }
+
+            # Capture LLM response if available
+            if hasattr(agent, 'last_response'):
+                response = agent.last_response
+                snapshot["response"] = {
+                    "content": response.get("content", "") if isinstance(response, dict) else "",
+                    "thinking": response.get("thinking", "") if isinstance(response, dict) else "",
+                    "role": response.get("role", "assistant") if isinstance(response, dict) else "assistant",
+                }
+
+                # Capture tool calls if present
+                if isinstance(response, dict) and "tool_calls" in response:
+                    snapshot["response"]["tool_calls"] = self._serialize_tool_calls(response["tool_calls"])
+
+            # Capture tools that were actually called
+            if hasattr(agent, 'last_tools_executed'):
+                snapshot["tools_executed"] = agent.last_tools_executed
+
+            # Save to file
+            filename = f"{self.agent_name}_round_{round_number:03d}_post_llm.json"
+            filepath = self.output_dir / filename
+
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(snapshot, f, indent=2, ensure_ascii=False)
+
+            print(f"[context_inspector] Saved post-LLM snapshot: {filename}")
+
+        except Exception as e:
+            # Don't fail the agent if snapshot capture fails
+            print(f"[context_inspector] Error capturing post-LLM snapshot: {e}")
+
+    def _serialize_tool_calls(self, tool_calls: Any) -> list[dict[str, Any]]:
+        """
+        Serialize tool calls to JSON-compatible format.
+
+        Args:
+            tool_calls: Tool calls (may be ToolCall objects or dicts)
+
+        Returns:
+            List of serialized tool call dicts
+        """
+        if not tool_calls:
+            return []
+
+        serialized = []
+        for tc in tool_calls:
+            if hasattr(tc, "model_dump"):
+                # Pydantic model
+                serialized.append(tc.model_dump())
+            elif hasattr(tc, "to_dict"):
+                # Has to_dict method
+                serialized.append(tc.to_dict())
+            elif isinstance(tc, dict):
+                # Already a dict
+                serialized.append(tc)
+            else:
+                # Manual extraction
+                try:
+                    serialized.append({
+                        "id": getattr(tc, "id", None),
+                        "type": getattr(tc, "type", "function"),
+                        "function": {
+                            "name": getattr(tc.function, "name", "") if hasattr(tc, "function") else "",
+                            "arguments": getattr(tc.function, "arguments", {}) if hasattr(tc, "function") else {}
+                        }
+                    })
+                except Exception:
+                    # Fallback: convert to string representation
+                    serialized.append({"_error": "Could not serialize ToolCall", "_repr": str(tc)})
+
+        return serialized
 
     def _capture_snapshot(
         self,

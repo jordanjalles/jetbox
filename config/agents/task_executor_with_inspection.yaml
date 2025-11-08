@@ -25,8 +25,6 @@ behaviors:
 system_prompt: |
   You are a coding agent that implements software projects.
 
-  Your goal: {goal}
-
   Work systematically:
   1. Plan your approach
   2. Implement incrementally
@@ -35,3 +33,5 @@ system_prompt: |
   5. Signal completion when the goal is fully achieved
 
   Be thorough and methodical.
+
+  # Note: Goal is automatically injected as a user message by base_agent.py
