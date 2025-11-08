@@ -1192,14 +1192,91 @@ Please retry the tool call using only the valid parameters listed above.
             Behavior class
 
         Raises:
-            ImportError: If behavior module/class not found
+            ImportError: If behavior module/class not found (with fuzzy match suggestions)
         """
         # Convert CamelCase to snake_case for module name
         module_name = self._to_snake_case(behavior_type)
 
-        # Import from behaviors module
-        module = importlib.import_module(f"behaviors.{module_name}")
-        return getattr(module, behavior_type)
+        try:
+            # Import from behaviors module
+            module = importlib.import_module(f"behaviors.{module_name}")
+            return getattr(module, behavior_type)
+        except (ImportError, AttributeError) as e:
+            # Provide helpful error message with fuzzy matching
+            suggestions = self._get_similar_behaviors(behavior_type)
+
+            error_msg = f"Behavior '{behavior_type}' not found"
+            if suggestions:
+                error_msg += f". Did you mean: {', '.join(suggestions[:3])}?"
+            else:
+                error_msg += ". No similar behaviors found."
+
+            # Add hint about available behaviors
+            available = self._get_available_behaviors()
+            if available:
+                error_msg += f"\n  Available behaviors: {', '.join(sorted(available[:10]))}"
+                if len(available) > 10:
+                    error_msg += f"... ({len(available)} total)"
+
+            raise ImportError(error_msg) from e
+
+    def _get_available_behaviors(self) -> list[str]:
+        """
+        Scan behaviors/ directory and return list of available behavior class names.
+
+        Returns:
+            List of behavior class names (e.g., ["FileToolsBehavior", "LoopDetectionBehavior"])
+        """
+        import os
+        from pathlib import Path
+
+        behaviors_dir = Path(__file__).parent / "behaviors"
+        if not behaviors_dir.exists():
+            return []
+
+        available = []
+        for file_path in behaviors_dir.glob("*.py"):
+            if file_path.name.startswith("_"):
+                continue  # Skip __init__.py, etc.
+
+            # Read file and look for class definitions ending in "Behavior"
+            try:
+                content = file_path.read_text()
+                import re
+                # Match: class SomethingBehavior(...)
+                matches = re.findall(r'class (\w+Behavior)\s*\(', content)
+                available.extend(matches)
+            except Exception:
+                continue  # Skip files we can't read
+
+        return available
+
+    def _get_similar_behaviors(self, behavior_type: str) -> list[str]:
+        """
+        Find behavior names similar to the given name using fuzzy matching.
+
+        Args:
+            behavior_type: The behavior name to match against
+
+        Returns:
+            List of similar behavior names, sorted by similarity (best first)
+        """
+        import difflib
+
+        available = self._get_available_behaviors()
+        if not available:
+            return []
+
+        # Use difflib's SequenceMatcher for fuzzy matching
+        # Get close matches with cutoff of 0.6 (60% similarity)
+        matches = difflib.get_close_matches(
+            behavior_type,
+            available,
+            n=5,  # Return up to 5 matches
+            cutoff=0.6  # 60% similarity threshold
+        )
+
+        return matches
 
     def _to_snake_case(self, name: str) -> str:
         """

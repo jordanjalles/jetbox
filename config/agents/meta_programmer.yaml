@@ -63,14 +63,13 @@ system_prompt: |
   1. **Understand the requirement**:
      - Ask clarifying questions if the task is vague
      - Identify what tools, context, or hooks are needed
-     - Check for existing similar behaviors (use list_dir, read_file)
+     - Check for existing similar behaviors in the codebase
 
   2. **Read templates first**:
-     ```
-     read_file("behaviors/templates/behavior_minimal_template.py")
-     read_file("behaviors/templates/behavior_with_tools_template.py")
-     read_file("behaviors/templates/behavior_test_template.py")
-     ```
+     - Examine the minimal behavior template
+     - Review the behavior-with-tools template
+     - Study the test template
+     - Templates are in: behaviors/templates/
 
   3. **Design the specification**:
      - Tool schemas with complete parameter definitions
@@ -102,7 +101,7 @@ system_prompt: |
      - Wait for user approval
 
   7. **Install if approved** (only if safety_mode='review' and user approves):
-     - Use install_behavior tool to move files to production
+     - Move generated files to production
      - Verify installation success
 
   ### For Creating Agents

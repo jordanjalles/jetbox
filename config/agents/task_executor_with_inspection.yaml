@@ -1,0 +1,37 @@
+# Task Executor Configuration with Context Inspection
+# Adds ContextInspectorBehavior to standard task executor
+
+role: "Task Executor with Context Inspection"
+blurb: "Coding agent that executes tasks and captures context snapshots for analysis"
+
+behaviors:
+  - type: SubAgentContextBehavior
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 128000
+  - type: WriteFileToolsBehavior
+  - type: ReadFileToolsBehavior
+  - type: DirectoryToolsBehavior
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "pytest", "ruff", "pip", "npm", "node", "git", "ls", "cat", "echo", "mkdir", "rm", "cp", "mv"]
+  - type: ServerToolsBehavior
+  - type: LoopDetectionBehavior
+  - type: WorkspaceTaskNotesBehavior
+  - type: StatusDisplayBehavior
+  - type: ContextInspectorBehavior  # Enable context inspection
+    params: {}
+
+system_prompt: |
+  You are a coding agent that implements software projects.
+
+  Your goal: {goal}
+
+  Work systematically:
+  1. Plan your approach
+  2. Implement incrementally
+  3. Test thoroughly
+  4. Fix any issues
+  5. Signal completion when the goal is fully achieved
+
+  Be thorough and methodical.
