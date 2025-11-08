@@ -89,35 +89,52 @@ class ContextInspectionEvaluator:
             # Check if task succeeded
             success = result.returncode == 0
 
-            # Validate expected files exist
-            files_exist = all(
-                (workspace_path / f).exists()
-                for f in task.expected_files
-            )
+            # Try flexible validation for L5/L6/L7 tasks with validators
+            from tests.flexible_validation import VALIDATORS
 
-            # Run validation commands if files exist
+            files_exist = False
             validation_passed = False
             validation_output = ""
 
-            if files_exist:
+            if task.name in VALIDATORS:
+                # Use flexible validation (tests functionality not file structure)
+                # Currently supports: 5 L5 tasks, 5 L6 tasks, 4 L7 tasks (14 total)
                 try:
-                    for val_cmd in task.validation_commands:
-                        val_result = subprocess.run(
-                            val_cmd,
-                            cwd=workspace,
-                            capture_output=True,
-                            text=True,
-                            timeout=30
-                        )
-                        validation_output += val_result.stdout + "\n" + val_result.stderr
-                        if val_result.returncode != 0:
-                            validation_passed = False
-                            break
-                    else:
-                        validation_passed = True
+                    flex_success, flex_message = VALIDATORS[task.name](workspace_path)
+                    files_exist = flex_success  # Any files created
+                    validation_passed = flex_success
+                    validation_output = f"Flexible validation: {flex_message}"
                 except Exception as e:
-                    validation_output = f"Validation error: {e}"
+                    validation_output = f"Flexible validation error: {e}"
+                    files_exist = False
                     validation_passed = False
+            else:
+                # Use rigid validation for tasks without flexible validator
+                files_exist = all(
+                    (workspace_path / f).exists()
+                    for f in task.expected_files
+                )
+
+                # Run validation commands if files exist
+                if files_exist:
+                    try:
+                        for val_cmd in task.validation_commands:
+                            val_result = subprocess.run(
+                                val_cmd,
+                                cwd=workspace,
+                                capture_output=True,
+                                text=True,
+                                timeout=30
+                            )
+                            validation_output += val_result.stdout + "\n" + val_result.stderr
+                            if val_result.returncode != 0:
+                                validation_passed = False
+                                break
+                        else:
+                            validation_passed = True
+                    except Exception as e:
+                        validation_output = f"Validation error: {e}"
+                        validation_passed = False
 
             # Overall success = agent succeeded, files exist, validation passed
             overall_success = success and files_exist and validation_passed
