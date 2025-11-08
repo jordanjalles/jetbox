@@ -187,23 +187,68 @@ class ContextInspectorBehavior(AgentBehavior):
         Returns:
             Processed context (possibly truncated if compress_large_contexts=True)
         """
-        if not self.compress_large_contexts:
-            return context
-
-        # Compress large messages if configured
+        # Always serialize to handle ToolCall objects and other non-JSON types
         processed = []
         for msg in context:
-            processed_msg = msg.copy()
-            content = msg.get('content', '')
+            processed_msg = self._serialize_message(msg)
 
-            if isinstance(content, str) and len(content) > 5000:
-                # Truncate large messages
-                processed_msg['content'] = content[:5000] + f"\n... [truncated {len(content) - 5000} chars]"
-                processed_msg['_truncated'] = True
+            # Compress large messages if configured
+            if self.compress_large_contexts:
+                content = processed_msg.get('content', '')
+                if isinstance(content, str) and len(content) > 5000:
+                    # Truncate large messages
+                    processed_msg['content'] = content[:5000] + f"\n... [truncated {len(content) - 5000} chars]"
+                    processed_msg['_truncated'] = True
 
             processed.append(processed_msg)
 
         return processed
+
+    def _serialize_message(self, message: dict[str, Any]) -> dict[str, Any]:
+        """
+        Serialize a message to JSON-compatible format.
+
+        Handles ToolCall objects and other non-JSON-serializable types.
+
+        Args:
+            message: Message dict (may contain ToolCall objects)
+
+        Returns:
+            JSON-serializable message dict
+        """
+        serialized = {}
+        for key, value in message.items():
+            if key == "tool_calls" and value is not None:
+                # Convert ToolCall objects to dicts
+                serialized_calls = []
+                for tc in value:
+                    if hasattr(tc, "model_dump"):
+                        # Pydantic model
+                        serialized_calls.append(tc.model_dump())
+                    elif hasattr(tc, "to_dict"):
+                        # Has to_dict method
+                        serialized_calls.append(tc.to_dict())
+                    elif isinstance(tc, dict):
+                        # Already a dict
+                        serialized_calls.append(tc)
+                    else:
+                        # Manual extraction
+                        try:
+                            serialized_calls.append({
+                                "id": getattr(tc, "id", None),
+                                "type": getattr(tc, "type", "function"),
+                                "function": {
+                                    "name": getattr(tc.function, "name", "") if hasattr(tc, "function") else "",
+                                    "arguments": getattr(tc.function, "arguments", {}) if hasattr(tc, "function") else {}
+                                }
+                            })
+                        except Exception:
+                            # Fallback: convert to string representation
+                            serialized_calls.append({"_error": "Could not serialize ToolCall", "_repr": str(tc)})
+                serialized[key] = serialized_calls
+            else:
+                serialized[key] = value
+        return serialized
 
     def _get_tools(self, agent: Any) -> list[dict[str, Any]]:
         """

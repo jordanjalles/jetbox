@@ -1,0 +1,11 @@
+# Evaluation Team with Context Inspection
+# Used for L4-L7 evaluation runs with context analysis
+
+name: "Evaluation Team (Context Inspection Enabled)"
+description: "Solo task executor with context inspection for evaluation runs"
+
+agents:
+  task_executor:
+    class: TaskExecutorAgent
+    config: task_executor_with_inspection
+    can_delegate_to: []

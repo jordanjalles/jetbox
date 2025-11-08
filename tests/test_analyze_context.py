@@ -166,6 +166,7 @@ def test_analyze_duplication():
             "context": [
                 {"role": "system", "content": "System prompt"},
                 {"role": "user", "content": "User message"},
+                {"role": "user", "content": "User message"},  # Within-round duplicate
             ],
             "tools": [
                 {
@@ -178,13 +179,13 @@ def test_analyze_duplication():
             "agent_name": "agent1",
             "round": 1,
             "context": [
-                {"role": "system", "content": "System prompt"},  # Duplicate
-                {"role": "user", "content": "User message"},  # Duplicate
+                {"role": "system", "content": "System prompt"},  # Cross-round repetition
+                {"role": "user", "content": "User message"},  # Cross-round repetition
             ],
             "tools": [
                 {
                     "type": "function",
-                    "function": {"name": "tool1", "description": "Tool 1"},  # Duplicate
+                    "function": {"name": "tool1", "description": "Tool 1"},  # Cross-round repetition
                 }
             ],
         },
@@ -192,17 +193,20 @@ def test_analyze_duplication():
 
     report = analyze_duplication(snapshots)
 
-    assert "exact_duplicates" in report
-    assert "fuzzy_duplicates" in report
+    assert "within_round_duplicates" in report
+    assert "cross_round_repetition" in report
     assert "token_waste" in report
 
-    # Should find duplicates
-    assert report["exact_duplicates"]["system_prompts"]["count"] >= 1
-    assert report["exact_duplicates"]["messages"]["count"] >= 1
-    assert report["exact_duplicates"]["tools"]["count"] >= 1
+    # Should find within-round duplicate (user message appears twice in round 0)
+    assert report["within_round_duplicates"]["total_duplicate_instances"] >= 1
 
-    # Token waste should be positive
-    assert report["token_waste"]["exact"] > 0
+    # Should track cross-round repetition
+    assert report["cross_round_repetition"]["stats"]["system_prompts"] >= 1
+    assert report["cross_round_repetition"]["stats"]["messages"] >= 1
+    assert report["cross_round_repetition"]["stats"]["tools"] >= 1
+
+    # Token waste should be positive (from within-round duplicate)
+    assert report["token_waste"]["within_round"] > 0
 
 
 def test_analyze_growth():
@@ -409,7 +413,8 @@ def test_integration_full_analysis(temp_snapshot_dir):
     behaviors = attribute_tokens_to_behaviors(snapshots)
 
     # Verify results
-    assert "exact_duplicates" in duplication
+    assert "within_round_duplicates" in duplication
+    assert "cross_round_repetition" in duplication
     assert "token_waste" in duplication
     assert "agents" in growth
     assert len(behaviors) > 0

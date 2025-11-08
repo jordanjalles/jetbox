@@ -1,0 +1,601 @@
+
+======================================================================
+L4-L7 Context Inspection Evaluation
+======================================================================
+Tasks per level: 6 (L4), 5 (L5), 5 (L6), 4 (L7)
+Runs per task: 2
+Total runs: 40
+Output directory: evaluation_results/context_analysis_20251107_232901
+======================================================================
+
+
+======================================================================
+Running: L4 - rest_api_mock (Run 1)
+Workspace: /tmp/eval_L4_rest_api_mock_run1_ko40g239
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/successful_runs/L4_rest_api_mock_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✓ SUCCESS - L4 rest_api_mock Run 1
+Duration: 13.6s
+Files exist: True, Validation: True
+
+======================================================================
+Running: L4 - rest_api_mock (Run 2)
+Workspace: /tmp/eval_L4_rest_api_mock_run2_3kay8s_m
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/successful_runs/L4_rest_api_mock_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✓ SUCCESS - L4 rest_api_mock Run 2
+Duration: 18.6s
+Files exist: True, Validation: True
+
+======================================================================
+CHECK-IN: First 2 problems complete
+======================================================================
+
+Results so far:
+  Total runs: 2
+  Successful: 2 (100.0%)
+  Failed: 0 (0.0%)
+
+Context inspection directories:
+  Success: evaluation_results/context_analysis_20251107_232901/successful_runs
+  Failure: evaluation_results/context_analysis_20251107_232901/failed_runs
+Continuing to next problem...
+
+======================================================================
+Running: L4 - sqlite_manager (Run 1)
+Workspace: /tmp/eval_L4_sqlite_manager_run1_v28tndab
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_sqlite_manager_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 sqlite_manager Run 1
+Duration: 23.3s
+Files exist: True, Validation: False
+
+======================================================================
+Running: L4 - sqlite_manager (Run 2)
+Workspace: /tmp/eval_L4_sqlite_manager_run2_q7b5i4gy
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_sqlite_manager_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 sqlite_manager Run 2
+Duration: 66.4s
+Files exist: True, Validation: False
+
+======================================================================
+CHECK-IN: First 4 problems complete
+======================================================================
+
+Results so far:
+  Total runs: 4
+  Successful: 2 (50.0%)
+  Failed: 2 (50.0%)
+
+Failed runs:
+  - L4 - sqlite_manager Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_sqlite_manager_run1_inspection
+  - L4 - sqlite_manager Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_sqlite_manager_run2_inspection
+
+Context inspection directories:
+  Success: evaluation_results/context_analysis_20251107_232901/successful_runs
+  Failure: evaluation_results/context_analysis_20251107_232901/failed_runs
+Continuing to next problem...
+
+======================================================================
+Running: L4 - async_downloader (Run 1)
+Workspace: /tmp/eval_L4_async_downloader_run1_yl0chmtq
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_async_downloader_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 async_downloader Run 1
+Duration: 44.6s
+Files exist: True, Validation: False
+
+======================================================================
+Running: L4 - async_downloader (Run 2)
+Workspace: /tmp/eval_L4_async_downloader_run2_l8gqbw_n
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_async_downloader_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 async_downloader Run 2
+Duration: 34.6s
+Files exist: True, Validation: False
+
+======================================================================
+Running: L4 - test_framework_basic (Run 1)
+Workspace: /tmp/eval_L4_test_framework_basic_run1_l63owz7l
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/successful_runs/L4_test_framework_basic_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✓ SUCCESS - L4 test_framework_basic Run 1
+Duration: 23.2s
+Files exist: True, Validation: True
+
+======================================================================
+Running: L4 - test_framework_basic (Run 2)
+Workspace: /tmp/eval_L4_test_framework_basic_run2_ebkzfmj4
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_test_framework_basic_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 test_framework_basic Run 2
+Duration: 17.7s
+Files exist: True, Validation: False
+
+======================================================================
+Running: L4 - command_parser (Run 1)
+Workspace: /tmp/eval_L4_command_parser_run1_505fwxhd
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_command_parser_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 command_parser Run 1
+Duration: 47.3s
+Files exist: True, Validation: False
+
+======================================================================
+Running: L4 - command_parser (Run 2)
+Workspace: /tmp/eval_L4_command_parser_run2_793fxi75
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_command_parser_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 command_parser Run 2
+Duration: 25.7s
+Files exist: True, Validation: False
+
+======================================================================
+Running: L4 - config_loader (Run 1)
+Workspace: /tmp/eval_L4_config_loader_run1_j9wupyb1
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_config_loader_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 config_loader Run 1
+Duration: 82.6s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L4 - config_loader (Run 2)
+Workspace: /tmp/eval_L4_config_loader_run2_xkemgwjj
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_config_loader_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L4 config_loader Run 2
+Duration: 88.8s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - blog_system (Run 1)
+Workspace: /tmp/eval_L5_blog_system_run1_o_ql8mro
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_blog_system_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 blog_system Run 1
+Duration: 157.3s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - blog_system (Run 2)
+Workspace: /tmp/eval_L5_blog_system_run2_07yvqozr
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_blog_system_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 blog_system Run 2
+Duration: 111.5s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - todo_app (Run 1)
+Workspace: /tmp/eval_L5_todo_app_run1_onj3b8ry
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_todo_app_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 todo_app Run 1
+Duration: 20.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - todo_app (Run 2)
+Workspace: /tmp/eval_L5_todo_app_run2_4s9pzmki
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_todo_app_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 todo_app Run 2
+Duration: 57.6s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - inventory_system (Run 1)
+Workspace: /tmp/eval_L5_inventory_system_run1_3y0t5p9e
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_inventory_system_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 inventory_system Run 1
+Duration: 7.4s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - inventory_system (Run 2)
+Workspace: /tmp/eval_L5_inventory_system_run2_gy12x_43
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_inventory_system_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 inventory_system Run 2
+Duration: 19.3s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - url_shortener (Run 1)
+Workspace: /tmp/eval_L5_url_shortener_run1_vmrq5efg
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_url_shortener_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 url_shortener Run 1
+Duration: 77.3s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - url_shortener (Run 2)
+Workspace: /tmp/eval_L5_url_shortener_run2_9r2dxo6l
+======================================================================
+
+✗ TIMEOUT - L5 url_shortener Run 2
+
+======================================================================
+Running: L5 - email_validator_service (Run 1)
+Workspace: /tmp/eval_L5_email_validator_service_run1_qwwm83yx
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_email_validator_service_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 email_validator_service Run 1
+Duration: 102.0s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - email_validator_service (Run 2)
+Workspace: /tmp/eval_L5_email_validator_service_run2_hz8odnv3
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_email_validator_service_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 email_validator_service Run 2
+Duration: 99.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - observer_pattern (Run 1)
+Workspace: /tmp/eval_L6_observer_pattern_run1_l0dcl0f9
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_observer_pattern_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 observer_pattern Run 1
+Duration: 23.1s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - observer_pattern (Run 2)
+Workspace: /tmp/eval_L6_observer_pattern_run2_b5jvdxse
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_observer_pattern_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 observer_pattern Run 2
+Duration: 19.6s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - factory_pattern (Run 1)
+Workspace: /tmp/eval_L6_factory_pattern_run1_rwzy83lp
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_factory_pattern_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 factory_pattern Run 1
+Duration: 18.3s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - factory_pattern (Run 2)
+Workspace: /tmp/eval_L6_factory_pattern_run2_3107y_mu
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_factory_pattern_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 factory_pattern Run 2
+Duration: 44.9s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - dependency_injection (Run 1)
+Workspace: /tmp/eval_L6_dependency_injection_run1_m43eofap
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_dependency_injection_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 dependency_injection Run 1
+Duration: 19.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - dependency_injection (Run 2)
+Workspace: /tmp/eval_L6_dependency_injection_run2_4z7oj92v
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_dependency_injection_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 dependency_injection Run 2
+Duration: 14.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - plugin_system (Run 1)
+Workspace: /tmp/eval_L6_plugin_system_run1_urwuyhyx
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_plugin_system_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 plugin_system Run 1
+Duration: 55.5s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - plugin_system (Run 2)
+Workspace: /tmp/eval_L6_plugin_system_run2_er2eehu5
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_plugin_system_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 plugin_system Run 2
+Duration: 30.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - event_bus (Run 1)
+Workspace: /tmp/eval_L6_event_bus_run1_qdoaps03
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_event_bus_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 event_bus Run 1
+Duration: 89.4s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L6 - event_bus (Run 2)
+Workspace: /tmp/eval_L6_event_bus_run2_w09xhwbb
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_event_bus_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L6 event_bus Run 2
+Duration: 63.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - rate_limiter (Run 1)
+Workspace: /tmp/eval_L7_rate_limiter_run1_doakp94u
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_rate_limiter_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 rate_limiter Run 1
+Duration: 39.1s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - rate_limiter (Run 2)
+Workspace: /tmp/eval_L7_rate_limiter_run2_0d8e2zth
+======================================================================
+
+✗ TIMEOUT - L7 rate_limiter Run 2
+
+======================================================================
+Running: L7 - connection_pool (Run 1)
+Workspace: /tmp/eval_L7_connection_pool_run1_98nb88t6
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_connection_pool_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 connection_pool Run 1
+Duration: 37.7s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - connection_pool (Run 2)
+Workspace: /tmp/eval_L7_connection_pool_run2_llccs6pq
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_connection_pool_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 connection_pool Run 2
+Duration: 43.1s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - circuit_breaker (Run 1)
+Workspace: /tmp/eval_L7_circuit_breaker_run1_qs7n92zd
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_circuit_breaker_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 circuit_breaker Run 1
+Duration: 63.6s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - circuit_breaker (Run 2)
+Workspace: /tmp/eval_L7_circuit_breaker_run2_gou8pfb1
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_circuit_breaker_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 circuit_breaker Run 2
+Duration: 16.2s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - distributed_cache (Run 1)
+Workspace: /tmp/eval_L7_distributed_cache_run1_nfgpe3bt
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_distributed_cache_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 distributed_cache Run 1
+Duration: 12.5s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L7 - distributed_cache (Run 2)
+Workspace: /tmp/eval_L7_distributed_cache_run2_f19cb3n_
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_distributed_cache_run2_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L7 distributed_cache Run 2
+Duration: 20.0s
+Files exist: False, Validation: False
+
+======================================================================
+EVALUATION COMPLETE
+======================================================================
+
+Results so far:
+  Total runs: 38
+  Successful: 3 (7.9%)
+  Failed: 35 (92.1%)
+
+Failed runs:
+  - L4 - sqlite_manager Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_sqlite_manager_run1_inspection
+  - L4 - sqlite_manager Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_sqlite_manager_run2_inspection
+  - L4 - async_downloader Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_async_downloader_run1_inspection
+  - L4 - async_downloader Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_async_downloader_run2_inspection
+  - L4 - test_framework_basic Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_test_framework_basic_run2_inspection
+  - L4 - command_parser Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_command_parser_run1_inspection
+  - L4 - command_parser Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_command_parser_run2_inspection
+  - L4 - config_loader Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_config_loader_run1_inspection
+  - L4 - config_loader Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L4_config_loader_run2_inspection
+  - L5 - blog_system Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_blog_system_run1_inspection
+  - L5 - blog_system Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_blog_system_run2_inspection
+  - L5 - todo_app Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_todo_app_run1_inspection
+  - L5 - todo_app Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_todo_app_run2_inspection
+  - L5 - inventory_system Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_inventory_system_run1_inspection
+  - L5 - inventory_system Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_inventory_system_run2_inspection
+  - L5 - url_shortener Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_url_shortener_run1_inspection
+  - L5 - email_validator_service Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_email_validator_service_run1_inspection
+  - L5 - email_validator_service Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L5_email_validator_service_run2_inspection
+  - L6 - observer_pattern Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_observer_pattern_run1_inspection
+  - L6 - observer_pattern Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_observer_pattern_run2_inspection
+  - L6 - factory_pattern Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_factory_pattern_run1_inspection
+  - L6 - factory_pattern Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_factory_pattern_run2_inspection
+  - L6 - dependency_injection Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_dependency_injection_run1_inspection
+  - L6 - dependency_injection Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_dependency_injection_run2_inspection
+  - L6 - plugin_system Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_plugin_system_run1_inspection
+  - L6 - plugin_system Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_plugin_system_run2_inspection
+  - L6 - event_bus Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_event_bus_run1_inspection
+  - L6 - event_bus Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L6_event_bus_run2_inspection
+  - L7 - rate_limiter Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_rate_limiter_run1_inspection
+  - L7 - connection_pool Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_connection_pool_run1_inspection
+  - L7 - connection_pool Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_connection_pool_run2_inspection
+  - L7 - circuit_breaker Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_circuit_breaker_run1_inspection
+  - L7 - circuit_breaker Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_circuit_breaker_run2_inspection
+  - L7 - distributed_cache Run 1
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_distributed_cache_run1_inspection
+  - L7 - distributed_cache Run 2
+    Inspection: evaluation_results/context_analysis_20251107_232901/failed_runs/L7_distributed_cache_run2_inspection
+
+Context inspection directories:
+  Success: evaluation_results/context_analysis_20251107_232901/successful_runs
+  Failure: evaluation_results/context_analysis_20251107_232901/failed_runs
+
+✓ Report saved to: evaluation_results/context_analysis_20251107_232901/evaluation_report.md

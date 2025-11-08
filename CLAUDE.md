@@ -210,6 +210,12 @@ See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
 - `dispatch()` - Executes tool calls with structured error handling
 - Main loop displays status, calls LLM, executes tools, tracks performance
 
+**llm_utils.py** (LLM communication):
+- `chat_with_inactivity_timeout()` - Calls Ollama with timeout protection
+- **Thinking token preservation** - Automatically captures and preserves reasoning traces from thinking-capable models (qwen3:8b, gpt-oss:20b)
+- Preserved thinking improves reasoning continuity and reduces re-reasoning in subsequent rounds
+- Inactivity and total time timeout protection for hung LLM calls
+
 **context_manager.py** (hierarchical context management):
 - `ContextManager` - Manages Goal → Task → Subtask → Action hierarchy
 - `LoopDetector` - Detects repeated action patterns (infinite loops)

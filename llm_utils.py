@@ -80,7 +80,7 @@ def chat_with_inactivity_timeout(
             if tools is not None:
                 chat_args["tools"] = tools
 
-            full_response = {"message": {"role": "assistant", "content": ""}}
+            full_response = {"message": {"role": "assistant", "content": "", "thinking": ""}}
 
             # Use streaming to detect activity
             for chunk in OLLAMA_CLIENT.chat(**chat_args):
@@ -91,6 +91,11 @@ def chat_with_inactivity_timeout(
                 content = chunk.get("message", {}).get("content", "")
                 if content:
                     full_response["message"]["content"] += content
+
+                # Accumulate thinking (reasoning trace from thinking-capable models)
+                thinking = chunk.get("message", {}).get("thinking", "")
+                if thinking:
+                    full_response["message"]["thinking"] += thinking
 
                 # Get tool calls from final chunk
                 tool_calls = chunk.get("message", {}).get("tool_calls")

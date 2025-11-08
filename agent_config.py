@@ -211,7 +211,7 @@ def load_llm_config() -> dict:
 
     # Defaults if file doesn't exist or YAML not available
     defaults = {
-        "model": os.environ.get("OLLAMA_MODEL", "qwen3:8b"),
+        "model": os.environ.get("OLLAMA_MODEL", "gpt-oss:20b"),
         "temperature": 0.2,
         "system_prompt": "You are a coding agent.",
         "timeout": {

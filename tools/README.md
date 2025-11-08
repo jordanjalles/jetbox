@@ -6,9 +6,49 @@ Tools for analyzing and reporting on Jetbox agent context window usage.
 
 The Context Inspection System helps identify inefficiencies, duplication, and optimization opportunities in agent context windows.
 
+## Quick Start
+
+```bash
+# Analyze captured snapshots
+python tools/analyze_context.py .context_inspection/test_data
+
+# Run interactive demo
+python tools/demo_phase3.py
+
+# Run tests
+pytest tests/test_analyze_context.py -v
+```
+
 ## Tools
 
-### report_generator.py
+### analyze_context.py (Phase 3 - NEW!)
+
+**Comprehensive analysis engine for context snapshots.**
+
+**Features:**
+- Duplication detection (exact and fuzzy >80% similarity)
+- Growth pattern analysis (linear/exponential/stable)
+- Per-behavior token attribution
+- Prioritized recommendations (HIGH/MEDIUM/LOW)
+- Markdown report generation
+
+**Usage:**
+```bash
+python tools/analyze_context.py .context_inspection
+python tools/analyze_context.py .context_inspection --output report.md
+```
+
+See `PHASE3_USAGE_EXAMPLES.md` in docs/context_inspection/ for details.
+
+### demo_phase3.py (NEW!)
+
+**Interactive demo showing all analysis capabilities.**
+
+```bash
+python tools/demo_phase3.py
+```
+
+### report_generator.py (Phase 5)
 
 Generate comprehensive, actionable markdown reports from context inspection data.
 
@@ -174,7 +214,7 @@ Tests cover:
 
 ## Example Output
 
-See `/workspace/sample_context_inspection_report.md` for a complete example report.
+See `/workspace/docs/context_inspection/sample_context_inspection_report.md` for a complete example report.
 
 ## Integration with Analysis Engine
 
