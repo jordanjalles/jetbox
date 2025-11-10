@@ -293,7 +293,7 @@ class BaseAgent:
             response: LLM response dict
             tool_calls: List of tool calls from this round
         """
-        from completion_detector import analyze_llm_response
+        from src.completion_detector import analyze_llm_response
 
         # Extract LLM response text
         llm_response = ""
@@ -447,7 +447,7 @@ class BaseAgent:
         Returns:
             LLM response dict with 'message' key
         """
-        from llm_utils import chat_with_inactivity_timeout
+        from src.llm_utils import chat_with_inactivity_timeout
 
         tools = self.get_tools()
 
@@ -570,7 +570,7 @@ class BaseAgent:
             goal_slug: Goal description slug for workspace directory name
             workspace_path: Optional existing workspace path to reuse (for iteration)
         """
-        from workspace_manager import WorkspaceManager
+        from src.workspace_manager import WorkspaceManager
         if self.workspace_manager is None:
             self.workspace_manager = WorkspaceManager(
                 goal=goal_slug,
@@ -590,7 +590,7 @@ class BaseAgent:
 
         Used by orchestrator for coordinating servers across delegated tasks.
         """
-        from server_manager import ServerManager
+        from src.server_manager import ServerManager
         if self.server_manager is None:
             self.server_manager = ServerManager(self.workspace)
             self.server_manager.start_monitoring()
@@ -1298,3 +1298,19 @@ class BaseAgent:
     ) -> None:
         """Execute round loop for a single task in multi-task mode."""
         return self.lifecycle.run_task_round_loop(user_message, max_rounds, check_completion_callback)
+
+    # ===========================
+    # Event system methods (delegate to event_system)
+    # ===========================
+
+    def trigger_behavior_event(self, event_name: str, **kwargs) -> None:
+        """
+        Trigger a behavior event on all loaded behaviors.
+
+        This is a convenience method that delegates to event_system.trigger_legacy_event().
+
+        Args:
+            event_name: Name of the event to trigger (e.g., "onGoalSet", "onComplete")
+            **kwargs: Event-specific parameters to pass to behavior handlers
+        """
+        self.event_system.trigger_legacy_event(event_name, **kwargs)
