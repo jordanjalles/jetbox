@@ -4,7 +4,7 @@ Simulate the actual orchestrator -> architect delegation to reproduce empty roun
 """
 
 from pathlib import Path
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 def main():
     """Test L7 task via orchestrator delegation."""

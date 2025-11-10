@@ -10,7 +10,7 @@ Shows:
 
 import json
 from pathlib import Path
-from architect_agent import ArchitectAgent
+from agents.architect_agent import ArchitectAgent
 
 def main():
     """Debug architect context construction."""

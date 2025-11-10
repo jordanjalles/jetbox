@@ -3,7 +3,7 @@ Test ServerManager functionality.
 """
 import time
 from pathlib import Path
-from server_manager import ServerManager
+from src.server_manager import ServerManager
 
 
 def test_server_lifecycle():

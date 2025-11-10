@@ -8,7 +8,7 @@ Usage:
 """
 import sys
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 def main():

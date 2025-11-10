@@ -6,7 +6,7 @@ This simulates asking questions that the chatbot cannot answer,
 to verify it doesn't call mark_failed and end the conversation.
 """
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 def test_chatbot_unanswerable_question():

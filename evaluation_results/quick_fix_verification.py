@@ -18,7 +18,7 @@ def test_task_executor_behaviors():
     """Test that TaskExecutor can access _behaviors attribute."""
     print("\n=== TEST 1: TaskExecutor _behaviors attribute ===")
     try:
-        from task_executor_agent import TaskExecutorAgent
+        from agents.task_executor_agent import TaskExecutorAgent
 
         # Create agent with use_behaviors=True
         agent = TaskExecutorAgent(
@@ -56,7 +56,7 @@ def test_orchestrator_workspace():
     """Test that OrchestratorAgent can be instantiated without workspace."""
     print("\n=== TEST 2: OrchestratorAgent optional workspace ===")
     try:
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
 
         # Test 1: No workspace provided
         agent1 = OrchestratorAgent(use_behaviors=True)
@@ -80,7 +80,7 @@ def test_architect_workspace():
     """Test that ArchitectAgent can be instantiated without workspace."""
     print("\n=== TEST 3: ArchitectAgent optional workspace ===")
     try:
-        from architect_agent import ArchitectAgent
+        from agents.architect_agent import ArchitectAgent
 
         # Test 1: No workspace provided
         agent1 = ArchitectAgent(use_behaviors=True)

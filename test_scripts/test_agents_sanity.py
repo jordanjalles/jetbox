@@ -15,7 +15,7 @@ def test_task_executor():
     print("TEST 1: TaskExecutor Instantiation")
     print("=" * 60)
     try:
-        from task_executor_agent import TaskExecutorAgent
+        from agents.task_executor_agent import TaskExecutorAgent
 
         # Create agent
         agent = TaskExecutorAgent(
@@ -42,7 +42,7 @@ def test_architect():
     print("TEST 2: Architect Instantiation")
     print("=" * 60)
     try:
-        from architect_agent import ArchitectAgent
+        from agents.architect_agent import ArchitectAgent
 
         # Create agent
         agent = ArchitectAgent(
@@ -69,7 +69,7 @@ def test_orchestrator_with_chatbot():
     print("TEST 3: Orchestrator with ChatbotBehavior")
     print("=" * 60)
     try:
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
 
         # Create agent with ChatbotBehavior (don't exclude it)
         agent = OrchestratorAgent(
@@ -103,7 +103,7 @@ def test_orchestrator_without_chatbot():
     print("TEST 4: Orchestrator without ChatbotBehavior")
     print("=" * 60)
     try:
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
 
         # Create agent excluding ChatbotBehavior
         agent = OrchestratorAgent(
@@ -135,7 +135,7 @@ def test_base_agent_chat_coordination():
     print("TEST 5: BaseAgent ChatbotBehavior Detection")
     print("=" * 60)
     try:
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
 
         # Create agent with ChatbotBehavior
         agent = OrchestratorAgent(

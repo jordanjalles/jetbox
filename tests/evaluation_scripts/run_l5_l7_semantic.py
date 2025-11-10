@@ -13,7 +13,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from semantic_validator import validate_workspace
 
 

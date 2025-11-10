@@ -6,7 +6,7 @@ Test if unknown tool calls are being tracked correctly.
 """
 
 from pathlib import Path
-from architect_agent import ArchitectAgent
+from agents.architect_agent import ArchitectAgent
 
 def main():
     """Test architect with a simple task."""

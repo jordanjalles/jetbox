@@ -9,7 +9,7 @@ Verifies that orchestrator:
 """
 
 from pathlib import Path
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 def test_orchestrator_workflow():
     """Test that orchestrator follows proper delegation workflow."""

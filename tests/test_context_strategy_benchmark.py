@@ -12,7 +12,7 @@ from pathlib import Path
 import json
 import time
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy
 
 

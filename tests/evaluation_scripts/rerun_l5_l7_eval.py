@@ -21,7 +21,7 @@ import statistics
 
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 
 @dataclass

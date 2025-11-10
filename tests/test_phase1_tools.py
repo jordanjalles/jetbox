@@ -13,7 +13,7 @@ import tempfile
 import shutil
 from pathlib import Path
 import tools
-from workspace_manager import WorkspaceManager
+from src.workspace_manager import WorkspaceManager
 
 
 def test_tool_imports():

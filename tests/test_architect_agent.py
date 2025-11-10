@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import json
 
-from architect_agent import ArchitectAgent
+from agents.architect_agent import ArchitectAgent
 from agent_registry import AgentRegistry
 import architect_tools
 

@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 import json
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 def test_complex_web_project():

@@ -13,7 +13,7 @@ import sys
 import time
 import threading
 from pathlib import Path
-from server_manager import ServerManager
+from src.server_manager import ServerManager
 
 
 def monitor_agent_output(process):

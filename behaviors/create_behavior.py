@@ -341,7 +341,7 @@ TEMPLATE TO FOLLOW:
 Generate the complete behavior code now:"""
 
             # Call LLM
-            from llm_utils import chat_with_inactivity_timeout
+            from src.llm_utils import chat_with_inactivity_timeout
             import os
 
             model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
@@ -449,7 +449,7 @@ REQUIREMENTS:
 
 Generate the complete test file now:"""
 
-            from llm_utils import chat_with_inactivity_timeout
+            from src.llm_utils import chat_with_inactivity_timeout
             import os
 
             model = os.environ.get("OLLAMA_MODEL", "qwen3:8b")

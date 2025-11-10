@@ -7,7 +7,7 @@ Tests:
 2. Goal-oriented agent - should HAVE mark_complete/mark_failed
 """
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 def test_pure_chatbot_no_completion_tools():

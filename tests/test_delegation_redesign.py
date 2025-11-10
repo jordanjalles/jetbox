@@ -275,7 +275,7 @@ class TestEndToEndDelegation:
 
     def test_task_executor_can_be_instantiated_with_new_behaviors(self):
         """Test TaskExecutor instantiates correctly with new behaviors."""
-        from task_executor_agent import TaskExecutorAgent
+        from agents.task_executor_agent import TaskExecutorAgent
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = TaskExecutorAgent(
@@ -292,7 +292,7 @@ class TestEndToEndDelegation:
 
     def test_orchestrator_can_be_instantiated_with_new_behaviors(self):
         """Test Orchestrator instantiates correctly with new behaviors."""
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = OrchestratorAgent(
@@ -309,7 +309,7 @@ class TestEndToEndDelegation:
 
     def test_architect_can_be_instantiated_with_new_behaviors(self):
         """Test Architect instantiates correctly with new behaviors."""
-        from architect_agent import ArchitectAgent
+        from agents.architect_agent import ArchitectAgent
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = ArchitectAgent(
@@ -329,7 +329,7 @@ class TestBehaviorComposition:
 
     def test_no_tool_conflicts_in_task_executor(self):
         """Test TaskExecutor has no tool name conflicts."""
-        from task_executor_agent import TaskExecutorAgent
+        from agents.task_executor_agent import TaskExecutorAgent
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = TaskExecutorAgent(
@@ -346,7 +346,7 @@ class TestBehaviorComposition:
 
     def test_no_tool_conflicts_in_orchestrator(self):
         """Test Orchestrator has no tool name conflicts."""
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = OrchestratorAgent(

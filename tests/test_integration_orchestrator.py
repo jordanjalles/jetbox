@@ -4,7 +4,7 @@ Simple integration test for orchestrator with architect and task executors.
 Tests workspace coordination across multiple delegations.
 """
 
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 from pathlib import Path
 
 # Create orchestrator with a clear, complex goal

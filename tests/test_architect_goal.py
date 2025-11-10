@@ -2,7 +2,7 @@
 """Check if architect has a goal set."""
 
 from pathlib import Path
-from architect_agent import ArchitectAgent
+from agents.architect_agent import ArchitectAgent
 
 architect = ArchitectAgent(workspace=Path(".agent_workspaces/tests/test"))
 

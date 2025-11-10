@@ -12,7 +12,7 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from context_strategies import JetboxNotesEnhancement, AppendUntilFullStrategy
 
 

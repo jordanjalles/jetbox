@@ -17,7 +17,7 @@ Expected Outcome:
 """
 
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from behaviors.create_behavior import CreateBehaviorBehavior
 import shutil
 

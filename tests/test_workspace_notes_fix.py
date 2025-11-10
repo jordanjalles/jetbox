@@ -10,8 +10,8 @@ Verifies:
 """
 
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
-from orchestrator_agent import OrchestratorAgent
+from agents.task_executor_agent import TaskExecutorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 import time
 
 def test_basic_workspace_notes():

@@ -16,7 +16,7 @@ import json
 import time
 from pathlib import Path
 from datetime import datetime
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 # L5-L7 Test Problems
 TEST_PROBLEMS = {

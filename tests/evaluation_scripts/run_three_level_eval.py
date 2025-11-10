@@ -16,9 +16,9 @@ from datetime import datetime
 # Set model for testing (gpt-oss:20b recommended for good tool use)
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
-from task_executor_agent import TaskExecutorAgent
-from orchestrator_agent import OrchestratorAgent
-from architect_agent import ArchitectAgent
+from agents.task_executor_agent import TaskExecutorAgent
+from agents.orchestrator_agent import OrchestratorAgent
+from agents.architect_agent import ArchitectAgent
 
 
 def log_header(log_file, task_name, details):

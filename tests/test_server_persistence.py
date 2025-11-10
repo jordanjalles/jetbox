@@ -9,7 +9,7 @@ This simulates:
 import time
 import json
 from pathlib import Path
-from server_manager import ServerManager
+from src.server_manager import ServerManager
 
 
 def simulate_task_execution(task_num: int, manager: ServerManager, workspace: Path):

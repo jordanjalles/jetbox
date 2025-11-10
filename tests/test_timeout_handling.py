@@ -14,7 +14,7 @@ import shutil
 # Set model
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 def test_timeout_handling():
     """Test that timeout is handled gracefully."""

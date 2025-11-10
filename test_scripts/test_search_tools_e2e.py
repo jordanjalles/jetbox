@@ -14,7 +14,7 @@ Test validates:
 """
 
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 import shutil
 import yaml
 

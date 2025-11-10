@@ -8,7 +8,7 @@ Tests agent with file + command tools.
 from pathlib import Path
 import pytest
 import yaml
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from behaviors.create_agent import CreateAgentBehavior
 from behaviors.validation import ValidationBehavior
 

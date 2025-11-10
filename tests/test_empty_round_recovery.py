@@ -7,7 +7,7 @@ in L7 evaluations) to verify that the recovery mechanism works correctly.
 """
 
 from pathlib import Path
-from architect_agent import ArchitectAgent
+from agents.architect_agent import ArchitectAgent
 
 def test_empty_round_recovery():
     """Test recovery prompts for architect in empty round scenario."""

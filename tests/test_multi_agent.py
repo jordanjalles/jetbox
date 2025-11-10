@@ -7,8 +7,8 @@ from pathlib import Path
 import tempfile
 
 from agent_registry import AgentRegistry
-from orchestrator_agent import OrchestratorAgent
-from task_executor_agent import TaskExecutorAgent
+from agents.orchestrator_agent import OrchestratorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 def test_agent_registry():

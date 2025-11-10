@@ -11,8 +11,8 @@ import tempfile
 from pathlib import Path
 import json
 
-from orchestrator_agent import OrchestratorAgent
-from architect_agent import ArchitectAgent
+from agents.orchestrator_agent import OrchestratorAgent
+from agents.architect_agent import ArchitectAgent
 from context_strategies import TaskManagementEnhancement
 
 

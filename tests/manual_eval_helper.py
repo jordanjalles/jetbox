@@ -131,7 +131,7 @@ def test_task_validation(task_name: str):
         workspace = Path(tmpdir)
 
         # Create a task executor to get the actual workspace directory
-        from task_executor_agent import TaskExecutorAgent
+        from agents.task_executor_agent import TaskExecutorAgent
         executor = TaskExecutorAgent(
             workspace=workspace,
             goal=task.goal,

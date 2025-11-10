@@ -23,7 +23,7 @@ from typing import List, Dict, Any
 # Set model for testing
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 @dataclass

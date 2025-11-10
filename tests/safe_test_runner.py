@@ -20,7 +20,7 @@ import subprocess
 import time
 from pathlib import Path
 from process_tracker import ProcessTracker
-from ollama_manager import OllamaManager
+from src.ollama_manager import OllamaManager
 
 
 def safe_run_test_suite(script_path: str, description: str):

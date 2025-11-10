@@ -6,7 +6,7 @@ This script patches the base agent to log full LLM responses and context.
 """
 from pathlib import Path
 import json
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 # Patch base_agent to add debug logging
 import base_agent

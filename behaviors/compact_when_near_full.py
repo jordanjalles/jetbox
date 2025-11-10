@@ -86,7 +86,7 @@ class CompactWhenNearFullBehavior(AgentBehavior):
 
         if max_tokens is None:
             # Try to get model-specific default from llm_utils
-            from llm_utils import MODEL_CONTEXT_WINDOWS
+            from src.llm_utils import MODEL_CONTEXT_WINDOWS
             model = getattr(agent, 'model', 'qwen3:8b')
             max_tokens = MODEL_CONTEXT_WINDOWS.get(model, 131072)  # 128K default
 

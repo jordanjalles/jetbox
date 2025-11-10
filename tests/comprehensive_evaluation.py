@@ -16,7 +16,7 @@ import traceback
 sys.path.insert(0, str(Path(__file__).parent))
 
 from tests.evaluation_suite import EvaluationSuite, TaskDefinition, TaskResult, FailureCategory
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 class ComprehensiveEvaluator:

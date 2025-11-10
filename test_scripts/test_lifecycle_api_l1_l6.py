@@ -29,7 +29,7 @@ import json
 # Add workspace to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 class EvaluationTest:

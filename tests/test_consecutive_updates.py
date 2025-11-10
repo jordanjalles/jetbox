@@ -14,9 +14,9 @@ import tempfile
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from orchestrator_agent import OrchestratorAgent
-from task_executor_agent import TaskExecutorAgent
-from workspace_manager import WorkspaceManager
+from agents.orchestrator_agent import OrchestratorAgent
+from agents.task_executor_agent import TaskExecutorAgent
+from src.workspace_manager import WorkspaceManager
 
 
 def test_task_executor_basic_workflow():

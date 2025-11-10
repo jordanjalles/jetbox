@@ -3,7 +3,7 @@ Debug script to run multiple agent rounds and see the full conversation.
 """
 import tempfile
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 # Create temp workspace
 with tempfile.TemporaryDirectory() as tmp:

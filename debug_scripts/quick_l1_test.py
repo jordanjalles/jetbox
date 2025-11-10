@@ -1,7 +1,7 @@
 """Quick L1 test to verify fixes."""
 import tempfile
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 # Test 1: Simple File
 print("=" * 80)

@@ -3,7 +3,7 @@ Debug script to inspect the exact context being sent to LLM.
 """
 import tempfile
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 # Create temp workspace
 with tempfile.TemporaryDirectory() as tmp:

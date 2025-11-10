@@ -6,7 +6,7 @@ This test validates that when the LLM generates malformed tool calls (e.g., text
 the error is immediately fed back with clear instructions on how to fix it.
 """
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 if __name__ == "__main__":
     print("=" * 80)

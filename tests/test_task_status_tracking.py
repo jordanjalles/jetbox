@@ -11,7 +11,7 @@ from datetime import datetime
 
 import architect_tools
 import task_management_tools
-from workspace_manager import WorkspaceManager
+from src.workspace_manager import WorkspaceManager
 
 
 class TestTaskStatusTracking:

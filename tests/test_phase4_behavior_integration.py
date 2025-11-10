@@ -12,9 +12,9 @@ Tests:
 
 import pytest
 
-from task_executor_agent import TaskExecutorAgent
-from orchestrator_agent import OrchestratorAgent
-from architect_agent import ArchitectAgent
+from agents.task_executor_agent import TaskExecutorAgent
+from agents.orchestrator_agent import OrchestratorAgent
+from agents.architect_agent import ArchitectAgent
 
 
 class TestBehaviorLoadingFromConfig:

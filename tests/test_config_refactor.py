@@ -262,7 +262,7 @@ def test_orchestrator_delegation_behavior():
     print("="*70)
 
     try:
-        from orchestrator_agent import OrchestratorAgent
+        from agents.orchestrator_agent import OrchestratorAgent
         from pathlib import Path
         import tempfile
 

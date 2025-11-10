@@ -3,7 +3,7 @@
 
 from pathlib import Path
 import tempfile
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 # Create temp workspace
 with tempfile.TemporaryDirectory() as tmpdir:

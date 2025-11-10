@@ -8,7 +8,7 @@ sent to the LLM, not the stored state.
 from pathlib import Path
 import tempfile
 
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 
 def test_compaction_actually_updates_state():

@@ -15,7 +15,7 @@ from pathlib import Path
 # Add workspace to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from behaviors.create_behavior import CreateBehaviorBehavior
 from behaviors.validation import ValidationBehavior
 from behaviors.sandbox_test import SandboxTestBehavior

@@ -16,7 +16,7 @@ import shutil
 import time
 
 from behaviors.command_tools import CommandToolsBehavior
-from workspace_manager import WorkspaceManager
+from src.workspace_manager import WorkspaceManager
 
 
 @pytest.fixture

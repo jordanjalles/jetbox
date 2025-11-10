@@ -15,7 +15,7 @@ print("="*80)
 # Test 1: TaskExecutor with behaviors
 print("\n[Test 1] TaskExecutor with use_behaviors=True")
 try:
-    from task_executor_agent import TaskExecutorAgent
+    from agents.task_executor_agent import TaskExecutorAgent
 
     agent = TaskExecutorAgent(
         workspace=Path("/tmp/test_executor"),
@@ -42,7 +42,7 @@ except Exception as e:
 # Test 2: Orchestrator without workspace parameter
 print("\n[Test 2] Orchestrator without workspace parameter")
 try:
-    from orchestrator_agent import OrchestratorAgent
+    from agents.orchestrator_agent import OrchestratorAgent
 
     agent = OrchestratorAgent(use_behaviors=True)
 
@@ -63,7 +63,7 @@ except Exception as e:
 # Test 3: Orchestrator with workspace parameter
 print("\n[Test 3] Orchestrator with workspace parameter")
 try:
-    from orchestrator_agent import OrchestratorAgent
+    from agents.orchestrator_agent import OrchestratorAgent
 
     agent = OrchestratorAgent(
         workspace=Path("/tmp/test_orchestrator"),
@@ -83,7 +83,7 @@ except Exception as e:
 # Test 4: Architect without workspace parameter
 print("\n[Test 4] Architect without workspace parameter")
 try:
-    from architect_agent import ArchitectAgent
+    from agents.architect_agent import ArchitectAgent
 
     agent = ArchitectAgent(use_behaviors=True)
 
@@ -103,7 +103,7 @@ except Exception as e:
 # Test 5: Architect with workspace parameter
 print("\n[Test 5] Architect with workspace parameter")
 try:
-    from architect_agent import ArchitectAgent
+    from agents.architect_agent import ArchitectAgent
 
     agent = ArchitectAgent(
         workspace=Path("/tmp/test_architect"),

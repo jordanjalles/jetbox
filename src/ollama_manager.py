@@ -8,7 +8,7 @@ This module provides utilities to:
 - Get list of loaded models
 
 Usage:
-    from ollama_manager import OllamaManager
+    from src.ollama_manager import OllamaManager
 
     # Before starting tests
     if OllamaManager.is_ollama_busy():
@@ -19,7 +19,7 @@ Usage:
 """
 import subprocess
 import time
-from llm_utils import clear_ollama_context
+from .llm_utils import clear_ollama_context
 
 
 class OllamaManager:

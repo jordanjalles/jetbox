@@ -5,8 +5,8 @@ This test verifies that the workspace nesting fix works in the full delegation c
 """
 from pathlib import Path
 import tempfile
-from architect_agent import ArchitectAgent
-from task_executor_agent import TaskExecutorAgent
+from agents.architect_agent import ArchitectAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 
 def test_orchestrator_architect_executor_integration():

@@ -77,7 +77,7 @@ def run_test(level, model, goal, timeout, output_dir):
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd()))
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 with open('{goal_file}', 'r') as f:
     goal = f.read()

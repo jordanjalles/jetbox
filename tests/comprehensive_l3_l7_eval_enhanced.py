@@ -23,8 +23,8 @@ import statistics
 # Set model for testing
 os.environ["OLLAMA_MODEL"] = "gpt-oss:20b"
 
-from task_executor_agent import TaskExecutorAgent
-from orchestrator_agent import OrchestratorAgent
+from agents.task_executor_agent import TaskExecutorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 
 @dataclass

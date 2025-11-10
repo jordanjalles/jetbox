@@ -7,7 +7,7 @@ Tests state changes and default value handling.
 """
 from pathlib import Path
 import pytest
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from behaviors.create_behavior import CreateBehaviorBehavior
 from behaviors.validation import ValidationBehavior
 from behaviors.sandbox_test import SandboxTestBehavior

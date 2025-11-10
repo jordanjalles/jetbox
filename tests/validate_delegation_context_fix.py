@@ -10,7 +10,7 @@ Tests:
 """
 from pathlib import Path
 import shutil
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 def test_delegation_execution():
     """Test that delegation actually executes subagent and returns proper results."""

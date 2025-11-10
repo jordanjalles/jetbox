@@ -15,7 +15,7 @@ import tempfile
 import shutil
 
 from behaviors.file_tools import FileToolsBehavior
-from workspace_manager import WorkspaceManager
+from src.workspace_manager import WorkspaceManager
 
 
 @pytest.fixture

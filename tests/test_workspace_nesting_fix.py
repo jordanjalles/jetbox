@@ -6,8 +6,8 @@ the workspace is reused correctly without creating nested workspaces.
 """
 from pathlib import Path
 import tempfile
-from task_executor_agent import TaskExecutorAgent
-from workspace_manager import WorkspaceManager
+from agents.task_executor_agent import TaskExecutorAgent
+from src.workspace_manager import WorkspaceManager
 
 
 def test_workspace_reuse_no_nesting():

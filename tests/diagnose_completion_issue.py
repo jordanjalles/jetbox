@@ -5,7 +5,7 @@ This test runs a simple goal and captures all LLM responses and tool calls
 to see what the agent is doing in each round.
 """
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 # Monkey-patch to capture tool calls
 original_dispatch = None

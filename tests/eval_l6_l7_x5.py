@@ -9,7 +9,7 @@ import json
 import time
 from pathlib import Path
 from datetime import datetime
-from orchestrator_agent import OrchestratorAgent
+from agents.orchestrator_agent import OrchestratorAgent
 
 # L6-L7 Test Problems (orchestrator-level complexity)
 TEST_PROBLEMS = {

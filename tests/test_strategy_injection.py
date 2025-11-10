@@ -2,7 +2,7 @@
 Test that context strategies correctly inject instructions and tools.
 """
 from pathlib import Path
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 from context_strategies import HierarchicalStrategy, AppendUntilFullStrategy
 
 

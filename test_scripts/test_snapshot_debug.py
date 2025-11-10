@@ -8,7 +8,7 @@ import shutil
 # Add workspace to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from task_executor_agent import TaskExecutorAgent
+from agents.task_executor_agent import TaskExecutorAgent
 
 def test_snapshot():
     """Test that snapshot file is created on first run."""
