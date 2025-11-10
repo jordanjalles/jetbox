@@ -322,7 +322,6 @@ class AgentLifecycle:
 
             # Execute tool calls if present
             if "tool_calls" in msg and msg["tool_calls"]:
-                had_tool_calls = True
                 completion = self._execute_tool_calls(msg["tool_calls"])
                 if completion:
                     return completion
@@ -440,9 +439,6 @@ class AgentLifecycle:
         is_delegation_result = "target_agent" in result
         if is_delegation_result:
             return None
-
-        # Get goal description
-        goal_desc = self._get_goal_description()
 
         # Check for mark_complete (success=True + summary)
         if result.get("success") is True and "summary" in result:

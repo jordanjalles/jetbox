@@ -13,9 +13,7 @@ from typing import Any, Callable
 from pathlib import Path
 import time
 import os
-from datetime import datetime
 import re
-import importlib
 from src.agent_state import AgentState, StatePersistence
 from src.agent_events import EventSystem
 from src.tool_dispatch import ToolDispatcher
@@ -929,7 +927,6 @@ class BaseAgent:
         Returns:
             Workspace Path
         """
-        import re
 
         custom_workspace = args["custom_workspace"]
         initial_message = args["initial_message"]
@@ -1107,7 +1104,7 @@ class BaseAgent:
 
                 # Add response to history
                 if "message" not in response:
-                    print(f"[DEBUG] No message in LLM response")
+                    print("[DEBUG] No message in LLM response")
                     return
 
                 agent.add_message(response["message"])
@@ -1120,7 +1117,7 @@ class BaseAgent:
                     print(f"\n{agent.name}: {content}\n")
                 elif not has_tool_calls:
                     # No content and no tool calls - empty response
-                    print(f"[DEBUG] Empty LLM response - no content, no tool calls")
+                    print("[DEBUG] Empty LLM response - no content, no tool calls")
                     import json
                     print(f"[DEBUG] Full response: {json.dumps(response['message'], indent=2)}")
 
