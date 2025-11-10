@@ -88,7 +88,19 @@ class AgentConfig:
     timeouts: TimeoutsConfig
 
     @classmethod
-    def load(cls, config_path = "agent_config.yaml"):
+    def load(cls, config_path = None):
+        """
+        Load agent configuration from modern config structure.
+
+        Uses config/llm_config.yaml and config/agent_runtime.yaml.
+        Legacy single-file loading (config_path parameter) is deprecated.
+
+        Args:
+            config_path: Deprecated. Ignored in favor of multi-file structure.
+
+        Returns:
+            AgentConfig instance with merged configuration
+        """
         import os
 
         def deep_merge(base: dict, override: dict) -> dict:
@@ -101,39 +113,27 @@ class AgentConfig:
                     result[key] = value
             return result
 
+        # Load from modern config structure
         config_dict = DEFAULT_CONFIG.copy()
-        config_file = Path(config_path)
-        if config_file.exists() and YAML_AVAILABLE:
-            try:
-                with open(config_file) as f:
-                    yaml_config = yaml.safe_load(f)
-                    if yaml_config:
-                        config_dict = deep_merge(config_dict, yaml_config)
-            except (yaml.YAMLError, IOError, OSError) as e:
-                print(f"Warning: Failed to load {config_file}: {e}")
-            except Exception as e:
-                print(f"Unexpected error loading {config_file}: {e}")
 
-        # Provide defaults for new sections if not in config
-        if "llm" not in config_dict:
-            config_dict["llm"] = {
-                "model": "qwen3:8b",
-                "temperature": 0.2,
-                "system_prompt": "You are a coding agent."
-            }
+        # Load runtime config (rounds, hierarchy, escalation, etc.)
+        runtime_config = load_runtime_config()
+        config_dict = deep_merge(config_dict, runtime_config)
 
-        # Allow environment variable override for model
-        if "OLLAMA_MODEL" in os.environ:
-            config_dict["llm"]["model"] = os.environ["OLLAMA_MODEL"]
+        # Load LLM config (model, temperature, timeout, system_prompt)
+        llm_config_dict = load_llm_config()
+        config_dict["llm"] = llm_config_dict
 
-        # Add default timeout config if not present
+        # Add default timeout config if not present in LLM config
         if "timeout" not in config_dict["llm"]:
             config_dict["llm"]["timeout"] = {
                 "inactivity_timeout": 30,
                 "max_call_time": 180,
-                "max_consecutive_timeouts": 3
+                "max_consecutive_timeouts": 3,
+                "auto_restart_ollama": False
             }
 
+        # Ensure context section exists
         if "context" not in config_dict:
             config_dict["context"] = {
                 "history_keep": 12,
@@ -143,6 +143,7 @@ class AgentConfig:
                 "compression_threshold": 20
             }
 
+        # Ensure timeouts section exists
         if "timeouts" not in config_dict:
             config_dict["timeouts"] = {
                 "max_goal_time": 600,  # 10 minutes
@@ -202,16 +203,17 @@ def load_llm_config() -> dict:
     """
     Load LLM configuration from config/llm_config.yaml.
 
+    Note: OLLAMA_MODEL env var is explicitly cleared by agent.py at startup,
+    so we load directly from the config file without env var overrides.
+
     Returns:
         Dictionary of LLM configuration (model, temperature, timeout, system_prompt)
     """
-    import os
-
     config_path = Path("config/llm_config.yaml")
 
     # Defaults if file doesn't exist or YAML not available
     defaults = {
-        "model": os.environ.get("OLLAMA_MODEL", "gpt-oss:20b"),
+        "model": "qwen3-coder:30b",
         "temperature": 0.2,
         "system_prompt": "You are a coding agent.",
         "timeout": {
@@ -228,9 +230,7 @@ def load_llm_config() -> dict:
     try:
         with open(config_path) as f:
             config = yaml.safe_load(f) or {}
-            # Allow environment variable override
-            if "OLLAMA_MODEL" in os.environ:
-                config["model"] = os.environ["OLLAMA_MODEL"]
+            # No env var override - agent.py clears OLLAMA_MODEL at startup
             return config
     except Exception as e:
         print(f"Warning: Failed to load {config_path}: {e}")

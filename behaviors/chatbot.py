@@ -337,12 +337,6 @@ Guidelines:
         # Check if agent already has a goal set
         # If yes, don't provide chat mode instructions (agent is in execution mode)
         if hasattr(self, 'agent') and self.agent:
-            # Check via context_manager if available
-            if hasattr(self.agent, 'context_manager') and self.agent.context_manager:
-                if self.agent.context_manager.state.goal:
-                    # Goal already set - don't provide chat instructions
-                    return ""
-
             # Check if agent.goal is set (core agent functionality)
             if hasattr(self.agent, 'goal') and self.agent.goal:
                 # Goal set - don't provide chat instructions

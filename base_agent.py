@@ -160,7 +160,6 @@ class BaseAgent:
         self.load_state()
 
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
-        self.context_manager = None  # For hierarchical task tracking (TaskExecutor)
         self.workspace_manager = None  # For workspace isolation
         self.perf_stats = None  # For performance tracking
         self.server_manager = None  # For server management (Orchestrator)
@@ -771,10 +770,6 @@ Please retry the tool call using only the valid parameters listed above.
         if tool_name == "mark_complete":
             summary = args.get('summary', 'Task completed')
 
-            # Mark goal as complete in context manager if available
-            if self.context_manager and hasattr(self.context_manager, 'state') and self.context_manager.state.goal:
-                self.context_manager.state.goal.status = "success"
-
             return {
                 "success": True,
                 "result": f"Task marked complete: {summary}",
@@ -784,10 +779,6 @@ Please retry the tool call using only the valid parameters listed above.
 
         elif tool_name == "mark_failed":
             reason = args.get('reason', 'Task failed')
-
-            # Mark goal as failed in context manager if available
-            if self.context_manager and hasattr(self.context_manager, 'state') and self.context_manager.state.goal:
-                self.context_manager.state.goal.status = "failed"
 
             return {
                 "success": False,
@@ -832,27 +823,12 @@ Please retry the tool call using only the valid parameters listed above.
         self.state.messages = []
 
     def increment_round(self) -> None:
-        """Increment round counter and active subtask rounds."""
+        """Increment round counter."""
         self.state.total_rounds += 1
-
-        # Also increment the active subtask's rounds_used
-        if self.context_manager and self.context_manager.state.goal:
-            current_task = self.context_manager._get_current_task()
-            if current_task:
-                active_subtask = current_task.active_subtask()
-                if active_subtask:
-                    active_subtask.rounds_used += 1
-                    self.context_manager._save_state()
 
     # ===========================
     # Phase 1 additions: Helper methods for subsystems
     # ===========================
-
-    def init_context_manager(self) -> None:
-        """Initialize context manager for hierarchical task tracking (DEPRECATED)."""
-        # Context manager is deprecated with the behavior system
-        # Behaviors now handle context management directly
-        pass
 
     def init_workspace_manager(self, goal_slug: str, workspace_path: Path | str | None = None) -> None:
         """
@@ -1650,7 +1626,6 @@ Please retry the tool call using only the valid parameters listed above.
                         agent=self,
                         workspace=self.workspace,
                         round_number=round_number,
-                        context_manager=self.context_manager,
                         workspace_manager=self.workspace_manager,
                     )
             except Exception as e:
@@ -1785,17 +1760,8 @@ Please retry the tool call using only the valid parameters listed above.
             except Exception as e:
                 print(f"[partial_progress] Error scanning workspace: {e}")
 
-        # Get completed tasks from context manager if available
+        # Task tracking is now handled by behaviors
         completed_tasks = []
-        if hasattr(self, 'context_manager') and self.context_manager:
-            try:
-                if hasattr(self.context_manager, 'state') and self.context_manager.state:
-                    if hasattr(self.context_manager.state, 'goal') and self.context_manager.state.goal:
-                        for task in self.context_manager.state.goal.tasks:
-                            if hasattr(task, 'status') and task.status == "completed":
-                                completed_tasks.append(task.description)
-            except Exception as e:
-                print(f"[partial_progress] Error extracting completed tasks: {e}")
 
         # Generate summary
         summary = {
@@ -2318,7 +2284,7 @@ Please retry the tool call using only the valid parameters listed above.
         temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
         # Trigger onGoalStart event (DEPRECATED - kept for backwards compatibility)
-        # This event should fire whenever there's a goal, regardless of context_manager
+        # This event should fire whenever there's a goal
         goal_desc = self._get_goal_description()
         if goal_desc:
             self.trigger_behavior_event("onGoalStart", goal=goal_desc)
@@ -2340,11 +2306,7 @@ Please retry the tool call using only the valid parameters listed above.
         Returns:
             Goal description string or None
         """
-        # Try context_manager first
-        if self.context_manager and self.context_manager.state.goal:
-            return self.context_manager.state.goal.description
-
-        # Try core goal tracking
+        # Use core goal tracking
         if self.goal:
             return self.goal
 

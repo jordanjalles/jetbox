@@ -310,7 +310,7 @@ class WriteFileToolsBehavior(AgentBehavior):
             # Safety check in edit mode: prevent modifying agent code
             if workspace_manager.is_edit_mode:
                 forbidden_files = {
-                    'agent.py', 'context_manager.py', 'workspace_manager.py',
+                    'agent.py', 'workspace_manager.py',
                     'status_display.py', 'completion_detector.py', 'agent_config.py',
                     'tools.py', 'llm_utils.py'
                 }

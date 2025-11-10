@@ -1,0 +1,99 @@
+======================================================================
+QUICK POST-FIX EVALUATION - L5 ONLY
+======================================================================
+Testing: L5 tasks (5 tasks, 1 run each)
+Purpose: Verify {goal} placeholder fix
+Expected: >0% success (was 0/10 PRE-FIX)
+======================================================================
+
+
+======================================================================
+L4-L7 Context Inspection Evaluation
+======================================================================
+Tasks per level: 0 (L4), 5 (L5), 0 (L6), 0 (L7)
+Runs per task: 1
+Total runs: 5
+Output directory: evaluation_results/context_analysis_20251108_062532
+======================================================================
+
+
+======================================================================
+Running: L5 - blog_system (Run 1)
+Workspace: /tmp/eval_L5_blog_system_run1_0592k0l2
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251108_062532/failed_runs/L5_blog_system_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 blog_system Run 1
+Duration: 73.4s
+Files exist: False, Validation: False
+
+======================================================================
+CHECK-IN: First 1 problems complete
+======================================================================
+
+Results so far:
+  Total runs: 1
+  Successful: 0 (0.0%)
+  Failed: 1 (100.0%)
+
+Failed runs:
+  - L5 - blog_system Run 1
+    Inspection: evaluation_results/context_analysis_20251108_062532/failed_runs/L5_blog_system_run1_inspection
+
+Context inspection directories:
+  Success: evaluation_results/context_analysis_20251108_062532/successful_runs
+  Failure: evaluation_results/context_analysis_20251108_062532/failed_runs
+Continuing to next problem...
+
+======================================================================
+Running: L5 - todo_app (Run 1)
+Workspace: /tmp/eval_L5_todo_app_run1_fl5kp30b
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251108_062532/failed_runs/L5_todo_app_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 todo_app Run 1
+Duration: 45.0s
+Files exist: False, Validation: False
+
+======================================================================
+CHECK-IN: First 2 problems complete
+======================================================================
+
+Results so far:
+  Total runs: 2
+  Successful: 0 (0.0%)
+  Failed: 2 (100.0%)
+
+Failed runs:
+  - L5 - blog_system Run 1
+    Inspection: evaluation_results/context_analysis_20251108_062532/failed_runs/L5_blog_system_run1_inspection
+  - L5 - todo_app Run 1
+    Inspection: evaluation_results/context_analysis_20251108_062532/failed_runs/L5_todo_app_run1_inspection
+
+Context inspection directories:
+  Success: evaluation_results/context_analysis_20251108_062532/successful_runs
+  Failure: evaluation_results/context_analysis_20251108_062532/failed_runs
+Continuing to next problem...
+
+======================================================================
+Running: L5 - inventory_system (Run 1)
+Workspace: /tmp/eval_L5_inventory_system_run1_zfh8zj5s
+======================================================================
+
+✓ Context inspection saved to: evaluation_results/context_analysis_20251108_062532/failed_runs/L5_inventory_system_run1_inspection
+✓ Cleaned up /workspace/.context_inspection for next run
+
+✗ FAILED - L5 inventory_system Run 1
+Duration: 39.4s
+Files exist: False, Validation: False
+
+======================================================================
+Running: L5 - url_shortener (Run 1)
+Workspace: /tmp/eval_L5_url_shortener_run1_gy20arp3
+======================================================================
+
+Serving on port 8000...

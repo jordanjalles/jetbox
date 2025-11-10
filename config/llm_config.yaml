@@ -7,7 +7,8 @@
 # - 1.8x faster execution (77.7s vs 140.6s avg)
 # - 128K context window (vs 32K for qwen3:4b)
 # - 5.2GB model size (vs 13GB for gpt-oss:20b)
-model: "qwen3:8b"
+# NOTE: Temporarily testing qwen3-coder:30b
+model: "qwen3-coder:30b"
 
 # Temperature for inference (0.0 = deterministic, 1.0 = creative)
 temperature: 0.2

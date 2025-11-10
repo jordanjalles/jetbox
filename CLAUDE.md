@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Jetbox is a minimal local-first coding agent that runs with Ollama on Windows. The agent uses hierarchical context management to complete tasks autonomously, avoiding infinite loops through explicit task completion signaling.
+Jetbox is a minimal local-first coding agent that runs with Ollama. The agent uses a composable behavior system to complete tasks autonomously, avoiding infinite loops through explicit task completion signaling.
 
 **For detailed architecture documentation, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)**
 
@@ -154,10 +154,7 @@ behaviors:
 **Available Behaviors**:
 
 **Context Management**:
-- `HierarchicalContextBehavior` - Goal/Task/Subtask hierarchy
 - `CompactWhenNearFullBehavior` - Append until full, then compact
-- `SubAgentContextBehavior` - For delegated work
-- `ArchitectContextBehavior` - For architecture design
 
 **Tools**:
 - `FileToolsBehavior` - write_file, read_file, list_dir
@@ -175,24 +172,6 @@ behaviors:
 - `DelegationBehavior` - Auto-configured from agents.yaml relationships (orchestrator only)
 
 See **[BEHAVIORS_DOCUMENTATION.md](BEHAVIORS_DOCUMENTATION.md)** for complete documentation.
-
-### Legacy Mode (Backward Compatible)
-
-The old context strategy system still works for backward compatibility:
-
-```python
-agent = TaskExecutorAgent(
-    workspace=".",
-    goal="Create a calculator",
-    use_behaviors=False  # Use legacy mode (default for now)
-)
-```
-
-**Deprecated (will be removed in v2.0)**:
-- `context_strategies.py` - Use behaviors instead
-- Hardcoded tool definitions - Use behavior tools
-
-See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
 
 ### Agent Design Philosophy
 
@@ -215,19 +194,6 @@ See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
 - **Thinking token preservation** - Automatically captures and preserves reasoning traces from thinking-capable models (qwen3:8b, gpt-oss:20b)
 - Preserved thinking improves reasoning continuity and reduces re-reasoning in subsequent rounds
 - Inactivity and total time timeout protection for hung LLM calls
-
-**context_manager.py** (hierarchical context management):
-- `ContextManager` - Manages Goal → Task → Subtask → Action hierarchy
-- `LoopDetector` - Detects repeated action patterns (infinite loops)
-- Automatic state persistence to `.agent_context/state.json`
-- Loop detection with configurable thresholds
-
-**status_display.py** (progress visibility):
-- `StatusDisplay` - Renders hierarchical task display with progress bars
-- `PerformanceStats` - Tracks LLM timing, tokens, success rates, loop counts
-- Real-time status updates at each agent round
-- Statistics persist to `.agent_context/stats.json`
-- **See [STATUS_DISPLAY.md](STATUS_DISPLAY.md) for complete documentation**
 
 **workspace_manager.py** (workspace isolation):
 - `WorkspaceManager` - Creates isolated directories for each goal
@@ -263,34 +229,24 @@ See **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** for migration instructions.
 **Tool whitelist**: Command execution is controlled by `jetbox_commands_whitelist` file in the root directory. Only commands listed in this file are allowed for safety. Default whitelist includes: `python`, `pytest`, `ruff`, `pip`, `git`, and common Unix utilities.
 
 **Status artifacts**:
-- `.agent_context/state.json` - Hierarchical task state (Goal/Task/Subtask/Action)
 - `.agent_context/history.jsonl` - Action history (append-only)
-- `.agent_context/stats.json` - Performance statistics
 - `.agent_workspace/{goal-slug}/` - Isolated workspace for agent work (auto-created)
 - `agent_ledger.log` - Append-only trace of WRITE/CMD/ERROR actions (audit trail)
 - `agent_v2.log` - Human-readable runtime log
 
 ### Context Management Strategy
 
-**With Behavior System**:
+Context management is handled by composable behaviors:
 
-Context management is now handled by composable behaviors:
-
-- **HierarchicalContextBehavior**: Keeps last N message exchanges, clears on subtask transitions
-- **CompactWhenNearFullBehavior**: Appends all messages until 75% full, then LLM-summarizes old messages
-- **SubAgentContextBehavior**: For delegated work, appends all messages with higher token limit (128K)
-- **ArchitectContextBehavior**: For architecture discussions, optimized for verbose conversations
+- **CompactWhenNearFullBehavior**: Appends messages until 75% full, then LLM-summarizes old messages
 
 Configure via YAML (see config files in root directory).
 
-**Legacy Mode (Deprecated)**:
-
-The agent aggressively compacts context to avoid repetition and stay focused:
+The agent focuses on staying concise and relevant:
 1. **Probe real state first** - Never hallucinate file existence or test status
-2. **Compress ledger** - Tail of ledger (60 lines) is deduped and summarized into categories (Files/Cmds/Errors/Tried)
-3. **Deduplicate tool calls** - Same tool call with same args is skipped after 3 attempts (agent.py:313)
-4. **Prune message history** - Keep only system prompt + last user message + last `HISTORY_KEEP` (12) messages
-5. **Reflection at boundaries** - Each round: probe → compact → reflect → persist status
+2. **Deduplicate tool calls** - Same tool call with same args is skipped after 3 attempts
+3. **Behavior-managed context** - Behaviors control message history and compaction
+4. **Reflection at boundaries** - Each round: probe → compact → reflect → persist status
 
 ### Tool Execution
 
@@ -317,41 +273,6 @@ All tools in `agent.py` are tolerant of edge cases:
 - `escalation.max_approach_retries` - Retry attempts at root (default: 3)
 
 **See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for full configuration reference.**
-
-## Status Display
-
-The agent includes a comprehensive status display system showing:
-
-- **Hierarchical task view**: Goal → Task → Subtask with visual status icons
-- **Progress bars**: Task completion, subtask completion, success rate
-- **Performance metrics**: LLM timing, token usage, action counts, loop detection
-- **Recent activity**: Last actions and errors with success/failure indicators
-
-Example output:
-```
-GOAL: Create a Python calculator package
-
-TASKS (1/3 completed):
-  ► ⟳ Create calculator package structure
-    SUBTASKS:
-        ✓ Write calculator/__init__.py
-      ► ⟳ Write calculator/advanced.py
-        ○ Write pyproject.toml
-    ○ Write comprehensive tests
-
-PROGRESS:
-  Tasks:    [█████░░░░░░░░░░░░░░░] 33%
-  Subtasks: [████████░░░░░░░░░░░░] 43%
-  Success:  92%
-
-PERFORMANCE:
-  Avg LLM call:      2.15s
-  Avg subtask time:  1m 30s
-  Actions executed:  25
-  Tokens (est):      3,500
-```
-
-For complete documentation, see [STATUS_DISPLAY.md](STATUS_DISPLAY.md)
 
 ## Jetbox Notes System
 
@@ -458,3 +379,4 @@ When working in this codebase:
 - remember to look at tasks_for_claude directory when you finish each task to see what new things I have for you to do
 - remember to update and check tasks_for_claude folder when every task is done
 - remember agents are composed of system prompts and Behaviors that are configured in yaml files. All system prompts live in configs. All configurable logic lives in Behaviors. All universal agent logic lives in base_agent.py.
+- read the JetboxArchitecture every time you start clean working in this repo or compact your context.

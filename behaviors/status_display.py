@@ -60,7 +60,6 @@ class StatusDisplayBehavior(AgentBehavior):
         self.display = None
         self.reset_stats = reset_stats
         self.show_hierarchical = show_hierarchical
-        self.context_manager = None
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -77,17 +76,9 @@ class StatusDisplayBehavior(AgentBehavior):
             goal: The goal string
             workspace: Optional workspace path
         """
-        # Get context manager from agent
-        if hasattr(agent, 'context_manager'):
-            self.context_manager = agent.context_manager
-
-            # Initialize display
-            if self.display is None and self.context_manager:
-                self.display = StatusDisplay(
-                    ctx=self.context_manager,
-                    reset_stats=self.reset_stats
-                )
-                print(f"\n[status_display] Initialized for goal: {goal}\n")
+        # Status display is deprecated - context_manager no longer exists
+        # This behavior kept for backwards compatibility but does nothing
+        pass
 
     def on_tool_call(
         self,
