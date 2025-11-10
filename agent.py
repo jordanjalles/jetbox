@@ -245,11 +245,11 @@ def get_first_agent_info(team_name: str) -> tuple:
         print(f"[agent.py] Using config: {config_file}")
 
     # Import the class dynamically
-    # Map class names to modules
+    # Map class names to modules (updated for Phase 4 refactor - agents now in agents/ directory)
     module_map = {
-        "OrchestratorAgent": "orchestrator_agent",
-        "TaskExecutorAgent": "task_executor_agent",
-        "ArchitectAgent": "architect_agent",
+        "OrchestratorAgent": "agents.orchestrator_agent",
+        "TaskExecutorAgent": "agents.task_executor_agent",
+        "ArchitectAgent": "agents.architect_agent",
     }
 
     module_name = module_map.get(class_name)
