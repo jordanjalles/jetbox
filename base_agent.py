@@ -9,68 +9,15 @@ All agents inherit from BaseAgent and can override:
 The behavior system provides the primary extensibility mechanism.
 """
 from __future__ import annotations
-from dataclasses import dataclass
 from typing import Any, Callable
 from pathlib import Path
-import json
 import time
 import os
 from datetime import datetime
 import re
 import importlib
-
-
-@dataclass
-class AgentState:
-    """Base state that all agents maintain."""
-    name: str
-    role: str
-    messages: list[dict[str, Any]]
-    start_time: float
-    total_rounds: int
-
-    def _serialize_message(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Convert message to JSON-serializable format."""
-        serialized = {}
-        for key, value in message.items():
-            if key == "tool_calls" and value is not None:
-                # Convert ToolCall objects to dicts
-                serialized_calls = []
-                for tc in value:
-                    if hasattr(tc, "model_dump"):
-                        # Pydantic model
-                        serialized_calls.append(tc.model_dump())
-                    elif hasattr(tc, "to_dict"):
-                        serialized_calls.append(tc.to_dict())
-                    elif isinstance(tc, dict):
-                        serialized_calls.append(tc)
-                    else:
-                        # Try to extract attributes manually
-                        serialized_calls.append({
-                            "id": getattr(tc, "id", None),
-                            "type": getattr(tc, "type", "function"),
-                            "function": {
-                                "name": getattr(tc.function, "name", ""),
-                                "arguments": getattr(tc.function, "arguments", {})
-                            } if hasattr(tc, "function") else {}
-                        })
-                serialized[key] = serialized_calls
-            else:
-                serialized[key] = value
-        return serialized
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "role": self.role,
-            "messages": [self._serialize_message(msg) for msg in self.messages],
-            "start_time": self.start_time,
-            "total_rounds": self.total_rounds,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> AgentState:
-        return cls(**data)
+from src.agent_state import AgentState, StatePersistence
+from src.agent_events import EventSystem
 
 
 class BaseAgent:
@@ -152,12 +99,13 @@ class BaseAgent:
             total_rounds=0,
         )
 
-        # State file location
-        self.state_file = self.workspace / ".agent_context" / f"{name}_state.json"
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        # Initialize state persistence manager
+        self.state_manager = StatePersistence(self.workspace)
 
         # Try to load existing state
-        self.load_state()
+        loaded_state = self.state_manager.load_state(name)
+        if loaded_state:
+            self.state = loaded_state
 
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
         self.workspace_manager = None  # For workspace isolation
@@ -204,6 +152,9 @@ class BaseAgent:
 
         # Load extra behaviors from CLI or environment (Phase 2)
         self._load_extra_behaviors(extra_behaviors)
+
+        # Initialize event system (after behaviors are loaded)
+        self.event_system = EventSystem(self)
 
     # ===========================
     # Abstract methods (must implement)
@@ -791,19 +742,13 @@ Please retry the tool call using only the valid parameters listed above.
 
     def persist_state(self) -> None:
         """Save agent state to disk."""
-        with open(self.state_file, "w") as f:
-            json.dump(self.state.to_dict(), f, indent=2)
+        self.state_manager.persist(self.state)
 
     def load_state(self) -> None:
         """Load agent state from disk if it exists."""
-        if self.state_file.exists():
-            try:
-                with open(self.state_file) as f:
-                    data = json.load(f)
-                    self.state = AgentState.from_dict(data)
-            except Exception:
-                # If load fails, keep fresh state
-                pass
+        loaded_state = self.state_manager.load_state(self.name)
+        if loaded_state:
+            self.state = loaded_state
 
     def add_message(self, message: dict[str, Any]) -> None:
         """
@@ -1488,215 +1433,18 @@ Please retry the tool call using only the valid parameters listed above.
         except Exception as e:
             return {"error": f"Tool {tool_name} failed: {e}"}
 
-        # Notify all behaviors of tool call (for loop detection, etc.)
-        for beh in self._behaviors:
-            try:
-                # Try new API signature first (agent as first param)
-                if hasattr(beh, 'on_tool_call'):
-                    # Check signature to determine which API to use
-                    import inspect
-                    sig = inspect.signature(beh.on_tool_call)
-                    params = list(sig.parameters.keys())
-
-                    # New API: on_tool_call(agent, tool_name, args, result)
-                    if len(params) >= 4 and params[0] == 'agent':
-                        beh.on_tool_call(
-                            agent=self,
-                            tool_name=tool_name,
-                            args=args,
-                            result=result
-                        )
-                    # Old API: on_tool_call(tool_name, args, result, **kwargs)
-                    else:
-                        beh.on_tool_call(
-                            tool_name=tool_name,
-                            args=args,
-                            result=result,
-                            agent=self
-                        )
-            except Exception as e:
-                print(f"[{self.name}] Behavior {beh.get_name()} on_tool_call error: {e}")
+        # Trigger on_tool_call event on behaviors
+        self.event_system.trigger_tool_call(tool_name, args, result)
 
         return result
 
-    def trigger_behavior_event(self, event_name: str, **kwargs) -> None:
-        """
-        Trigger an event on all behaviors.
 
-        DEPRECATED: This method is kept for backwards compatibility with old event names.
-        New code should use the specific event trigger methods:
-        - _trigger_on_goal_start()
-        - _trigger_initial_context_setup()
-        - _trigger_on_round_start()
-        - _trigger_on_llm_response()
-        - etc.
 
-        Args:
-            event_name: Event method name (e.g., "on_goal_start")
-            **kwargs: Event-specific arguments
-        """
-        # Core agent initialization for onGoalSet (runs BEFORE behaviors)
-        if event_name == "onGoalSet":
-            self._handle_goal_set(**kwargs)
 
-        # Trigger event on all behaviors
-        for behavior in self._behaviors:
-            try:
-                event_method = getattr(behavior, event_name, None)
-                if event_method and callable(event_method):
-                    event_method(agent=self, **kwargs)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} {event_name} error: {e}")
 
-    def _trigger_on_goal_start(self, goal: str) -> None:
-        """
-        Trigger on_goal_start event on all behaviors.
 
-        Called ONCE when a goal is set, before any rounds.
 
-        Args:
-            goal: Goal description string
-        """
-        for behavior in self._behaviors:
-            try:
-                # Try new API first
-                if hasattr(behavior, 'on_goal_start') and callable(behavior.on_goal_start):
-                    behavior.on_goal_start(agent=self, goal=goal)
-                # Fall back to old API if new one doesn't exist
-                elif hasattr(behavior, 'onGoalStart') and callable(behavior.onGoalStart):
-                    behavior.onGoalStart(goal=goal, agent=self)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_goal_start error: {e}")
 
-    def _trigger_initial_context_setup(self) -> None:
-        """
-        Trigger on_initial_context event on all behaviors ONCE.
-
-        Called at start of run(), before first LLM call.
-        This allows behaviors to inject static context that doesn't change per round.
-
-        NOTE: This modifies self.state.messages to inject initial context messages.
-        """
-        # Build initial context (system prompt only, no history yet)
-        initial_context = [
-            {"role": "system", "content": self.get_system_prompt()}
-        ]
-
-        # Inject goal context if goal is set (before behaviors)
-        if self.goal:
-            initial_context = self._inject_goal_context(initial_context)
-
-        # Let behaviors inject initial context
-        for behavior in self._behaviors:
-            try:
-                if hasattr(behavior, 'on_initial_context') and callable(behavior.on_initial_context):
-                    initial_context = behavior.on_initial_context(agent=self, context=initial_context)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_initial_context error: {e}")
-
-        # Extract any user messages that were injected (skip system prompt)
-        # and prepend them to message history
-        if len(initial_context) > 1:
-            injected_messages = initial_context[1:]  # Everything after system prompt
-            # Prepend to existing messages (if any)
-            self.state.messages = injected_messages + self.state.messages
-
-    def _trigger_on_round_start(self, round_number: int, context: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """
-        Trigger on_round_start event on all behaviors.
-
-        Called at the start of EVERY round, before LLM call.
-
-        Args:
-            round_number: Current round number (1-indexed)
-            context: Current context to be sent to LLM
-
-        Returns:
-            Modified context after all behaviors have processed it
-        """
-        for behavior in self._behaviors:
-            try:
-                # Try new API first
-                if hasattr(behavior, 'on_round_start') and callable(behavior.on_round_start):
-                    context = behavior.on_round_start(agent=self, round_number=round_number, context=context)
-                # Fall back to enhance_context if on_round_start doesn't exist
-                elif hasattr(behavior, 'enhance_context') and callable(behavior.enhance_context):
-                    context = behavior.enhance_context(
-                        context,
-                        agent=self,
-                        workspace=self.workspace,
-                        round_number=round_number,
-                        workspace_manager=self.workspace_manager,
-                    )
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_round_start error: {e}")
-
-        return context
-
-    def _trigger_on_llm_response(self, response: dict[str, Any]) -> None:
-        """
-        Trigger on_llm_response event on all behaviors.
-
-        Called after LLM responds but before tool dispatch.
-
-        Args:
-            response: LLM response dict (contains 'message' with role/content/tool_calls)
-        """
-        for behavior in self._behaviors:
-            try:
-                if hasattr(behavior, 'on_llm_response') and callable(behavior.on_llm_response):
-                    behavior.on_llm_response(agent=self, response=response)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_llm_response error: {e}")
-
-    def _trigger_on_goal_complete(self, success: bool, summary: str) -> None:
-        """
-        Trigger on_goal_complete event on all behaviors.
-
-        Called when goal completes (via mark_complete or mark_failed).
-
-        Args:
-            success: True if goal succeeded, False if failed
-            summary: Summary message (from mark_complete or mark_failed)
-        """
-        for behavior in self._behaviors:
-            try:
-                if hasattr(behavior, 'on_goal_complete') and callable(behavior.on_goal_complete):
-                    behavior.on_goal_complete(agent=self, success=success, summary=summary)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_goal_complete error: {e}")
-
-    def _trigger_on_round_end(self, round_number: int) -> None:
-        """
-        Trigger on_round_end event on all behaviors.
-
-        Called at end of each round, after all tool calls executed.
-
-        Args:
-            round_number: Current round number (1-indexed)
-        """
-        for behavior in self._behaviors:
-            try:
-                if hasattr(behavior, 'on_round_end') and callable(behavior.on_round_end):
-                    behavior.on_round_end(agent=self, round_number=round_number)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_round_end error: {e}")
-
-    def _trigger_on_timeout(self, elapsed_seconds: float) -> None:
-        """
-        Trigger on_timeout event on all behaviors.
-
-        Called when goal times out (circuit breaker triggered).
-
-        Args:
-            elapsed_seconds: Time elapsed since goal start
-        """
-        for behavior in self._behaviors:
-            try:
-                if hasattr(behavior, 'on_timeout') and callable(behavior.on_timeout):
-                    behavior.on_timeout(agent=self, elapsed_seconds=elapsed_seconds)
-            except Exception as e:
-                print(f"[{self.name}] Behavior {behavior.get_name()} on_timeout error: {e}")
 
     def _handle_goal_set(self, goal: str, **kwargs) -> None:
         """
@@ -2283,18 +2031,13 @@ Please retry the tool call using only the valid parameters listed above.
         model = getattr(self, 'model', None) or getattr(self.config.llm, 'model', 'qwen3:8b') if self.config else 'qwen3:8b'
         temperature = getattr(self, 'temperature', None) or getattr(self.config.llm, 'temperature', 0.2) if self.config else 0.2
 
-        # Trigger onGoalStart event (DEPRECATED - kept for backwards compatibility)
-        # This event should fire whenever there's a goal
+        # Trigger goal start event
         goal_desc = self._get_goal_description()
         if goal_desc:
-            self.trigger_behavior_event("onGoalStart", goal=goal_desc)
-
-        # Trigger new on_goal_start event (preferred API)
-        if goal_desc:
-            self._trigger_on_goal_start(goal_desc)
+            self.event_system.trigger_goal_start(goal_desc)
 
         # Trigger on_initial_context ONCE for first-round setup
-        self._trigger_initial_context_setup()
+        self.event_system.inject_initial_context()
 
         print(f"[{self.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
         return max_rounds, model, temperature
@@ -2337,17 +2080,8 @@ Please retry the tool call using only the valid parameters listed above.
         # Check for mark_complete (success=True + summary)
         if result.get("success") is True and "summary" in result:
             print(f"[{self.name}] Goal marked complete")
-            # Trigger new on_goal_complete event
-            self._trigger_on_goal_complete(success=True, summary=result.get("summary", ""))
-            # Keep old event for backwards compatibility
-            self.trigger_behavior_event(
-                "onGoalComplete",
-                success=True,
-                result=result,
-                goal=goal_desc,
-                llm_call_func=self.call_llm,
-                workspace_manager=self.workspace_manager
-            )
+            # Trigger goal complete event
+            self.event_system.trigger_goal_complete(success=True, summary=result.get("summary", ""))
             return {
                 "status": "success",
                 "summary": result.get("summary"),
@@ -2357,17 +2091,8 @@ Please retry the tool call using only the valid parameters listed above.
         # Check for mark_failed (success=False + reason)
         if result.get("success") is False and "reason" in result:
             print(f"[{self.name}] Goal marked failed")
-            # Trigger new on_goal_complete event
-            self._trigger_on_goal_complete(success=False, summary=result.get("reason", ""))
-            # Keep old event for backwards compatibility
-            self.trigger_behavior_event(
-                "onGoalComplete",
-                success=False,
-                result=result,
-                goal=goal_desc,
-                llm_call_func=self.call_llm,
-                workspace_manager=self.workspace_manager
-            )
+            # Trigger goal complete event
+            self.event_system.trigger_goal_complete(success=False, summary=result.get("reason", ""))
             return {
                 "status": "failure",
                 "reason": result.get("reason"),
@@ -2378,17 +2103,8 @@ Please retry the tool call using only the valid parameters listed above.
         actual_result = result.get("result", result)
         if isinstance(actual_result, dict) and actual_result.get("status") == "goal_complete":
             print(f"[{self.name}] Goal completed (legacy signal)")
-            # Trigger new on_goal_complete event
-            self._trigger_on_goal_complete(success=True, summary=actual_result.get("message", "Goal completed"))
-            # Keep old event for backwards compatibility
-            self.trigger_behavior_event(
-                "onGoalComplete",
-                success=True,
-                result=actual_result,
-                goal=goal_desc,
-                llm_call_func=self.call_llm,
-                workspace_manager=self.workspace_manager
-            )
+            # Trigger goal complete event
+            self.event_system.trigger_goal_complete(success=True, summary=actual_result.get("message", "Goal completed"))
             return {
                 "status": "success",
                 "message": actual_result.get("message", "Goal completed"),
@@ -2491,14 +2207,11 @@ Please retry the tool call using only the valid parameters listed above.
         Returns:
             Completion dict if goal completed/failed, None to continue
         """
-        # Trigger onRoundStart (DEPRECATED - kept for backwards compatibility)
-        self.trigger_behavior_event("onRoundStart", round_number=round_no)
-
         # Build context for this round
         context = self.build_context()
 
-        # Trigger on_round_start (NEW API - called every round before LLM)
-        context = self._trigger_on_round_start(round_no, context)
+        # Trigger round start event (called every round before LLM)
+        context = self.event_system.trigger_round_start(round_no, context)
 
         # Call LLM with modified context
         print(f"\n[{self.name}] Round {round_no}/{max_rounds}")
@@ -2508,10 +2221,10 @@ Please retry the tool call using only the valid parameters listed above.
         if response.get("_circuit_breaker"):
             print(f"[{self.name}] Circuit breaker triggered - saving partial progress")
 
-            # Trigger timeout event (NEW)
+            # Trigger timeout event
             if self.goal_start_time:
                 elapsed = time.time() - self.goal_start_time
-                self._trigger_on_timeout(elapsed)
+                self.event_system.trigger_timeout(elapsed)
 
             return self._save_partial_progress()
 
@@ -2520,9 +2233,9 @@ Please retry the tool call using only the valid parameters listed above.
             print(f"[{self.name}] LLM timeout - retrying next round")
             return None
 
-        # Trigger on_llm_response (NEW API - after LLM responds, before tool dispatch)
+        # Trigger LLM response event (after LLM responds, before tool dispatch)
         if "message" in response:
-            self._trigger_on_llm_response(response["message"])
+            self.event_system.trigger_llm_response(response["message"])
 
         # Add assistant message to history
         had_tool_calls = False
@@ -2541,11 +2254,8 @@ Please retry the tool call using only the valid parameters listed above.
         if self.enable_completion_nudging and round_no >= self.min_rounds_before_nudge:
             self._check_completion_signals(response, msg.get("tool_calls", []) if "message" in response else [])
 
-        # Trigger onRoundEnd (DEPRECATED - kept for backwards compatibility)
-        self.trigger_behavior_event("onRoundEnd", round_number=round_no, had_tool_calls=had_tool_calls)
-
-        # Trigger on_round_end (NEW API - preferred)
-        self._trigger_on_round_end(round_no)
+        # Trigger round end event
+        self.event_system.trigger_round_end(round_no)
 
         # Increment round counter
         self.increment_round()
