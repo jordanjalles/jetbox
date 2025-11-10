@@ -18,6 +18,7 @@ import re
 import importlib
 from src.agent_state import AgentState, StatePersistence
 from src.agent_events import EventSystem
+from src.tool_dispatch import ToolDispatcher
 
 
 class BaseAgent:
@@ -116,7 +117,6 @@ class BaseAgent:
         # Phase 4 additions: Behavior system
         self._behaviors: list[Any] = []  # List of registered behaviors (AgentBehavior instances)
         self.behaviors: list[Any] = self._behaviors  # Public alias
-        self.tool_registry: dict[str, Any] = {}  # Map tool_name -> behavior that provides it
         self.config_system_prompt: str | None = None  # System prompt loaded from config (if any)
         self.config_blurb: str | None = None  # Agent blurb loaded from config (if any)
         self.exclude_behaviors: list[str] = exclude_behaviors or []  # Behaviors to exclude from loading
@@ -145,6 +145,9 @@ class BaseAgent:
             self.max_call_time = 180
             self.max_consecutive_timeouts = 3
             self.auto_restart_ollama = False
+
+        # Initialize tool dispatcher (BEFORE behaviors are loaded)
+        self.tool_dispatcher = ToolDispatcher(self)
 
         # Load behaviors from agent config
         # This must happen at the end of __init__ after all attributes are set
@@ -184,66 +187,8 @@ class BaseAgent:
     # ===========================
 
     def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Return tool definitions for this agent.
-
-        Default implementation: Returns behavior tools + core completion tools.
-        Core completion tools (mark_complete/mark_failed) are only included
-        if the agent has a goal set. This allows pure conversational agents
-        to operate without goal completion semantics.
-
-        Override this method if you need custom tool handling.
-
-        Returns:
-            List of tool definitions in Ollama format
-        """
-        tools = []
-
-        # Core completion tools (only available when agent has a goal)
-        if self.goal:
-            core_tools = [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "mark_complete",
-                        "description": "Mark the task/goal as complete and report success. REQUIRED when work is finished.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "summary": {
-                                    "type": "string",
-                                    "description": "Brief summary of what was accomplished (2-4 sentences)"
-                                }
-                            },
-                            "required": ["summary"]
-                        }
-                    }
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "mark_failed",
-                        "description": "Mark the task/goal as failed and report reason. Use when you cannot complete the task.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "reason": {
-                                    "type": "string",
-                                    "description": "Explanation of why the task could not be completed"
-                                }
-                            },
-                            "required": ["reason"]
-                        }
-                    }
-                }
-            ]
-            tools.extend(core_tools)
-
-        # Behavior tools
-        behavior_tools = self.get_behavior_tools()
-        tools.extend(behavior_tools)
-
-        return tools
+        """Return tool definitions for this agent."""
+        return self.tool_dispatcher.get_all_tools()
 
     def get_system_prompt(self) -> str:
         """
@@ -575,170 +520,11 @@ class BaseAgent:
                 }
             }
 
-    def _validate_tool_parameters(self, tool_call: dict[str, Any]) -> dict[str, Any] | None:
-        """
-        Validate tool call parameters against tool schema.
-
-        If invalid parameters found:
-        1. Returns feedback dict with error message and correct spec
-        2. Logs hallucinated parameter to wishlist file
-
-        Args:
-            tool_call: Tool call dict with function name and arguments
-
-        Returns:
-            None if valid, dict with error message if invalid
-        """
-        tool_name = tool_call.get("function", {}).get("name")
-        args = tool_call.get("function", {}).get("arguments", {})
-
-        if not tool_name or not isinstance(args, dict):
-            return None
-
-        # Get tool spec from agent's tools
-        tool_spec = None
-        for tool in self.get_tools():
-            if tool.get("function", {}).get("name") == tool_name:
-                tool_spec = tool.get("function")
-                break
-
-        if not tool_spec:
-            # Tool not found in spec - let dispatch handle it
-            return None
-
-        # Get valid parameters from schema
-        schema = tool_spec.get("parameters", {})
-        valid_params = set(schema.get("properties", {}).keys())
-
-        # Check for invalid parameters
-        provided_params = set(args.keys())
-        invalid_params = provided_params - valid_params
-
-        if not invalid_params:
-            # All parameters valid
-            return None
-
-        # Log hallucinated parameters to wishlist
-        self._log_parameter_wishlist(tool_name, invalid_params)
-
-        # Build feedback message with correct spec
-        param_specs = []
-        for param_name, param_info in schema.get("properties", {}).items():
-            param_type = param_info.get("type", "unknown")
-            param_desc = param_info.get("description", "")
-            required = param_name in schema.get("required", [])
-            req_marker = " (required)" if required else " (optional)"
-            param_specs.append(f"  - {param_name}: {param_type}{req_marker} - {param_desc}")
-
-        feedback = f"""⚠️  Tool call used invalid parameters
-
-Tool: {tool_name}
-Invalid parameters: {', '.join(invalid_params)}
-
-These parameters were IGNORED because they don't exist in the tool spec.
-
-CORRECT TOOL SPEC FOR {tool_name}:
-{tool_spec.get('description', '')}
-
-Valid parameters:
-{chr(10).join(param_specs) if param_specs else '  (no parameters)'}
-
-Please retry the tool call using only the valid parameters listed above.
-"""
-
-        return {
-            "status": "parameter_error",
-            "message": feedback,
-            "tool_name": tool_name,
-            "invalid_params": list(invalid_params),
-        }
-
-    def _log_parameter_wishlist(self, tool_name: str, invalid_params: set[str]) -> None:
-        """
-        Log hallucinated parameters to wishlist file for future consideration.
-
-        Args:
-            tool_name: Tool that was called
-            invalid_params: Set of invalid parameter names
-        """
-        import json
-
-        wishlist_file = Path(".agent_context") / "parameter_wishlist.jsonl"
-        wishlist_file.parent.mkdir(parents=True, exist_ok=True)
-
-        entry = {
-            "timestamp": datetime.now().isoformat(),
-            "tool_name": tool_name,
-            "hallucinated_params": list(invalid_params),
-            "agent": self.name,
-        }
-
-        # Append to JSONL file
-        with open(wishlist_file, "a") as f:
-            f.write(json.dumps(entry) + "\n")
 
     def dispatch_tool(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
-        """
-        Dispatch a tool call to the appropriate handler.
+        """Dispatch a tool call to the appropriate handler."""
+        return self.tool_dispatcher.dispatch(tool_call, **extra_context)
 
-        Default implementation: Handles core tools (mark_complete/mark_failed) then
-        dispatches to behavior system.
-
-        Args:
-            tool_call: Tool call dict with function name and arguments
-            **extra_context: Additional context to pass to behaviors
-
-        Returns:
-            Tool result dict
-        """
-        # Validate parameters before dispatch
-        validation_result = self._validate_tool_parameters(tool_call)
-        if validation_result:
-            # Invalid parameters detected - return feedback to LLM
-            return validation_result
-
-        # Handle core completion tools (mark_complete, mark_failed)
-        tool_name = tool_call.get("function", {}).get("name")
-        if tool_name in ["mark_complete", "mark_failed"]:
-            return self._dispatch_completion_tool(tool_call)
-
-        # Dispatch to behavior system for other tools
-        return self.dispatch_tool_to_behavior(tool_call, **extra_context)
-
-    def _dispatch_completion_tool(self, tool_call: dict[str, Any]) -> dict[str, Any]:
-        """
-        Dispatch core completion tools (mark_complete, mark_failed).
-
-        Args:
-            tool_call: Tool call dict
-
-        Returns:
-            Tool result dict
-        """
-        tool_name = tool_call["function"]["name"]
-        args = tool_call["function"].get("arguments", {})
-
-        if tool_name == "mark_complete":
-            summary = args.get('summary', 'Task completed')
-
-            return {
-                "success": True,
-                "result": f"Task marked complete: {summary}",
-                "summary": summary,
-                "status": "goal_complete"
-            }
-
-        elif tool_name == "mark_failed":
-            reason = args.get('reason', 'Task failed')
-
-            return {
-                "success": False,
-                "result": f"Task marked failed: {reason}",
-                "reason": reason,
-                "status": "goal_failed"
-            }
-
-        return {"error": f"Unknown completion tool: {tool_name}"}
 
     def persist_state(self) -> None:
         """Save agent state to disk."""
@@ -1280,30 +1066,13 @@ Please retry the tool call using only the valid parameters listed above.
         # Attach behavior to agent (sets self.agent on behavior)
         behavior.agent = self
 
-        # Check for tool name conflicts
+        # Register tools with dispatcher
         for tool in behavior.get_tools():
             tool_name = tool["function"]["name"]
-            if tool_name in self.tool_registry:
-                existing_behavior = self.tool_registry[tool_name]
-                raise ValueError(
-                    f"Tool '{tool_name}' already registered by "
-                    f"{existing_behavior.get_name()}"
-                )
-            self.tool_registry[tool_name] = behavior
+            self.tool_dispatcher.register_tool(tool_name, behavior)
 
         self._behaviors.append(behavior)
 
-    def get_behavior_tools(self) -> list[dict[str, Any]]:
-        """
-        Collect tools from all registered behaviors.
-
-        Returns:
-            List of tool definitions from all behaviors
-        """
-        tools = []
-        for behavior in self._behaviors:
-            tools.extend(behavior.get_tools())
-        return tools
 
     def get_behavior_instructions(self) -> str:
         """
@@ -1319,55 +1088,6 @@ Please retry the tool call using only the valid parameters listed above.
                 instructions.append(inst)
         return "\n\n".join(instructions)
 
-    def generate_tool_documentation(self) -> str:
-        """
-        Generate tool documentation from loaded behaviors.
-
-        DEPRECATED: Tool documentation should now be injected by behaviors via
-        on_initial_context() method. This method is kept for backward compatibility
-        but is no longer called by get_system_prompt().
-
-        Returns a formatted string listing all available tools with their
-        signatures and descriptions. This is dynamically generated based on
-        which behaviors are loaded.
-
-        Returns:
-            Tool documentation string (empty if no behaviors loaded)
-        """
-        if not self._behaviors:
-            return ""
-
-        tool_docs = []
-        for behavior in self._behaviors:
-            tools = behavior.get_tools()
-            for tool in tools:
-                func = tool.get("function", {})
-                name = func.get("name", "unknown")
-                desc = func.get("description", "")
-                params = func.get("parameters", {}).get("properties", {})
-                required = func.get("parameters", {}).get("required", [])
-
-                # Build parameter signature
-                param_strs = []
-                for param_name, param_spec in params.items():
-                    param_type = param_spec.get("type", "any")
-                    # Mark required params
-                    if param_name in required:
-                        param_strs.append(f"{param_name}: {param_type}")
-                    else:
-                        # Optional params with default if specified
-                        default = param_spec.get("default")
-                        if default is not None:
-                            param_strs.append(f"{param_name}: {param_type} = {default}")
-                        else:
-                            param_strs.append(f"{param_name}?: {param_type}")
-
-                param_sig = ", ".join(param_strs) if param_strs else ""
-                tool_docs.append(f"  - {name}({param_sig}): {desc}")
-
-        if tool_docs:
-            return "\n\nAvailable tools:\n" + "\n".join(tool_docs)
-        return ""
 
     def get_blurb(self) -> str:
         """
@@ -1404,39 +1124,6 @@ Please retry the tool call using only the valid parameters listed above.
             truncated += "..."
         return f"{self.name}: {truncated}"
 
-    def dispatch_tool_to_behavior(self, tool_call: dict[str, Any], **extra_context) -> dict[str, Any]:
-        """
-        Dispatch tool call to appropriate behavior.
-
-        Args:
-            tool_call: Tool call dict with function name and arguments
-            **extra_context: Additional context to pass to behaviors (e.g., registry, server_manager)
-
-        Returns:
-            Tool result dict
-        """
-        tool_name = tool_call["function"]["name"]
-        args = tool_call["function"]["arguments"]
-
-        # Find behavior that owns this tool
-        behavior = self.tool_registry.get(tool_name)
-        if not behavior:
-            return {"error": f"Unknown tool: {tool_name}"}
-
-        # Dispatch to behavior with new lifecycle API (agent as first parameter)
-        try:
-            result = behavior.dispatch_tool(
-                self,       # agent (positional)
-                tool_name,  # tool_name (positional)
-                args        # args (positional)
-            )
-        except Exception as e:
-            return {"error": f"Tool {tool_name} failed: {e}"}
-
-        # Trigger on_tool_call event on behaviors
-        self.event_system.trigger_tool_call(tool_name, args, result)
-
-        return result
 
 
 
