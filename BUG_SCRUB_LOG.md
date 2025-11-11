@@ -33,7 +33,26 @@ Started: 2025-11-10
 - When None, they use Path(".") which is /workspace/ (root directory)
 - Agent spends all rounds reading root files (tests/, src/) instead of working in its workspace
 
-**Fix needed**: Initialize workspace_manager in BaseAgent.__init__ or respond to onGoalSet event
+**Fix applied**: ✅ Initialize workspace_manager in BaseAgent.__init__ (commit 74950f1)
+
+### Test 2.2: Tool dispatch type mismatch with --once
+❌ FAIL - Crash with AttributeError: 'str' object has no attribute 'get'
+
+**Bug**: Tool behaviors return strings, but dispatcher expects dicts
+**Root cause**:
+- File tool behaviors (write_file, read_file, etc.) return strings
+- ToolDispatcher._dispatch_to_behavior expects dict[str, Any] return
+- execute_task() in base_agent.py tries to call result.get('success') on string
+- Crashes with AttributeError
+
+**Fix applied**: ✅ Normalize tool results in ToolDispatcher (handles str/dict/list)
+
+### Test 2.3: Simple file creation with --once
+✅ PASS - File created correctly in isolated workspace
+
+**Command**: `python agent.py --team solo --once "Create hello.txt with Hello World"`
+**Result**: hello.txt created with correct content in workspace
+**All systems working**: workspace_manager, tool dispatch, --once mode
 
 ---
 

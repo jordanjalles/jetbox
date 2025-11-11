@@ -178,7 +178,31 @@ class ToolDispatcher:
         except Exception as e:
             return {"error": f"Tool {tool_name} failed: {e}"}
 
-        return result
+        # Normalize result: behaviors may return string or dict
+        # Convert strings to dict format for consistent handling
+        if isinstance(result, str):
+            # Determine success based on content (error messages start with "Error:")
+            is_error = result.startswith("Error:")
+            return {
+                "success": not is_error,
+                "result": result,
+                **({"error": result} if is_error else {})
+            }
+        elif isinstance(result, dict):
+            # Already in dict format
+            return result
+        elif isinstance(result, list):
+            # List results (e.g., from list_dir) - wrap in dict
+            return {
+                "success": True,
+                "result": result
+            }
+        else:
+            # Unknown type - convert to string
+            return {
+                "success": True,
+                "result": str(result)
+            }
 
     def _validate_parameters(
         self, tool_call: dict[str, Any]
