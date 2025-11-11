@@ -269,11 +269,14 @@ def main():
 
     print(f"\nTotal: {len(l5_l7_tasks)} tasks")
 
-    # Confirm
-    response = input("\nProceed with evaluation? (y/n): ")
-    if response.lower() != 'y':
-        print("Evaluation cancelled.")
-        return
+    # Confirm (skip if not running interactively)
+    if sys.stdin.isatty():
+        response = input("\nProceed with evaluation? (y/n): ")
+        if response.lower() != 'y':
+            print("Evaluation cancelled.")
+            return
+    else:
+        print("\nRunning in non-interactive mode, proceeding automatically...")
 
     # Run tasks
     results = []
