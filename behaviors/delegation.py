@@ -359,17 +359,18 @@ class DelegationBehavior(AgentBehavior):
         # TaskExecutorAgent → task_executor_agent.py
         agent_file = self._class_name_to_file(agent_class_name)
 
-        # Verify file exists
-        if not Path(agent_file).exists():
+        # Verify file exists (check agents/ directory after Phase 4 refactor)
+        agent_file_path = Path("agents") / agent_file
+        if not agent_file_path.exists():
             return {
                 "success": False,
-                "error": f"Agent file not found: {agent_file} (derived from class {agent_class_name})"
+                "error": f"Agent file not found: {agent_file_path} (derived from class {agent_class_name})"
             }
 
         # Use generic subprocess delegation for ALL agents
         return self._generic_subprocess_delegation(
             target_agent_name,
-            agent_file,
+            str(agent_file_path),  # Use full path with agents/ prefix
             args,
             calling_agent,
             registry

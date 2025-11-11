@@ -6,7 +6,7 @@
 # ==============================
 rounds:
   # Maximum rounds per subtask before forced escalation
-  max_per_subtask: 12
+  max_per_subtask: 50
 
   # Global maximum rounds for the entire agent run
   max_global: 256
