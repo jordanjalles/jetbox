@@ -17,6 +17,26 @@ Started: 2025-11-10
 
 ---
 
+---
+
+## Phase 2: Solo Agent - Trivial Tasks
+
+### Test 2.1: Create single file
+❌ FAIL - Agent reads from root directory instead of workspace, creates nothing
+
+**Bug**: workspace_manager never initialized, file tools use root directory
+**Root cause**:
+- main() creates isolated workspace at /workspace/.agent_workspaces/goal-slug/
+- Agent is initialized with workspace=that path
+- But agent.workspace_manager is never initialized
+- File tools check `getattr(agent, 'workspace_manager', None)`
+- When None, they use Path(".") which is /workspace/ (root directory)
+- Agent spends all rounds reading root files (tests/, src/) instead of working in its workspace
+
+**Fix needed**: Initialize workspace_manager in BaseAgent.__init__ or respond to onGoalSet event
+
+---
+
 ## Phase 1: Simple CLI Tests
 
 ### Test 1.1: --help flag

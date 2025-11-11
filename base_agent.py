@@ -160,6 +160,15 @@ class BaseAgent:
         # Initialize lifecycle manager
         self.lifecycle = AgentLifecycle(self)
 
+        # Initialize workspace manager (use existing workspace directory)
+        # The workspace was already created by main() before agent initialization
+        from src.workspace_manager import WorkspaceManager
+        self.workspace_manager = WorkspaceManager(
+            goal=name,  # Use agent name as goal (will be overridden if goal is set later)
+            base_dir=None,
+            workspace_path=self.workspace  # Use the workspace directory passed to __init__
+        )
+
     # ===========================
     # Abstract methods (must implement)
     # ===========================
