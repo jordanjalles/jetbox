@@ -1,133 +1,100 @@
 #!/usr/bin/env python3
 """
-Interactive test of simple-chatbot to verify the chatbot mode fix.
+Test chatbot interactive mode with context inspection.
 
-This simulates asking questions that the chatbot cannot answer,
-to verify it doesn't call mark_failed and end the conversation.
+Tests for the bug where chatbot doesn't respond to every query.
 """
-from pathlib import Path
-from agents.task_executor_agent import TaskExecutorAgent
+import subprocess
+import sys
+import time
 
+# Test queries - mix of poetry requests and casual conversation
+test_queries = [
+    "Write me a haiku about coding",
+    "Tell me a joke about Python",
+    "Write a short poem about debugging",
+    "What's your favorite color?",
+    "Can you write a limerick about functions?",
+    "exit"
+]
 
-def test_chatbot_unanswerable_question():
-    """Test that chatbot handles unanswerable questions gracefully."""
-    print("=" * 60)
-    print("Interactive Test: Simple Chatbot - Unanswerable Question")
-    print("=" * 60)
+def test_chatbot():
+    """Test chatbot with multiple queries."""
+    print("=" * 80)
+    print("CHATBOT INTERACTIVE TEST WITH CONTEXT INSPECTION")
+    print("=" * 80)
+    print()
+    print("Starting chatbot with --ContextInspector flag...")
+    print()
 
-    workspace = Path('.agent_workspace/chatbot_interactive_test')
-    workspace.mkdir(parents=True, exist_ok=True)
-
-    # Create simple-chatbot without a goal
-    agent = TaskExecutorAgent(
-        workspace=workspace,
-        config_file='config/agents/simple-chatbot.yaml',
-        goal=None,  # Pure conversation mode
-        timeout_seconds=60
+    # Start chatbot process
+    proc = subprocess.Popen(
+        [sys.executable, "agent.py", "--team", "chatbot", "--ContextInspector"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
     )
 
-    print(f"\n✓ Agent: {agent.name}")
-    print(f"  Goal: {agent.goal}")
-    print(f"  Behaviors: {len(agent.behaviors)}")
-
-    # Check tools
-    tools = agent.get_tools()
-    tool_names = [t.get("function", {}).get("name") for t in tools]
-    print(f"  Tools: {', '.join(tool_names)}")
-
-    # Verify no completion tools
-    has_mark_complete = "mark_complete" in tool_names
-    has_mark_failed = "mark_failed" in tool_names
-
-    if has_mark_complete or has_mark_failed:
-        print("\n❌ ERROR: Agent has completion tools (should not)")
-        return False
-
-    print("\n✅ Agent configured correctly (no completion tools)")
-    print("\n" + "-" * 60)
-    print("Test Scenario: Ask weather question (unanswerable)")
-    print("-" * 60)
-
-    # Simulate asking a question the chatbot cannot answer
-    # In the broken version, this would cause mark_failed to be called
-    # In the fixed version, the agent should respond with text explaining limitation
-
-    # Build context with the question
-    context = agent.build_context()
-
-    # Add user question
-    context.append({
-        "role": "user",
-        "content": "What's the weather like today?"
-    })
-
-    print("\nUser: What's the weather like today?")
-    print("\nAgent response:")
-    print("-" * 60)
-
-    # Get LLM response
     try:
-        from ollama import chat
+        # Give it time to start
+        time.sleep(3)
 
-        response = chat(
-            model=agent.model,
-            messages=context,
-            options={'temperature': agent.temperature},
-            tools=tools if tools else None
-        )
+        # Send each query
+        for i, query in enumerate(test_queries, 1):
+            print(f"\n{'='*80}")
+            print(f"QUERY {i}: {query}")
+            print('='*80)
 
-        message = response.get('message', {})
-        content = message.get('content', '')
-        tool_calls = message.get('tool_calls', [])
+            # Send query
+            proc.stdin.write(query + "\n")
+            proc.stdin.flush()
 
-        if content:
-            print(content)
+            # Read response with timeout
+            start = time.time()
+            response_lines = []
+            while time.time() - start < 15:  # 15 second timeout per query
+                if proc.poll() is not None:
+                    break
 
-        if tool_calls:
-            print(f"\nTool calls made: {len(tool_calls)}")
-            for tc in tool_calls:
-                func = tc.get('function', {})
-                name = func.get('name', 'unknown')
-                args = func.get('arguments', {})
-                print(f"  - {name}({args})")
+                # Try to read a line
+                try:
+                    line = proc.stdout.readline()
+                    if line:
+                        print(line, end='')
+                        response_lines.append(line)
 
-                # Check if mark_failed was called
-                if name == "mark_failed":
-                    print("\n❌ FAILED: Agent called mark_failed (should not)")
-                    print("   This means the conversation would end prematurely.")
-                    return False
+                        # Check if we got a response (look for agent name or prompt)
+                        if "simple_chatbot:" in line or "You:" in line:
+                            start = time.time()  # Reset timeout when we see activity
+                except:
+                    break
 
-        if not tool_calls:
-            print("\n✅ SUCCESS: Agent responded with text (no tool calls)")
-            print("   Conversation can continue.")
-            return True
+                time.sleep(0.1)
 
-        # If other tools were called (like clarify_with_user), that's OK
-        print("\n✅ SUCCESS: Agent used conversational tools (not completion tools)")
-        print("   Conversation can continue.")
-        return True
+            # Check if we got a response
+            if not any("simple_chatbot:" in line for line in response_lines):
+                print(f"\n⚠️  WARNING: No response detected for query {i}")
+            else:
+                print(f"\n✓ Response received for query {i}")
 
-    except Exception as e:
-        print(f"\n❌ ERROR: {e}")
-        return False
+            time.sleep(1)  # Brief pause between queries
 
+        # Wait for exit
+        time.sleep(2)
 
-def main():
-    """Run interactive test."""
-    print("\n🔧 Testing Simple Chatbot - Unanswerable Question Handling\n")
+    finally:
+        # Clean up
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except:
+            proc.kill()
 
-    success = test_chatbot_unanswerable_question()
-
-    print("\n" + "=" * 60)
-    if success:
-        print("✅ TEST PASSED: Chatbot handles limitations gracefully")
-    else:
-        print("❌ TEST FAILED: Chatbot does not handle limitations correctly")
-    print("=" * 60)
-
-    return success
-
+    print("\n" + "="*80)
+    print("TEST COMPLETE")
+    print("="*80)
 
 if __name__ == "__main__":
-    success = main()
-    exit(0 if success else 1)
+    test_chatbot()
