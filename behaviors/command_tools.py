@@ -57,7 +57,8 @@ class CommandToolsBehavior(AgentBehavior):
         Returns:
             Set of allowed commands, or None if no whitelist enforced
         """
-        whitelist_file = Path("jetbox_commands_whitelist")
+        from agent_config import PROJECT_ROOT
+        whitelist_file = PROJECT_ROOT / "jetbox_commands_whitelist"
 
         if not whitelist_file.exists():
             return None

@@ -11,8 +11,8 @@ Usage:
     python agent.py --list-teams     # List available teams
     python agent.py --help           # Show help
 
-The actual agent implementation and CLI logic lives in the agent classes
-(orchestrator_agent.py, task_executor_agent.py, architect_agent.py).
+The actual agent implementation lives in base_agent.py, configured via YAML files
+in config/agents/. All agents are instantiated as BaseAgent with different configs.
 """
 import sys
 import os
@@ -244,30 +244,10 @@ def get_first_agent_info(team_name: str) -> tuple:
     if config_file:
         print(f"[agent.py] Using config: {config_file}")
 
-    # Import the class dynamically
-    # Map class names to modules (updated for Phase 4 refactor - agents now in agents/ directory)
-    module_map = {
-        "OrchestratorAgent": "agents.orchestrator_agent",
-        "TaskExecutorAgent": "agents.task_executor_agent",
-        "ArchitectAgent": "agents.architect_agent",
-    }
-
-    module_name = module_map.get(class_name)
-    if not module_name:
-        print(f"Error: Unknown agent class '{class_name}'. Add to module_map in agent.py")
-        sys.exit(1)
-
-    # Import and return the class
-    try:
-        module = __import__(module_name, fromlist=[class_name])
-        agent_class = getattr(module, class_name)
-        return (agent_class, config_file, first_agent_name)
-    except ImportError as e:
-        print(f"Error: Could not import {class_name} from {module_name}: {e}")
-        sys.exit(1)
-    except AttributeError as e:
-        print(f"Error: Class {class_name} not found in module {module_name}: {e}")
-        sys.exit(1)
+    # All agents are now BaseAgent instances configured via YAML
+    # The class name in config is for documentation only - all agents use BaseAgent + config
+    from base_agent import BaseAgent
+    return (BaseAgent, config_file, first_agent_name)
 
 
 def main():

@@ -1,0 +1,79 @@
+{
+  "timestamp": "2025-11-11T22:04:38.347105",
+  "total_tasks": 4,
+  "successful_tasks": 0,
+  "results": [
+    {
+      "task": "blog_system",
+      "level": 5,
+      "success": false,
+      "duration": 461.191969,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "blog.py",
+        "models.py",
+        "storage.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from blog import BlogManager; bm=BlogManager(); bm.create_post('Title', 'Content'); assert len(bm.get_posts())==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'blog'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_blog_system_mnnu7r80",
+      "stdout_lines": 128,
+      "stderr_lines": 33
+    },
+    {
+      "task": "todo_app",
+      "level": 5,
+      "success": false,
+      "duration": 899.981631,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_todo_app_qke8rxn_"
+    },
+    {
+      "task": "inventory_system",
+      "level": 5,
+      "success": false,
+      "duration": 530.670641,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "inventory.py",
+        "product.py",
+        "alerts.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from inventory import Inventory; inv=Inventory(); inv.add_product('Widget', 10, 2.5); assert len(inv.get_products())==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'inventory'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_inventory_system_om707daw",
+      "stdout_lines": 385,
+      "stderr_lines": 0
+    },
+    {
+      "task": "url_shortener",
+      "level": 5,
+      "success": false,
+      "duration": 899.968869,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_url_shortener_ecm64rpb"
+    }
+  ]
+}

@@ -226,13 +226,9 @@ class DelegationBehavior(AgentBehavior):
         target_agent_name = self._get_target_agent_for_tool(tool_name)
 
         if target_agent_name:
-            # Choose delegation strategy based on available context
-            # If registry/server_manager provided, use subprocess delegation (orchestrator mode)
-            # Otherwise, use direct instantiation (simpler mode)
-            if registry:
-                return self._delegate_via_subprocess(target_agent_name, tool_name, args, agent, registry, server_manager)
-            else:
-                return self._delegate_to_agent(target_agent_name, args, agent)
+            # Use in-process delegation (instantiate BaseAgent with config)
+            # This eliminates dependency on wrapper files and subprocess overhead
+            return self._delegate_to_agent(target_agent_name, args, agent)
         else:
             # Unknown delegation tool
             return {"error": f"Unknown delegation tool: {tool_name}"}
@@ -888,11 +884,11 @@ The delegated task did not complete. Consider:
         calling_agent: Any
     ) -> dict[str, Any]:
         """
-        Generic delegation to any agent.
+        Generic delegation to any agent using BaseAgent + config.
 
         This method handles delegation to ANY agent type by:
-        1. Looking up agent class from relationships
-        2. Instantiating target agent
+        1. Loading agent config from agent_config.py
+        2. Instantiating BaseAgent with config
         3. Setting goal and running agent
         4. Collecting results
 
@@ -906,11 +902,16 @@ The delegated task did not complete. Consider:
         """
         from pathlib import Path
         import os
+        from agent_config import PROJECT_ROOT
+        from base_agent import BaseAgent
 
-        # Import agent class
-        agent_class, error = self._import_agent_class(target_agent_name)
-        if error:
-            return error
+        # Load agent config
+        config_file = PROJECT_ROOT / f"config/agents/{target_agent_name}.yaml"
+        if not config_file.exists():
+            return {
+                "success": False,
+                "error": f"Agent config not found: {config_file}"
+            }
 
         # Extract goal description
         goal_description = self._extract_goal_description(args)
@@ -938,9 +939,11 @@ The delegated task did not complete. Consider:
                 print("[delegation] Cleared OLLAMA_MODEL override for delegated agent")
 
             try:
-                target_agent = agent_class(
+                # Instantiate BaseAgent with config
+                target_agent = BaseAgent(
                     workspace=workspace,
-                    goal=goal_description
+                    goal=goal_description,
+                    config_file=str(config_file)
                 )
             finally:
                 # Restore OLLAMA_MODEL for calling agent
