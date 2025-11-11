@@ -76,6 +76,57 @@ export OLLAMA_MODEL="qwen3-coder:30b"
 
 See evaluation results in `evaluation_results/` for detailed model comparisons.
 
+## Workspace Path Management
+
+**CRITICAL: Workspace path resolution breaks during refactors if not handled carefully.**
+
+Jetbox uses a **two-domain path architecture**:
+1. **PROJECT_ROOT** - for code/config files (read-only, CWD-independent)
+2. **workspace** - for user files (read-write, agent-specific)
+
+### Path Resolution Rules
+
+**When adding Path() anywhere in the codebase:**
+
+✅ **For code/config files:**
+```python
+from agent_config import PROJECT_ROOT
+config_file = PROJECT_ROOT / "config/agents/orchestrator.yaml"
+behavior_file = PROJECT_ROOT / "behaviors/delegation.py"
+```
+
+✅ **For workspace files:**
+```python
+# In behaviors with workspace_manager access:
+file_path = workspace_manager.resolve_path("output.txt")
+
+# Direct workspace-relative (simple cases):
+file_path = agent.workspace / "data.json"
+```
+
+❌ **NEVER use relative paths without anchor:**
+```python
+Path("config/foo.yaml")  # BAD - breaks when CWD changes
+Path("output.txt")       # BAD - ambiguous domain
+```
+
+### Validation & Safety
+
+- **WorkspaceManager.resolve_path()** validates paths stay within workspace
+- **BaseAgent.__init__()** normalizes workspace to absolute path
+- **Delegation** validates workspace parent exists before handoff
+- **Tests** catch unsafe Path() patterns (`pytest tests/test_workspace_paths.py`)
+
+### When Refactoring
+
+Before modifying delegation, workspace, or file tool code:
+1. Read [docs/WORKSPACE_PATH_ARCHITECTURE.md](docs/WORKSPACE_PATH_ARCHITECTURE.md)
+2. Run `pytest tests/test_workspace_paths.py` before and after changes
+3. Check error messages include docs link and guidance
+4. Verify paths are absolute before cross-component handoffs
+
+**This system has broken 5+ times during refactors.** The test suite and docs prevent regression.
+
 ## Architecture
 
 ### Agent Behavior System (NEW)

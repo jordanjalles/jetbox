@@ -928,6 +928,25 @@ The delegated task did not complete. Consider:
         # Convert to Path object if not None (for agent instantiation)
         workspace = Path(workspace_path) if workspace_path is not None else None
 
+        # Validate workspace path if provided
+        if workspace is not None:
+            # Ensure it's absolute (delegation should always use absolute paths)
+            if not workspace.is_absolute():
+                workspace = workspace.resolve()
+                print(f"[delegation] Resolved relative workspace to absolute: {workspace}")
+
+            # Check if parent directory exists (workspace itself will be created by BaseAgent)
+            if not workspace.parent.exists():
+                return {
+                    "success": False,
+                    "error": (
+                        f"Cannot create workspace: parent directory does not exist.\n"
+                        f"Workspace: {workspace}\n"
+                        f"Parent: {workspace.parent}\n"
+                        f"Ensure the parent directory exists before delegation."
+                    )
+                }
+
         # Instantiate and execute target agent
         try:
             print(f"\n[delegation] Delegating to {target_agent_name}: {goal_description[:60]}...")

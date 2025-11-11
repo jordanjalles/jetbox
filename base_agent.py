@@ -60,7 +60,15 @@ class BaseAgent:
         from agent_config import config as global_config
 
         self.name = name
-        self.workspace = Path(workspace)
+
+        # Workspace validation and normalization
+        workspace_path = Path(workspace)
+        if not workspace_path.is_absolute():
+            workspace_path = workspace_path.resolve()
+
+        self.workspace = workspace_path
+        print(f"[{name}] Using custom workspace: {self.workspace}")
+
         self.config = global_config  # Global config for behavior defaults
         self.timeout_seconds = timeout_seconds  # Subprocess timeout (for delegation)
 

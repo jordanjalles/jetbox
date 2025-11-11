@@ -66,12 +66,63 @@ class WorkspaceManager:
         self.created_files: list[str] = []
 
     def resolve_path(self, path: str | Path) -> Path:
+        """
+        Resolve a relative path within the workspace, with validation.
+
+        All workspace file operations must use relative paths. This enforces
+        workspace isolation and prevents accidental writes outside workspace.
+
+        Args:
+            path: Relative path within workspace (e.g., "script.py", "data/file.txt")
+
+        Returns:
+            Absolute path within workspace_dir
+
+        Raises:
+            ValueError: If path is absolute or escapes workspace boundary
+
+        Examples:
+            resolve_path("script.py") -> /workspace/.agent_workspaces/my-project/script.py
+            resolve_path("data/file.txt") -> /workspace/.agent_workspaces/my-project/data/file.txt
+        """
         path = Path(path)
+
+        # Reject absolute paths - workspace operations must be relative
         if path.is_absolute():
-            return path
-        if str(path).startswith('.agent_workspaces/'):
-            return Path(path)
-        return self.workspace_dir / path
+            raise ValueError(
+                f"Workspace file operations must use relative paths.\n"
+                f"Got absolute path: {path}\n\n"
+                f"If you need to access code/config files, use PROJECT_ROOT instead:\n"
+                f"  from agent_config import PROJECT_ROOT\n"
+                f"  config_file = PROJECT_ROOT / 'config/agents/foo.yaml'\n\n"
+                f"For workspace files, use relative paths:\n"
+                f"  workspace_manager.resolve_path('output.txt')\n\n"
+                f"See docs/WORKSPACE_PATH_ARCHITECTURE.md for details."
+            )
+
+        # Special case: .agent_workspaces/ paths for cross-workspace access
+        # Convert to absolute and validate containment
+        if str(path).startswith('.agent_workspaces/') or str(path).startswith('.agent_workspaces\\'):
+            resolved = Path(path).resolve()
+        else:
+            # Normal case: resolve relative to workspace
+            resolved = (self.workspace_dir / path).resolve()
+
+        # Validate path stays within workspace (block ../ escapes)
+        try:
+            resolved.relative_to(self.workspace_dir)
+        except ValueError:
+            raise ValueError(
+                f"Path escapes workspace boundary (blocked for security).\n"
+                f"Attempted path: {path}\n"
+                f"Resolved to: {resolved}\n"
+                f"Workspace: {self.workspace_dir}\n\n"
+                f"All file operations must stay within workspace directory.\n"
+                f"Do not use '../' to escape workspace.\n\n"
+                f"See docs/WORKSPACE_PATH_ARCHITECTURE.md"
+            )
+
+        return resolved
 
     def relative_path(self, path: str | Path) -> str:
         path = Path(path)
