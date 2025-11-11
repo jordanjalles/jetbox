@@ -19,6 +19,47 @@ Started: 2025-11-10
 
 ---
 
+## Phase 3: Solo Agent - Simple Tasks (Calculator with Tests)
+
+### Test 3.1: Calculator without --once (full run loop)
+❌ FAIL - Agent never calls mark_complete, runs out of rounds
+
+**Bug**: Goal never set, so mark_complete tool never available
+**Root cause**:
+- Code calls trigger_behavior_event("onGoalSet") legacy event
+- But behaviors define on_goal_start() method, not onGoalSet()
+- Event name mismatch means no behavior responds
+- agent.goal never gets set
+- mark_complete tools only added when agent.goal exists (tool_dispatch.py:326)
+- Agent can't mark completion even when work is done
+
+**Where it happened**:
+1. base_agent.py:1030 - run_agent() for non-chat mode
+2. agents/task_executor_agent.py:58 - __init__ when goal provided
+3. agents/architect_agent.py:50 - __init__ when goal provided
+4. agent_registry.py:228 - delegation system
+
+**Fix applied**: ✅ Replace trigger_behavior_event("onGoalSet") with set_goal()
+- Renamed _handle_goal_set() to set_goal() (public API)
+- Updated all 4 call sites to use set_goal() directly
+- Goal now properly set, mark_complete tool available
+- Agent successfully completes tasks!
+
+### Test 3.2: Calculator after fix
+✅ PASS - Agent creates calculator, tests it, and marks complete in 6 rounds!
+
+**Command**: `python agent.py --team solo "Create calculator with add and multiply functions"`
+**Result**:
+- calculator.py created with add() and multiply() functions
+- test_calculator.py created with comprehensive tests
+- Tests run and pass
+- Agent calls mark_complete(summary=...)
+- Task completes successfully
+
+**This was a CRITICAL bug** - without it, agents could never mark completion!
+
+---
+
 ## Phase 2: Solo Agent - Trivial Tasks
 
 ### Test 2.1: Create single file

@@ -725,12 +725,12 @@ class BaseAgent:
 
 
 
-    def _handle_goal_set(self, goal: str, **kwargs) -> None:
+    def set_goal(self, goal: str, **kwargs) -> None:
         """
-        Core agent initialization when goal is set.
+        Set the agent's goal and initialize goal-specific tracking.
 
         This initializes workspace manager, performance tracking, and goal timing.
-        Runs BEFORE behaviors receive the onGoalSet event.
+        Should be called once when starting work on a new goal.
 
         Args:
             goal: Goal description
@@ -1027,7 +1027,11 @@ class BaseAgent:
         elif initial_message:
             # Single task mode (no ChatbotBehavior)
             print(f"User: {initial_message}\n")
-            agent.trigger_behavior_event("onGoalSet", goal=initial_message, workspace=agent.workspace)
+
+            # Set goal directly (triggers workspace setup and goal tracking)
+            agent.set_goal(initial_message, workspace=agent.workspace)
+
+            # Run agent
             result = agent.run()
 
             # Print result

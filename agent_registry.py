@@ -223,11 +223,10 @@ class AgentRegistry:
                     "agent": to_agent,
                 }
 
-        # Trigger onGoalSet event (all agents support this as core functionality)
+        # Set goal on delegated agent (triggers goal tracking and workspace setup)
         # This is generic - works for any agent type
-        target.trigger_behavior_event(
-            "onGoalSet",
-            goal=task_description,
+        target.set_goal(
+            task_description,
             workspace=workspace_path,
         )
 
