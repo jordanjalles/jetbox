@@ -138,11 +138,15 @@ system_prompt: |
 # Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
 
 behaviors:
-  # Tool Usage Mandate (MUST BE FIRST)
-  # Injects critical "ALWAYS use tools" instruction after recent prompt shrinkage
-  - type: ToolUsageMandateBehavior
-
   # Execution Mode
+  # Manages execution mode activation, tool usage enforcement, and completion signals
+  - type: ExecutionModeBehavior
+    params:
+      enable_completion_nudging: true
+      min_rounds_before_nudge: 3
+      max_empty_rounds: 3
+
+  # Chatbot Mode
   # NOTE: All agents now have core goal/completion functionality built into BaseAgent
   # ChatbotBehavior provides interactive chat mode when no goal provided
   - type: ChatbotBehavior
