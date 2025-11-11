@@ -108,6 +108,12 @@ behaviors:
   - type: CompactWhenNearFullBehavior
 
   # Utility Behaviors
+  # TimeBoxBehavior provides temporal awareness with automatic nudges
+  - type: TimeBoxBehavior
+    params:
+      total_budget_minutes: 240  # 4 hours default for complex projects
+      default_nudges: [25, 50, 75]
+
   # LoopDetectionBehavior detects repeated actions
   # For orchestrator: nudge with delegation tools if idle
   - type: LoopDetectionBehavior
