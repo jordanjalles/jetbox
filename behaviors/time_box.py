@@ -136,7 +136,7 @@ class TimeBoxBehavior(AgentBehavior):
         percent: float,
         context: list[dict[str, Any]]
     ) -> None:
-        """Inject neutral factual time nudge."""
+        """Inject neutral factual time nudge into persistent message history."""
         goal = getattr(agent, 'goal', 'current task')
 
         # Neutral, factual tone
@@ -146,7 +146,9 @@ class TimeBoxBehavior(AgentBehavior):
         else:
             msg = f"{percent}% of your time for '{goal}' has elapsed."
 
-        self.inject_user_message_after_system(context, msg)
+        # Add to persistent message history (not transient context)
+        nudge_message = {"role": "user", "content": msg}
+        agent.state.messages.append(nudge_message)
 
     def _inject_custom_reminder(
         self,
@@ -155,6 +157,9 @@ class TimeBoxBehavior(AgentBehavior):
         message: str,
         context: list[dict[str, Any]]
     ) -> None:
-        """Inject agent-scheduled custom reminder."""
+        """Inject agent-scheduled custom reminder into persistent message history."""
         msg = f"[Scheduled reminder at {percent}%]\n{message}"
-        self.inject_user_message_after_system(context, msg)
+
+        # Add to persistent message history (not transient context)
+        reminder_message = {"role": "user", "content": msg}
+        agent.state.messages.append(reminder_message)
