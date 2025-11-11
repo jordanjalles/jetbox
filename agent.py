@@ -301,12 +301,10 @@ def main():
             exit_after_initial = args.get("exit_after_initial", False)
             timeout_seconds = args.get("timeout_seconds", 600)
 
-            # Determine if ChatbotBehavior should be excluded
+            # No longer exclude ChatbotBehavior - let mode system handle activation
+            # When goal provided: ExecutionMode activates, ChatbotMode deactivates
+            # This preserves ability to interrupt and chat with agent later
             exclude_behaviors = []
-            if initial_message and not force_chat_mode and not exit_after_initial:
-                # Autonomous mode: exclude chatbot to run goal directly
-                # But keep it for --once mode (single question/answer)
-                exclude_behaviors = ["ChatbotBehavior"]
 
             # Get extra behaviors from environment (set by parse_extra_behaviors in main)
             extra_behaviors_env = os.environ.get('JETBOX_EXTRA_BEHAVIORS', '')

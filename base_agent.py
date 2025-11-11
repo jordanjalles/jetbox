@@ -767,6 +767,13 @@ class BaseAgent:
 
         print(f"[{self.name}] Goal set: {goal}")
 
+        # Activate ExecutionModeBehavior when goal is set
+        # This ensures tool usage is enforced and empty round detection is active
+        for behavior in self.behaviors:
+            if hasattr(behavior, 'get_name') and behavior.get_name() == 'execution_mode':
+                behavior.activate(self)
+                break
+
     def _save_partial_progress(self) -> dict:
         """
         Save progress when LLM becomes unavailable (circuit breaker triggered).
@@ -1021,17 +1028,15 @@ class BaseAgent:
                 chatbot_behavior = behavior
                 break
 
-        # Multi-task chat mode if ChatbotBehavior present
-        if chatbot_behavior:
-            cls._run_multi_task_chat_mode(agent, chatbot_behavior, initial_message, exit_after_initial)
-        elif initial_message:
-            # Single task mode (no ChatbotBehavior)
+        # If goal provided on CLI, execute it directly (ExecutionMode)
+        # This takes precedence over interactive chat, even if ChatbotBehavior present
+        if initial_message:
             print(f"User: {initial_message}\n")
 
-            # Set goal directly (triggers workspace setup and goal tracking)
+            # Set goal directly (triggers ExecutionModeBehavior activation)
             agent.set_goal(initial_message, workspace=agent.workspace)
 
-            # Run agent
+            # Run agent in execution mode
             result = agent.run()
 
             # Print result
@@ -1045,8 +1050,11 @@ class BaseAgent:
             if exit_after_initial:
                 print("\nExiting...")
                 return
+        # No goal on CLI - enter interactive chat mode if ChatbotBehavior present
+        elif chatbot_behavior:
+            cls._run_multi_task_chat_mode(agent, chatbot_behavior, initial_message, exit_after_initial)
         else:
-            # No ChatbotBehavior and no initial message - can't do anything
+            # No goal and no ChatbotBehavior - can't do anything
             print("Interactive mode not supported without ChatbotBehavior.")
             print("Usage: python {script} 'goal description'")
 

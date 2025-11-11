@@ -293,13 +293,8 @@ Transitioning to execution mode to work on task...
                 full_goal += f"\n\nRequirements:\n{requirements}"
 
             # Set goal on agent (core functionality)
+            # Note: agent.set_goal() automatically activates ExecutionModeBehavior
             agent.set_goal(full_goal)
-
-            # Find ExecutionModeBehavior and activate it
-            for behavior in agent.behaviors:
-                if hasattr(behavior, 'get_name') and behavior.get_name() == 'execution_mode':
-                    behavior.activate(agent)
-                    break
 
             return {
                 "success": True,
