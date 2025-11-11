@@ -337,6 +337,7 @@ class DelegationBehavior(AgentBehavior):
             Delegation result dict
         """
         from pathlib import Path
+        from agent_config import PROJECT_ROOT
 
         # Get agent config from registry
         if not registry or target_agent_name not in registry.config.get("agents", {}):
@@ -359,8 +360,8 @@ class DelegationBehavior(AgentBehavior):
         # TaskExecutorAgent → task_executor_agent.py
         agent_file = self._class_name_to_file(agent_class_name)
 
-        # Verify file exists (check agents/ directory after Phase 4 refactor)
-        agent_file_path = Path("agents") / agent_file
+        # Verify file exists using absolute path (works from any CWD)
+        agent_file_path = PROJECT_ROOT / "agents" / agent_file
         if not agent_file_path.exists():
             return {
                 "success": False,
@@ -370,7 +371,7 @@ class DelegationBehavior(AgentBehavior):
         # Use generic subprocess delegation for ALL agents
         return self._generic_subprocess_delegation(
             target_agent_name,
-            str(agent_file_path),  # Use full path with agents/ prefix
+            str(agent_file_path),  # Use absolute path so it works from any CWD
             args,
             calling_agent,
             registry
