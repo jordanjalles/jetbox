@@ -940,11 +940,14 @@ The delegated task did not complete. Consider:
 
             try:
                 # Instantiate BaseAgent with config
+                # Note: BaseAgent requires name parameter
                 target_agent = BaseAgent(
+                    name=target_agent_name,
                     workspace=workspace,
-                    goal=goal_description,
                     config_file=str(config_file)
                 )
+                # Set goal after instantiation
+                target_agent.set_goal(goal_description)
             finally:
                 # Restore OLLAMA_MODEL for calling agent
                 if saved_model_override:
