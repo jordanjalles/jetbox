@@ -131,7 +131,7 @@ class AgentLifecycle:
         temperature = getattr(self.agent, 'temperature', None) or getattr(self.agent.config.llm, 'temperature', 0.2) if self.agent.config else 0.2
 
         # Call LLM WITHOUT tools (pure chat mode)
-        from llm_utils import chat_with_inactivity_timeout
+        from src.llm_utils import chat_with_inactivity_timeout
 
         options = {"temperature": temperature}
         if hasattr(self.agent, 'config') and self.agent.config:

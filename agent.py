@@ -298,12 +298,14 @@ def main():
             """Override to pass custom config file and agent name from team config."""
             initial_message = args.get("initial_message")
             force_chat_mode = args.get("force_chat_mode", False)
+            exit_after_initial = args.get("exit_after_initial", False)
             timeout_seconds = args.get("timeout_seconds", 600)
 
             # Determine if ChatbotBehavior should be excluded
             exclude_behaviors = []
-            if initial_message and not force_chat_mode:
+            if initial_message and not force_chat_mode and not exit_after_initial:
                 # Autonomous mode: exclude chatbot to run goal directly
+                # But keep it for --once mode (single question/answer)
                 exclude_behaviors = ["ChatbotBehavior"]
 
             # Get extra behaviors from environment (set by parse_extra_behaviors in main)
