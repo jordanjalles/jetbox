@@ -37,6 +37,7 @@ from behaviors.workspace_task_notes import WorkspaceTaskNotesBehavior
 from behaviors.status_display import StatusDisplayBehavior
 from behaviors.delegation import DelegationBehavior
 from behaviors.context_inspector import ContextInspectorBehavior
+from behaviors.tool_usage_mandate import ToolUsageMandateBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -53,4 +54,5 @@ __all__ = [
     "StatusDisplayBehavior",
     "DelegationBehavior",
     "ContextInspectorBehavior",
+    "ToolUsageMandateBehavior",
 ]

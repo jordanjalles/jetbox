@@ -1,29 +1,40 @@
 """
-ChatbotBehavior - Enables interactive chat mode when no goal is provided.
+ChatbotBehavior - Manages chat mode for conversational interaction.
 
-This behavior allows agents to enter chat mode when invoked without a goal:
-- Activated when NO goal provided to the agent
-- Provides set_goal tool for transitioning to execution mode
-- Manages chat mode state
+This behavior enables interactive chat mode using event-based mode coordination:
+- Activates when: Agent starts (default) or clarify_with_user() called
+- Deactivates when: set_goal() called (execution mode activates)
+- Provides tools for mode transition and clarification
+- Coordinates with ExecutionModeBehavior via events
 
 Key features:
-- Provides set_goal and clarify_with_user tools
-- Injects chat instructions once when chat mode activates
-- Transitions to execution mode when set_goal is called
-- Works with any agent type (TaskExecutor, Orchestrator, Architect)
+- self.is_active state tracking (starts active by default)
+- activate() / deactivate() lifecycle methods
+- Event-based coordination via on_custom_event()
+- Provides set_goal, clarify_with_user, activate_chat_mode tools
+- Broadcasts 'mode_activated' event when activating
+- Automatically deactivates when execution mode activates
 
 COMPOSITION:
-- This behavior does NOT handle execution mode (core BaseAgent functionality)
+- This behavior does NOT handle execution mode (use ExecutionModeBehavior)
 - This behavior does NOT handle delegation (use DelegationBehavior)
 - This behavior does NOT implement its own chat loop (agent handles input/output)
 - This behavior ONLY manages chat mode state and provides chat tools
 
+Configuration:
+- params: Optional configuration dict (currently unused)
+
 Usage:
     When agent runs without a goal, this behavior:
-    1. Provides set_goal tool
-    2. Injects chat instructions once
+    1. Starts active (is_active = True)
+    2. Provides set_goal, clarify_with_user, activate_chat_mode tools
     3. Waits for agent to call set_goal
-    4. Transitions to execution mode when set_goal is called
+    4. When set_goal called:
+       - Sets agent.goal
+       - Finds ExecutionModeBehavior and calls activate()
+       - ExecutionModeBehavior fires 'mode_activated' event
+       - ChatbotBehavior hears event and deactivates
+    5. Mode transition complete (chat → execution)
 """
 
 from typing import Any
@@ -32,32 +43,150 @@ from behaviors.base import AgentBehavior
 
 class ChatbotBehavior(AgentBehavior):
     """
-    Behavior that enables interactive chat mode for requirement gathering.
+    Manages chat mode for conversational interaction using event-based coordination.
 
-    Designed for agents that can be invoked without a goal:
-    - CLI: python agent.py (no goal argument)
-    - Tool call: agent.run() (no goal parameter)
+    Mode State:
+    - self.is_active: Tracks whether chat mode is currently active (default: True)
+    - Starts active by default when agent has no goal
+    - Deactivates automatically when execution mode activates
 
-    Features:
-    - Provides set_goal tool for transitioning to execution mode
-    - Conversational interface for clarifying ambiguous requests
-    - Supports multi-turn conversations to refine requirements
+    Mode Lifecycle:
+    - activate(): Sets is_active=True, broadcasts 'mode_activated' event
+    - deactivate(): Sets is_active=False, appends deactivation message
+
+    Event Coordination:
+    - Listens for 'mode_activated' events from ExecutionModeBehavior
+    - Automatically deactivates when execution mode activates
+    - No coupling between behaviors (event-based)
+
+    Tools Provided:
+    - set_goal: Activates execution mode (finds ExecutionModeBehavior.activate())
+    - clarify_with_user: Ensures chat mode is active
+    - activate_chat_mode: Explicitly activates chat mode
 
     This behavior is COMPOSABLE:
-    - Does NOT handle execution (core BaseAgent functionality)
-    - Does NOT handle delegation (delegate to DelegationBehavior)
+    - Does NOT handle execution (use ExecutionModeBehavior)
+    - Does NOT handle delegation (use DelegationBehavior)
     - Does NOT implement its own chat loop (agent handles I/O)
     - ONLY manages chat mode state and provides chat tools
     """
 
-    def __init__(self):
+    def __init__(self, params: dict[str, Any] | None = None):
         """Initialize chatbot behavior."""
-        self.chat_mode_active = False
+        super().__init__()
+        self.params = params or {}
+
+        # Mode state (owned by behavior) - starts active by default
+        self.is_active = True
+
+        # Legacy tracking for transition compatibility
         self.chat_instructions_injected = False  # Track if chat instructions already injected
 
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "chatbot"
+
+    # ============================================
+    # Mode Lifecycle
+    # ============================================
+
+    def activate(self, agent: Any, **context: Any) -> dict[str, Any]:
+        """
+        Activate chat mode.
+
+        Called when:
+        - Agent starts (default mode)
+        - clarify_with_user() tool is called
+        - activate_chat_mode() tool is called
+        - Execution mode completes
+
+        Args:
+            agent: Agent instance
+            **context: Optional context data
+
+        Returns:
+            Activation result dict
+        """
+        if self.is_active:
+            return {"already_active": True}
+
+        self.is_active = True
+
+        # Append mode activation message
+        activation_message = """
+╔════════════════════════════════════════════════════════╗
+║  💬 CHAT MODE ACTIVATED                                ║
+╚════════════════════════════════════════════════════════╝
+
+CHAT MODE GUIDELINES:
+- Respond conversationally (text-only responses are fine)
+- Be helpful and friendly
+- Ask clarifying questions if needed
+- Tools are available but completely optional
+
+To start working on a task: call set_goal(goal, requirements)
+
+How can I help you?
+"""
+
+        agent.add_message({"role": "user", "content": activation_message})
+
+        # Broadcast mode activation event
+        if hasattr(agent, 'event_system'):
+            agent.event_system.fire_custom_event(
+                'mode_activated',
+                mode_name='chat',
+                behavior=self
+            )
+
+        return {
+            "success": True,
+            "mode": "chat",
+            "active": True
+        }
+
+    def deactivate(self, agent: Any, reason: str = "transition") -> dict[str, Any]:
+        """
+        Deactivate chat mode.
+
+        Called when execution mode activates.
+
+        Args:
+            agent: Agent instance
+            reason: Reason for deactivation ("transition", "conflict", etc.)
+
+        Returns:
+            Deactivation result dict
+        """
+        if not self.is_active:
+            return {"already_inactive": True}
+
+        self.is_active = False
+
+        # Append deactivation message
+        if reason == "conflict":
+            message = """
+╔════════════════════════════════════════════════════════╗
+║  💬 CHAT MODE → EXECUTION MODE                         ║
+╚════════════════════════════════════════════════════════╝
+
+Transitioning to execution mode to work on task...
+"""
+        else:
+            message = f"💬 Chat mode deactivated ({reason})"
+
+        agent.add_message({"role": "user", "content": message})
+
+        return {
+            "success": True,
+            "mode": "chat",
+            "active": False,
+            "reason": reason
+        }
+
+    # ============================================
+    # Tools
+    # ============================================
 
     def get_tools(self) -> list[dict[str, Any]]:
         """
@@ -77,17 +206,13 @@ class ChatbotBehavior(AgentBehavior):
                 # Goal set - don't provide chatbot tools
                 return []
 
-        # No goal set - provide set_goal tool for chat mode
-        # Note: We used to provide clarify_with_user tool, but removed it because:
-        # 1. LLM can ask questions conversationally without needing a tool
-        # 2. It added unnecessary tool call overhead
-        # 3. Questions are clearer when in plain text responses
+        # No goal set - provide chat mode tools
         return [
             {
                 "type": "function",
                 "function": {
                     "name": "set_goal",
-                    "description": "Start working on a task. Call this when user wants to build something and you have basic requirements. Be decisive - don't wait for perfect clarity. If user says 'do it', 'build it', 'go ahead', call this IMMEDIATELY.",
+                    "description": "Start working on a task. This activates execution mode. Call this when user wants to build something and you have basic requirements. Be decisive - don't wait for perfect clarity. If user says 'do it', 'build it', 'go ahead', call this IMMEDIATELY.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -101,6 +226,34 @@ class ChatbotBehavior(AgentBehavior):
                             }
                         },
                         "required": ["goal"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "clarify_with_user",
+                    "description": "Ask user for clarification. Ensures chat mode is active for conversational interaction.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "Question to ask user"
+                            }
+                        },
+                        "required": ["question"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "activate_chat_mode",
+                    "description": "Explicitly activate chat mode. Usually not needed as chat mode is default, but can be used to return to conversational mode.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
                     }
                 }
             }
@@ -134,12 +287,19 @@ class ChatbotBehavior(AgentBehavior):
                     "error": "Goal cannot be empty"
                 }
 
-            # Transition from chat mode to execution mode
-            self.chat_mode_active = False
+            # Build full goal
+            full_goal = goal
+            if requirements:
+                full_goal += f"\n\nRequirements:\n{requirements}"
 
-            # Trigger onGoalSet event (BaseAgent will handle core initialization)
-            # Agent will fire onGoalSet event to behaviors - don't do it here
-            # This maintains separation of concerns
+            # Set goal on agent (core functionality)
+            agent.set_goal(full_goal)
+
+            # Find ExecutionModeBehavior and activate it
+            for behavior in agent.behaviors:
+                if hasattr(behavior, 'get_name') and behavior.get_name() == 'execution_mode':
+                    behavior.activate(agent)
+                    break
 
             return {
                 "success": True,
@@ -150,16 +310,27 @@ class ChatbotBehavior(AgentBehavior):
             }
 
         elif tool_name == "clarify_with_user":
-            # Question already displayed in assistant message content
-            # Just acknowledge internally
             question = args.get('question', '')
+
+            # Ensure chat mode is active
+            if not self.is_active:
+                self.activate(agent)
+
             return {
                 "success": True,
-                "message": "Question posed to user",
-                "question": question
+                "result": f"Question for user: {question}",
+                "question": question,
+                "mode": "chat"
             }
 
+        elif tool_name == "activate_chat_mode":
+            return self.activate(agent)
+
         return super().dispatch_tool(agent, tool_name, args)
+
+    # ============================================
+    # Initial Context (Static, KV Cached)
+    # ============================================
 
     def on_initial_context(
         self,
@@ -167,48 +338,69 @@ class ChatbotBehavior(AgentBehavior):
         context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Inject tool documentation for chatbot tools.
+        Explain chat mode in initial context (STATIC, KV cached).
 
-        Called once during agent initialization to document available tools.
+        This is part of the system prompt that never changes.
+        Explains what chat mode IS and guidelines.
 
         Args:
             agent: Agent instance
             context: Initial context (system prompt only)
 
         Returns:
-            Context with tool documentation injected
+            Modified context with chat mode explanation
         """
-        tools = self.get_tools()
-        if not tools:
-            return context
+        mode_explanation = f"""
+═══════════════════════════════════════════════════════════
+CHAT MODE (default conversational mode)
+═══════════════════════════════════════════════════════════
 
-        # Build tool documentation
-        tool_docs = []
-        for tool in tools:
-            func = tool.get("function", {})
-            name = func.get("name", "unknown")
-            desc = func.get("description", "")
-            params = func.get("parameters", {}).get("properties", {})
-            required = func.get("parameters", {}).get("required", [])
+Purpose: Natural conversational interaction with user
 
-            # Build parameter signature
-            param_strs = []
-            for param_name, param_spec in params.items():
-                param_type = param_spec.get("type", "any")
-                is_required = param_name in required
-                if is_required:
-                    param_strs.append(f"{param_name}: {param_type}")
-                else:
-                    param_strs.append(f"{param_name}?: {param_type}")
+Guidelines when chat mode is active:
+- Respond conversationally to user messages
+- Text-only responses are perfectly fine
+- Be helpful, friendly, and concise
+- Ask clarifying questions when needed
+- Tools are available but completely optional
 
-            param_sig = ", ".join(param_strs) if param_strs else ""
-            tool_docs.append(f"  - {name}({param_sig}): {desc}")
+Transitioning to execution mode: call set_goal(goal, requirements)
 
-        if tool_docs:
-            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            return self.inject_user_message_after_system(context, tool_message)
+Status: {"💬 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
+"""
 
-        return context
+        return self.inject_user_message_after_system(context, mode_explanation)
+
+    # ============================================
+    # Event Handlers
+    # ============================================
+
+    def on_custom_event(
+        self,
+        agent: Any,
+        event_name: str,
+        **event_data: Any
+    ) -> None:
+        """
+        Listen for mode activation events from other behaviors.
+
+        If execution mode activates, deactivate chat mode.
+
+        Args:
+            agent: Agent instance
+            event_name: Name of the event
+            **event_data: Event data
+        """
+        if event_name == "mode_activated":
+            activated_mode = event_data.get('mode_name')
+
+            # If execution mode activates and we're active, deactivate
+            if activated_mode == "execution" and self.is_active:
+                self.deactivate(agent, reason="conflict")
+
+    # ============================================
+    # Runtime Hooks (Legacy)
+    # ============================================
 
     def on_round_start(
         self,
@@ -217,7 +409,10 @@ class ChatbotBehavior(AgentBehavior):
         context: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Inject chat mode instructions once when chat mode becomes active.
+        LEGACY: Inject chat mode instructions once when chat mode becomes active.
+
+        NOTE: This is legacy behavior kept for backward compatibility.
+        The new event-based system injects activation messages via activate().
 
         Args:
             agent: Agent instance
@@ -228,7 +423,7 @@ class ChatbotBehavior(AgentBehavior):
             Modified context with chat instructions
         """
         # Inject chat instructions ONCE when chat mode first becomes active
-        if self.chat_mode_active and not self.chat_instructions_injected:
+        if self.is_active and not self.chat_instructions_injected:
             chat_instructions = """CHAT MODE ACTIVE:
 
 No goal has been provided yet. You can have a normal conversation with the user.

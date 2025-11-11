@@ -117,6 +117,11 @@ class ToolDispatcher:
 
         These are core agent tools available to all agents with goals.
 
+        When called, these tools trigger mode transitions:
+        - Deactivate ExecutionModeBehavior
+        - Clear agent.goal
+        - Activate ChatbotBehavior
+
         Args:
             tool_call: Tool call dict
 
@@ -129,6 +134,9 @@ class ToolDispatcher:
         if tool_name == "mark_complete":
             summary = args.get("summary", "Task completed")
 
+            # Trigger mode transition: execution -> chatbot
+            self._transition_to_chatbot_mode(reason='complete')
+
             return {
                 "success": True,
                 "result": f"Task marked complete: {summary}",
@@ -139,6 +147,9 @@ class ToolDispatcher:
         elif tool_name == "mark_failed":
             reason = args.get("reason", "Task failed")
 
+            # Trigger mode transition: execution -> chatbot
+            self._transition_to_chatbot_mode(reason='failed')
+
             return {
                 "success": False,
                 "result": f"Task marked failed: {reason}",
@@ -147,6 +158,33 @@ class ToolDispatcher:
             }
 
         return {"error": f"Unknown completion tool: {tool_name}"}
+
+    def _transition_to_chatbot_mode(self, reason: str) -> None:
+        """
+        Transition from execution mode to chatbot mode.
+
+        Steps:
+        1. Deactivate ExecutionModeBehavior with reason
+        2. Clear agent.goal
+        3. Activate ChatbotBehavior
+
+        Args:
+            reason: Reason for transition ('complete' or 'failed')
+        """
+        # Find and deactivate ExecutionModeBehavior
+        for behavior in self.agent.behaviors:
+            if hasattr(behavior, 'get_name') and behavior.get_name() == 'execution_mode':
+                behavior.deactivate(self.agent, reason=reason)
+                break
+
+        # Clear agent goal
+        self.agent.goal = None
+
+        # Find and activate ChatbotBehavior
+        for behavior in self.agent.behaviors:
+            if hasattr(behavior, 'get_name') and behavior.get_name() == 'chatbot':
+                behavior.activate(self.agent)
+                break
 
     def _dispatch_to_behavior(
         self, tool_call: dict[str, Any], **extra_context

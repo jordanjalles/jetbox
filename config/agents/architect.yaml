@@ -138,6 +138,10 @@ system_prompt: |
 # Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
 
 behaviors:
+  # Tool Usage Mandate (MUST BE FIRST)
+  # Injects critical "ALWAYS use tools" instruction after recent prompt shrinkage
+  - type: ToolUsageMandateBehavior
+
   # Execution Mode
   # NOTE: All agents now have core goal/completion functionality built into BaseAgent
   # ChatbotBehavior provides interactive chat mode when no goal provided

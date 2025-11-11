@@ -247,7 +247,7 @@ jetbox/
 
 ## Common Tasks
 
-**Change model**: Edit `config/llm_config.yaml` → `model: "qwen3-coder:30b"`
+**Change model**: Edit `config/llm_config.yaml` → `model: "qwen3-coder:7b"` (or other variants)
 
 **Add behavior**: Create in `behaviors/` → Register in `__init__.py` → Add to agent YAML
 

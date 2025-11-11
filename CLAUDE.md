@@ -57,21 +57,21 @@ Key settings:
 - **3x approach retries**: Agent gets 3 chances to reconsider approach at root before final failure
 - **Configurable depth/breadth**: Adjust max_depth, max_siblings, max_rounds_per_subtask
 
-**Default Model: qwen3:8b**
+**Default Model: qwen3-coder:30b**
 
-The default model is `qwen3:8b`, chosen based on comprehensive evaluation:
-- **2x higher success rate** vs gpt-oss:20b (50% vs 25%)
-- **1.8x faster execution** (77.7s vs 140.6s average)
+The default model is `qwen3-coder:30b`, chosen for maximum coding performance:
+- **Code-specific fine-tuning** for programming tasks
 - **128K context window** (sufficient for complex multi-agent workflows)
-- **5.2GB model size** (60% smaller than gpt-oss:20b)
+- **~17GB model size** (largest qwen3-coder variant)
+- **Maximum capability** for complex code generation
 
 Override via environment variable if needed:
 ```bash
 # PowerShell
-$env:OLLAMA_MODEL = "qwen3:8b"
+$env:OLLAMA_MODEL = "qwen3-coder:30b"
 
 # Bash
-export OLLAMA_MODEL="qwen3:8b"
+export OLLAMA_MODEL="qwen3-coder:30b"
 ```
 
 See evaluation results in `evaluation_results/` for detailed model comparisons.

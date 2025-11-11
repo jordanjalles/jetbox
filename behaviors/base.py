@@ -5,6 +5,7 @@ Behaviors extend agent capabilities through:
 - Context injection (on_initial_context, on_round_start)
 - Tool registration (get_tools, dispatch_tool)
 - Event handling (on_* methods)
+- Custom event communication (on_custom_event, fire_custom_event)
 
 All behaviors are:
 - Self-contained (no dependencies on other behaviors)
@@ -19,6 +20,10 @@ Lifecycle Events (in order):
 5. on_tool_call() - After each tool execution
 6. on_round_end() - After all tools in round
 7. on_goal_complete() or on_timeout() - At goal end
+
+Custom Events (any time):
+- on_custom_event() - Called when behaviors broadcast custom events
+- Enables inter-behavior communication for mode coordination, state sync, etc.
 """
 
 from abc import ABC, abstractmethod
@@ -37,6 +42,7 @@ class AgentBehavior(ABC):
     - Tool definitions and dispatch (get_tools, dispatch_tool)
     - System prompt instructions (get_instructions)
     - Event handlers (on_goal_start, on_tool_call, on_round_end, etc.)
+    - Custom event communication (on_custom_event)
 
     Lifecycle Events (in chronological order):
     1. on_goal_start(agent, goal) - Once at goal start
@@ -46,6 +52,9 @@ class AgentBehavior(ABC):
     5. on_tool_call(agent, tool_name, args, result) - After each tool execution
     6. on_round_end(agent, round_number) - After all tools in round
     7. on_goal_complete(agent, success, summary) or on_timeout(agent, elapsed) - At goal end
+
+    Custom Events (any time):
+    - on_custom_event(agent, event_name, **event_data) - Inter-behavior communication
 
     Example:
         ```python
@@ -405,6 +414,61 @@ class AgentBehavior(ABC):
                 status = "SUCCESS" if success else "FAILED"
                 elapsed = time.time() - self.start_time
                 print(f"{status}: {self.action_count} actions in {elapsed:.1f}s")
+            ```
+        """
+        pass
+
+    def on_custom_event(
+        self,
+        agent: "BaseAgent",
+        event_name: str,
+        **event_data
+    ) -> None:
+        """
+        Called when a custom event is fired by another behavior.
+
+        TIMING: Called whenever agent.event_system.fire_custom_event() is invoked.
+        FREQUENCY: Variable - depends on behavior interactions.
+
+        Custom events enable inter-behavior communication without tight coupling.
+        Behaviors can broadcast events to coordinate state changes, mode transitions,
+        or other cross-cutting concerns.
+
+        Use for:
+        - Mode coordination (e.g., "mode_changed" events)
+        - Context state changes (e.g., "context_full", "context_compacted")
+        - Resource notifications (e.g., "workspace_changed", "file_created")
+        - Custom coordination patterns between behaviors
+
+        Args:
+            agent: Agent instance
+            event_name: Name of the custom event (e.g., "mode_changed")
+            **event_data: Event-specific data passed by the event source
+
+        Default Implementation:
+            Does nothing (no-op). Behaviors opt-in to events they care about.
+
+        Example:
+            ```python
+            def on_custom_event(self, agent, event_name, **event_data):
+                # Listen for mode change events
+                if event_name == "mode_changed":
+                    new_mode = event_data.get("mode")
+                    reason = event_data.get("reason", "unknown")
+                    print(f"Mode changed to {new_mode}: {reason}")
+                    self.current_mode = new_mode
+
+                # Listen for context state events
+                elif event_name == "context_full":
+                    tokens_used = event_data.get("tokens_used", 0)
+                    self.prepare_for_compaction(tokens_used)
+
+            # To fire a custom event from another behavior:
+            # agent.event_system.fire_custom_event(
+            #     "mode_changed",
+            #     mode="architect",
+            #     reason="Design phase started"
+            # )
             ```
         """
         pass

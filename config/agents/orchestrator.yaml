@@ -99,6 +99,10 @@ system_prompt: |
   ```
 
 behaviors:
+  # Tool Usage Mandate (MUST BE FIRST)
+  # Injects critical "ALWAYS use tools" instruction after recent prompt shrinkage
+  - type: ToolUsageMandateBehavior
+
   # Execution Mode
   # NOTE: All agents now have core goal/completion functionality built into BaseAgent
   # ChatbotBehavior provides interactive chat mode when no goal provided

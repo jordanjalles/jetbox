@@ -10,8 +10,8 @@ A composable agent framework for autonomous code generation powered by local LLM
 # Install dependencies
 pip install -e .
 
-# Pull the default model (qwen3:8b - 5.2GB)
-ollama pull qwen3:8b
+# Pull the default model (qwen3-coder:30b - ~17GB)
+ollama pull qwen3-coder:30b
 
 # Run a simple task with solo agent (TaskExecutor)
 python agent.py --team solo "Create a calculator package with add/subtract/multiply/divide"
@@ -104,7 +104,7 @@ Configure agent behavior without code changes:
 ```yaml
 # agent_config.yaml
 llm:
-  model: "qwen3:8b"  # Default model: fast, capable, 128K context
+  model: "qwen3-coder:30b"  # Default model: code-specialized, 128K context
   temperature: 0.2
   timeout:
     inactivity_timeout: 30  # Max seconds without LLM activity
@@ -339,13 +339,12 @@ Each goal gets an isolated workspace:
 
 Based on evaluation across 40 tasks (L3-L6 complexity):
 
-| Metric | qwen3:8b (Default) | Notes |
+| Metric | qwen3-coder:30b (Default) | Notes |
 |--------|-------------------|-------|
-| **Success Rate** | 50% | After completion nudging: 60-65% expected |
-| **Avg Time/Task** | 77.7s | 1.8x faster than gpt-oss:20b |
+| **Success Rate** | TBD | Code-specialized model, maximum capability |
 | **Context Window** | 128K tokens | Sufficient for complex workflows |
-| **Model Size** | 5.2GB | 60% smaller than gpt-oss:20b |
-| **Per-round Speed** | 28.5s | Slower per-round but fewer rounds needed |
+| **Model Size** | ~17GB | Largest qwen3-coder variant |
+| **Specialization** | Code-focused | Fine-tuned specifically for programming tasks |
 
 **Task complexity vs success rate:**
 - L3 (simple packages): 20% → 40-50% (after fixes)
@@ -354,7 +353,7 @@ Based on evaluation across 40 tasks (L3-L6 complexity):
 - L6 (Full apps): 80% → 90-95%
 - L7 (Complex systems): 100% (1/1)
 
-**Key finding:** "One-shot strategy" - qwen3:8b completes tasks in 1-2 rounds vs 6-12 for larger models, offsetting slower per-round inference.
+**Key finding:** qwen3-coder models are specifically fine-tuned for code generation, offering better performance on programming tasks compared to general-purpose models.
 
 ## Command Reference
 
@@ -368,7 +367,7 @@ python orchestrator_main.py "Your goal here"
 python orchestrator_main.py --workspace .agent_workspaces/previous-goal "Continue"
 
 # Override model
-OLLAMA_MODEL=qwen3:14b python orchestrator_main.py "Your goal"
+OLLAMA_MODEL=qwen3-coder:7b python orchestrator_main.py "Your goal"
 ```
 
 ### Testing

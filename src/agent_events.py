@@ -2,7 +2,8 @@
 Event system for triggering lifecycle events on agent behaviors.
 
 This module handles all event propagation from the agent to registered behaviors.
-Events include:
+
+Lifecycle Events:
 - on_goal_start: Called once when a goal is set
 - on_initial_context: Called once at start of run() to inject initial context
 - on_round_start: Called at start of each round (can modify context)
@@ -11,6 +12,14 @@ Events include:
 - on_round_end: Called at end of each round
 - on_goal_complete: Called when goal completes (success or failure)
 - on_timeout: Called when goal times out
+
+Custom Events:
+- on_custom_event: Called when behaviors broadcast custom events
+- fire_custom_event: Method to broadcast custom events to all behaviors
+
+Custom events enable inter-behavior communication without tight coupling.
+Behaviors can use this for mode coordination, state synchronization, and
+other cross-behavior communication patterns.
 """
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
@@ -229,6 +238,44 @@ class EventSystem:
                     behavior.on_timeout(agent=self.agent, elapsed_seconds=elapsed_seconds)
             except Exception as e:
                 print(f"[{self.agent.name}] Behavior {behavior.get_name()} on_timeout error: {e}")
+
+    def fire_custom_event(self, event_name: str, **event_data) -> None:
+        """
+        Fire a custom event to all behaviors for inter-behavior communication.
+
+        This method allows behaviors to broadcast custom events to other behaviors,
+        enabling mode coordination and other cross-behavior communication patterns.
+
+        Custom events are behavior-specific and not part of the standard lifecycle.
+        Each behavior can choose which custom events to listen for and respond to.
+
+        Args:
+            event_name: Name of the custom event (e.g., "mode_changed", "context_full")
+            **event_data: Event-specific data to pass to listeners
+
+        Example:
+            # In one behavior, fire a custom event
+            agent.event_system.fire_custom_event(
+                "mode_changed",
+                mode="architect",
+                reason="User requested design phase"
+            )
+
+            # In another behavior, listen for the event
+            def on_custom_event(self, agent, event_name, **event_data):
+                if event_name == "mode_changed":
+                    self.current_mode = event_data.get("mode")
+        """
+        for behavior in self.agent._behaviors:
+            try:
+                if hasattr(behavior, 'on_custom_event') and callable(behavior.on_custom_event):
+                    behavior.on_custom_event(
+                        agent=self.agent,
+                        event_name=event_name,
+                        **event_data
+                    )
+            except Exception as e:
+                print(f"[{self.agent.name}] Behavior {behavior.get_name()} on_custom_event({event_name}) error: {e}")
 
     def trigger_legacy_event(self, event_name: str, **kwargs) -> None:
         """
