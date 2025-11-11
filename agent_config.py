@@ -7,6 +7,10 @@ try:
 except ImportError:
     YAML_AVAILABLE = False
 
+# Get project root (where agent_config.py lives)
+# This allows config loading to work regardless of current working directory
+PROJECT_ROOT = Path(__file__).parent.resolve()
+
 DEFAULT_CONFIG = {"rounds": {"max_per_subtask": 12, "max_global": 24}, "hierarchy": {"max_depth": 5, "max_siblings": 8}, "escalation": {"strategy": "force_decompose", "zoom_out_target": "root", "max_approach_retries": 3, "block_failed_paths": True}, "loop_detection": {"max_action_repeats": 3, "max_subtask_repeats": 2, "max_context_age": 300}, "decomposition": {"min_children": 2, "max_children": 6, "temperature": 0.2, "prefer_granular": True}, "approach_retry": {"enabled": True, "reset_subtasks_on_retry": True, "preserve_completed": True, "retry_style": "learn_from_failures"}}
 
 @dataclass
@@ -183,7 +187,7 @@ def load_behavior_defaults() -> dict:
     Returns:
         Dictionary of behavior parameter defaults
     """
-    config_path = Path("config/behavior_defaults.yaml")
+    config_path = PROJECT_ROOT / "config/behavior_defaults.yaml"
 
     if not config_path.exists():
         return {}
@@ -209,7 +213,7 @@ def load_llm_config() -> dict:
     Returns:
         Dictionary of LLM configuration (model, temperature, timeout, system_prompt)
     """
-    config_path = Path("config/llm_config.yaml")
+    config_path = PROJECT_ROOT / "config/llm_config.yaml"
 
     # Defaults if file doesn't exist or YAML not available
     defaults = {
@@ -245,7 +249,7 @@ def load_runtime_config() -> dict:
         Dictionary with rounds, timeouts, hierarchy, escalation, loop_detection,
         decomposition, approach_retry, context sections
     """
-    config_path = Path("config/agent_runtime.yaml")
+    config_path = PROJECT_ROOT / "config/agent_runtime.yaml"
 
     if not config_path.exists() or not YAML_AVAILABLE:
         return DEFAULT_CONFIG.copy()
@@ -265,7 +269,7 @@ def list_available_teams() -> list[dict]:
     Returns:
         List of dicts with keys: name, file, description, agents
     """
-    teams_dir = Path("config/teams")
+    teams_dir = PROJECT_ROOT / "config/teams"
 
     if not teams_dir.exists() or not YAML_AVAILABLE:
         return []
@@ -300,7 +304,7 @@ def load_team_config(team_name: str = "default") -> dict:
     Returns:
         Dictionary with team configuration (name, description, agents)
     """
-    config_path = Path(f"config/teams/{team_name}.yaml")
+    config_path = PROJECT_ROOT / f"config/teams/{team_name}.yaml"
 
     if not config_path.exists() or not YAML_AVAILABLE:
         return {}
@@ -324,7 +328,7 @@ def load_agent_config(agent_name: str) -> dict:
         Dictionary with agent configuration (role, blurb, delegation_tool,
         system_prompt, behaviors)
     """
-    config_path = Path(f"config/agents/{agent_name}.yaml")
+    config_path = PROJECT_ROOT / f"config/agents/{agent_name}.yaml"
 
     if not config_path.exists() or not YAML_AVAILABLE:
         return {}

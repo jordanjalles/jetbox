@@ -26,7 +26,7 @@ if "OLLAMA_MODEL" in os.environ:
     print("[agent.py] Will use model from config/llm_config.yaml")
     del os.environ["OLLAMA_MODEL"]
 
-from agent_config import list_available_teams, load_team_config
+from agent_config import list_available_teams, load_team_config, PROJECT_ROOT
 
 
 def parse_extra_behaviors(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -233,10 +233,10 @@ def get_first_agent_info(team_name: str) -> tuple:
         print(f"Error: No class defined for agent '{first_agent_name}' in team '{team_name}'")
         sys.exit(1)
 
-    # Get config file if specified
+    # Get config file if specified (use absolute path so it works from any CWD)
     config_file = None
     if "config" in first_agent_config:
-        config_file = f"config/agents/{first_agent_config['config']}.yaml"
+        config_file = str(PROJECT_ROOT / f"config/agents/{first_agent_config['config']}.yaml")
 
     team_display_name = team_config.get("name", team_name)
     print(f"[agent.py] Using team: {team_display_name}")
