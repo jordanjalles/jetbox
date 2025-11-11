@@ -13,11 +13,14 @@ pip install -e .
 # Pull the default model (qwen3:8b - 5.2GB)
 ollama pull qwen3:8b
 
-# Run a simple task (uses TaskExecutor directly)
-python orchestrator_main.py "Create a calculator package with add/subtract/multiply/divide"
+# Run a simple task with solo agent (TaskExecutor)
+python agent.py --team solo "Create a calculator package with add/subtract/multiply/divide"
 
-# Run a complex task (uses Orchestrator → TaskExecutor hierarchy)
-python orchestrator_main.py "Create a Flask REST API for managing books with SQLite storage"
+# Run a complex task with default team (Orchestrator → TaskExecutor)
+python agent.py --team default "Create a Flask REST API for managing books with SQLite storage"
+
+# Chat mode (interactive)
+python agent.py --team chatbot
 ```
 
 ## Core Concepts
@@ -28,29 +31,29 @@ Jetbox provides different agent modes optimized for different task complexities:
 
 | Agent Mode | Best For | Max Rounds | Workspace | Example |
 |------------|----------|------------|-----------|---------|
-| **Direct TaskExecutor** | Simple packages, utilities | 12-18 | Single isolated dir | "Create string utils package" |
-| **Orchestrator + TaskExecutor** | Full applications, APIs | 50 (arch) + 12 (exec) | Project structure | "Create Flask API with auth" |
-| **Orchestrator + Multi-Executor** | Complex systems | 50 + N×12 | Multi-module projects | "Create microservices system" |
+| **Solo Agent** | Simple packages, utilities | 50 | Single isolated dir | "Create string utils package" |
+| **Orchestrator + TaskExecutor** | Full applications, APIs | 50 (orchestrator) + 50 (executor) | Project structure | "Create Flask API with auth" |
+| **Orchestrator + Multi-Executor** | Complex systems | 50 + N×50 | Multi-module projects | "Create microservices system" |
 
 **When to use which:**
 
-- **L1-L4 (Simple)**: Direct TaskExecutor
+- **Solo Agent** (`--team solo`): Simple tasks
   - Single package/module
   - < 10 files
   - Clear, focused goal
   - Examples: validators package, data structures, file utils
 
-- **L5-L6 (Moderate)**: Orchestrator with TaskExecutor
-  - Full application with multiple modules
-  - 10-30 files
-  - Architecture planning needed
+- **Default Team** (`--team default`): Moderate to complex tasks
+  - Full applications with multiple modules
+  - 10+ files
+  - Architecture planning helpful
   - Examples: REST APIs, web apps with auth, CLI tools
 
-- **L7+ (Complex)**: Orchestrator with multiple TaskExecutors
-  - Multi-service systems
-  - 30+ files
-  - Complex dependencies
-  - Examples: Microservices, full-stack apps, plugin systems
+- **Chatbot** (`--team chatbot`): Interactive mode
+  - Requirements gathering
+  - Question answering
+  - Exploratory conversations
+  - Can transition to task execution via `set_goal`
 
 ### 2. Behavior-Based Composition
 
@@ -112,46 +115,41 @@ behavior_defaults:
     max_tokens: 96000  # 75% of 128K context window
 
 rounds:
-  max_per_subtask: 12
-  max_per_task: 128
-
-hierarchy:
-  max_depth: 5
-  max_siblings: 8
+  max_per_subtask: 50
+  max_global: 256
 ```
 
 ## Usage Patterns
 
-### Pattern 1: Simple Task (Direct Execution)
+### Pattern 1: Simple Task (Solo Agent)
 
 ```bash
-python orchestrator_main.py "Create a validators package with email, url, phone validation"
+python agent.py --team solo "Create a validators package with email, url, phone validation"
 ```
 
 **What happens:**
 1. TaskExecutor starts with goal
 2. Creates isolated workspace (`.agent_workspaces/create-a-validators-package-with-email-url`)
-3. Executes for up to 12 rounds
+3. Executes for up to 50 rounds
 4. Writes files, runs tests, calls `mark_complete` when done
 5. Returns summary
 
 **Use when:** Single-purpose packages, utilities, simple scripts
 
-### Pattern 2: Application with Architecture (Orchestrator)
+### Pattern 2: Complex Task (Default Team - Orchestrator)
 
 ```bash
-python orchestrator_main.py "Create a Flask REST API for managing books with CRUD endpoints and SQLite storage"
+python agent.py --team default "Create a Flask REST API for managing books with CRUD endpoints and SQLite storage"
 ```
 
 **What happens:**
-1. Orchestrator analyzes goal complexity
-2. Delegates to Architect: Design architecture
-3. Architect creates task list, architecture doc, module specs
-4. Orchestrator delegates to TaskExecutor: Implement each module
-5. TaskExecutor builds one module at a time, marks complete
-6. Orchestrator verifies all tasks done, returns final summary
+1. Orchestrator analyzes goal
+2. Delegates to TaskExecutor with detailed requirements
+3. TaskExecutor creates files, runs tests, verifies linting
+4. TaskExecutor marks subtask complete
+5. Orchestrator marks overall goal complete
 
-**Use when:** Full applications, APIs, systems requiring design phase
+**Use when:** Full applications, APIs, multi-module systems
 
 ### Pattern 3: Resume Interrupted Work
 
