@@ -40,35 +40,34 @@ class ExecutionModeBehavior(AgentBehavior):
     - Event-based mode coordination
     """
 
-    def __init__(self, params: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        enable_completion_nudging: bool = True,
+        min_rounds_before_nudge: int = 3,
+        max_empty_rounds: int = 3
+    ):
         """
         Initialize execution mode behavior.
 
         Args:
-            params: Configuration parameters:
-                - enable_completion_nudging: Enable completion detection (default: True)
-                - min_rounds_before_nudge: Minimum rounds before nudging (default: 3)
-                - max_empty_rounds: Max consecutive empty rounds (default: 3)
+            enable_completion_nudging: Enable completion detection (default: True)
+            min_rounds_before_nudge: Minimum rounds before nudging (default: 3)
+            max_empty_rounds: Max consecutive empty rounds (default: 3)
         """
         super().__init__()
-        self.params = params or {}
 
         # Mode state (owned by behavior)
         self.is_active = False
 
         # Execution mode config
-        self.enable_completion_nudging = self.params.get(
-            'enable_completion_nudging', True
-        )
-        self.min_rounds_before_nudge = self.params.get(
-            'min_rounds_before_nudge', 3
-        )
-        self.max_empty_rounds = self.params.get('max_empty_rounds', 3)
+        self.enable_completion_nudging = enable_completion_nudging
+        self.min_rounds_before_nudge = min_rounds_before_nudge
+        self.max_empty_rounds = max_empty_rounds
 
         # State tracking
         self.consecutive_empty_rounds = 0
         self.pending_nudge: str | None = None
-        self.last_round_tool_count = 0
+        self.tools_called_this_round = 0
 
     def get_name(self) -> str:
         """Return behavior identifier."""
@@ -297,6 +296,30 @@ Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
 
         return context
 
+    def on_tool_call(
+        self,
+        agent: Any,
+        tool_name: str,
+        args: dict[str, Any],
+        result: dict[str, Any]
+    ) -> None:
+        """
+        Track tool calls to detect empty rounds.
+
+        Only tracks when execution mode is active.
+
+        Args:
+            agent: Agent instance
+            tool_name: Name of the tool called
+            args: Tool arguments
+            result: Tool result
+        """
+        if not self.is_active:
+            return
+
+        # Increment tool counter for this round
+        self.tools_called_this_round += 1
+
     def on_round_end(self, agent: Any, round_number: int) -> None:
         """
         Detect empty rounds and completion signals.
@@ -312,26 +335,8 @@ Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
             return
 
         # Track empty rounds (NO TOOLS CALLED = VIOLATION)
-        # We need to detect if any tools were called this round
-        # We do this by checking if tool count changed since last round
-
-        # Get current tool count from agent's action history or tool dispatcher
-        current_tool_count = 0
-        if (
-            hasattr(agent, 'tool_dispatcher')
-            and hasattr(agent.tool_dispatcher, 'tool_call_count')
-        ):
-            current_tool_count = agent.tool_dispatcher.tool_call_count
-        elif hasattr(agent, 'state') and hasattr(
-            agent.state, 'tool_call_count'
-        ):
-            current_tool_count = agent.state.tool_call_count
-
-        # Calculate tools called this round
-        tools_called_this_round = current_tool_count - self.last_round_tool_count
-        self.last_round_tool_count = current_tool_count
-
-        if tools_called_this_round == 0:
+        # Check if any tools were called this round (tracked via on_tool_call)
+        if self.tools_called_this_round == 0:
             self.consecutive_empty_rounds += 1
 
             if self.consecutive_empty_rounds >= self.max_empty_rounds:
@@ -366,6 +371,9 @@ Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
                             "🎯 It looks like you've completed the task. "
                             "Please call mark_complete(summary) with a brief summary."
                         )
+
+        # Reset tool counter for next round
+        self.tools_called_this_round = 0
 
     def _detect_completion_signal(self, text: str) -> bool:
         """
