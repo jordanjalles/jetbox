@@ -8,6 +8,38 @@ Jetbox is a minimal local-first coding agent that runs with Ollama. The agent us
 
 **For detailed architecture documentation, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)**
 
+## CRITICAL: Stopping Background Tests/Evaluations
+
+**NEVER use KillShell on background bash shells that started evaluation tests.**
+
+When you run:
+```bash
+python tests/orchestrator_l5_l7_eval.py 2>&1 | tee log.txt &
+```
+
+The shell_id you get (e.g., "30e424") is the **bash wrapper**, NOT the Python process.
+
+**What happens when you KillShell:**
+- ✗ Kills the bash wrapper (YOUR OWN SUBPROCESS)
+- ✗ Exits Claude Code session
+- ✓ Leaves the Python process running (using GPU, wasting time)
+- ✓ Leaves all child agent.py processes running
+
+**To stop tests:**
+1. **DON'T try to kill them** - `ps`, `pkill`, `kill` commands don't work reliably in this environment
+2. **Let them timeout naturally** - evaluation scripts have built-in timeouts
+3. **Ask user to restart session** if urgent stop is needed
+4. **Check workspace modification times** to verify if processes actually stopped
+
+**How to verify processes stopped:**
+```bash
+# Check workspace last modified (should be >5 min ago if stopped)
+stat -c "%Y %n" /tmp/orch_*/. 2>/dev/null | sort -rn | head -3
+date +%s  # Compare timestamps - if difference is small (<5 min), still running
+```
+
+**Remember: KillShell on test runners = killing yourself, not the test. You've done this 5+ times.**
+
 ## Development Commands
 
 ### Testing and Linting
