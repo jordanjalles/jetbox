@@ -25,6 +25,7 @@ This behavior does NOT handle being delegated to - that's core BaseAgent functio
 
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class DelegationBehavior(AgentBehavior):
@@ -34,16 +35,36 @@ class DelegationBehavior(AgentBehavior):
     Automatically creates delegation tools for each agent in can_delegate_to list.
     This is a delegator-only behavior - it does NOT provide mark_complete/mark_failed.
     Being delegated to is core BaseAgent functionality (all agents support it).
+
+    Security: DYNAMIC - inherits union of delegatable agents' properties
+    - Computes properties from all agents in can_delegate_to list
+    - Takes union of their aggregate security properties
+    - Example: If delegates to [C] + [ABC] agents → inherits [ABC]
+
+    This is capability propagation through delegation. The delegating agent
+    effectively has all capabilities of its sub-agents.
     """
 
-    def __init__(self, agent_relationships: dict[str, Any]):
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
+
+    def __init__(
+        self,
+        agent_relationships: dict[str, Any],
+        workspace_strategy: str = "enforce_inherit"
+    ):
         """
         Initialize delegation behavior.
 
         Args:
             agent_relationships: Dict mapping agent name → {class, description, can_delegate_to}
+            workspace_strategy: How to handle workspace delegation (default: "enforce_inherit")
+                - "enforce_inherit": Always reuse calling agent's workspace (recommended, safe default)
+                - "enforce_new": Always create new isolated workspaces (for testing isolation)
+                - "llm_chooses": Let LLM decide via workspace_mode parameter (advanced, less predictable)
         """
         self.agent_relationships = agent_relationships
+        self.workspace_strategy = workspace_strategy
         self.delegation_tools = []
         self.delegated_tasks: list[dict[str, Any]] = []  # Track delegated tasks
         self.tool_to_agent_map: dict[str, str] = {}  # Map tool names to agent names
@@ -52,6 +73,116 @@ class DelegationBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "delegation"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Compute Rule of Two properties dynamically from delegatable agents.
+
+        This method computes the union of security properties from all agents
+        this behavior can delegate to. The delegating agent inherits all
+        capabilities of its sub-agents (capability propagation).
+
+        Args:
+            agent: Agent instance (unused)
+            security_context: SecurityContext to pass through to sub-behaviors
+
+        Returns:
+            Set of Rule of Two properties (union of all sub-agents)
+        """
+        aggregated_props = set()
+
+        # For each agent we can delegate to
+        for target_agent_name in self.agent_relationships.get("can_delegate_to", []):
+            agent_info = self.agent_relationships.get(target_agent_name, {})
+            behaviors_config = agent_info.get("behaviors", [])
+
+            # Compute aggregate properties for this target agent
+            target_props = self._compute_agent_aggregate_properties(
+                target_agent_name, behaviors_config, security_context
+            )
+            aggregated_props.update(target_props)
+
+        return aggregated_props
+
+    def _compute_agent_aggregate_properties(
+        self, agent_name: str, behaviors_config: list[dict], security_context
+    ) -> set:
+        """
+        Compute aggregate security properties for a target agent.
+
+        Creates behavior instances and calls their dynamic get_rule_of_two_properties()
+        method to compute context-aware properties.
+
+        Args:
+            agent_name: Name of target agent
+            behaviors_config: List of behavior specs from agent config
+            security_context: SecurityContext to pass to sub-behaviors
+
+        Returns:
+            Set of aggregated Rule of Two properties
+        """
+        import importlib
+        from behaviors.security_context import SecurityContext
+
+        props = set()
+
+        # Use provided context, or create default for Jetbox environment if None
+        # (no untrusted files, no sensitive files, no network access)
+        if security_context is None:
+            security_context = SecurityContext(
+                workspace_has_untrusted_files=False,
+                workspace_has_sensitive_files=False,
+                workspace_has_network_access=False
+            )
+
+        for behavior_spec in behaviors_config:
+            behavior_type = behavior_spec.get("type")
+            if not behavior_type:
+                continue
+
+            try:
+                # Import behavior class
+                module_name = self._behavior_type_to_module(behavior_type)
+                module = importlib.import_module(module_name)
+                behavior_class = getattr(module, behavior_type)
+
+                # Instantiate behavior with params if provided
+                params = behavior_spec.get("params", {})
+                try:
+                    behavior_instance = behavior_class(**params)
+                except TypeError:
+                    # Some behaviors don't accept params, try without
+                    behavior_instance = behavior_class()
+
+                # Call dynamic method to get properties
+                if hasattr(behavior_instance, "get_rule_of_two_properties"):
+                    behavior_props = behavior_instance.get_rule_of_two_properties(None, security_context)
+                    if isinstance(behavior_props, set):
+                        props.update(behavior_props)
+
+            except (ImportError, AttributeError, TypeError) as e:
+                # Behavior class not found or instantiation failed
+                # Silently skip (this is expected for some behaviors)
+                pass
+
+        return props
+
+    def _behavior_type_to_module(self, behavior_type: str) -> str:
+        """
+        Convert behavior type to module path.
+
+        Examples:
+            ReadFileToolsBehavior → behaviors.read_file_tools
+            DelegationBehavior → behaviors.delegation
+        """
+        # Remove "Behavior" suffix
+        name = behavior_type.replace("Behavior", "")
+
+        # Convert CamelCase to snake_case
+        import re
+        snake = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+        return f"behaviors.{snake}"
 
     def on_initial_context(
         self,
@@ -373,6 +504,44 @@ class DelegationBehavior(AgentBehavior):
             registry
         )
 
+    def _enforce_workspace_strategy(
+        self,
+        workspace_mode: str | None,
+        workspace_path: str | None
+    ) -> tuple[str | None, str | None]:
+        """
+        Enforce configured workspace strategy, overriding LLM choices if needed.
+
+        This enforcement ensures predictable workspace behavior regardless of
+        what the LLM decides. Critical for testing and production consistency.
+
+        Args:
+            workspace_mode: LLM-provided workspace_mode ('new', 'existing', or None)
+            workspace_path: LLM-provided workspace_path
+
+        Returns:
+            Tuple of (enforced_workspace_mode, enforced_workspace_path)
+        """
+        if self.workspace_strategy == "enforce_inherit":
+            # Force inheritance by clearing workspace params
+            # This ensures sub-agents always continue work in same workspace
+            return None, None
+
+        elif self.workspace_strategy == "enforce_new":
+            # Force new workspace for complete isolation
+            # Useful for testing or when delegations must not interfere
+            return "new", None
+
+        elif self.workspace_strategy == "llm_chooses":
+            # Respect LLM's decision (less predictable but allows flexibility)
+            return workspace_mode, workspace_path
+
+        else:
+            raise ValueError(
+                f"Unknown workspace_strategy: {self.workspace_strategy}. "
+                f"Must be 'enforce_inherit', 'enforce_new', or 'llm_chooses'"
+            )
+
     def _resolve_workspace_for_delegation(
         self,
         args: dict[str, Any],
@@ -404,6 +573,11 @@ class DelegationBehavior(AgentBehavior):
 
         workspace_mode = args.get("workspace_mode", "")
         workspace_path = args.get("workspace_path", "")
+
+        # Enforce workspace strategy (overrides LLM choices if configured)
+        workspace_mode, workspace_path = self._enforce_workspace_strategy(
+            workspace_mode, workspace_path
+        )
 
         if workspace_mode == "new":
             return None, "[delegation] workspace_mode='new': subagent will create isolated workspace"

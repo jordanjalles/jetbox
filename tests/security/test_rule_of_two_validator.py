@@ -48,10 +48,10 @@ class MockDynamicBehavior(AgentBehavior):
     def get_name(self):
         return "mock_dynamic"
 
-    def get_rule_of_two_properties(self, agent, context):
+    def get_rule_of_two_properties(self, agent, security_context):
         # Dynamic: remove [A] in isolated workspace
         props = {RuleOfTwoProperty.SENSITIVE_ACCESS}
-        if context and context.workspace_trust_level == "user":
+        if security_context and security_context.workspace_trust_level == "user":
             props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
         return props
 

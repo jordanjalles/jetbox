@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class ReadFileToolsBehavior(AgentBehavior):
@@ -23,7 +24,16 @@ class ReadFileToolsBehavior(AgentBehavior):
     Provides file reading tool: read_file.
 
     Workspace-aware file reading with size limits and encoding handling.
+
+    Security: DYNAMIC based on workspace characteristics
+    - [A] if workspace_has_untrusted_files (external data, uploads, scraping)
+    - [B] if workspace_has_sensitive_files (.env, credentials, keys)
+    - [] for trusted codebases with no secrets (Jetbox repo, internal tools)
+    - Does not write or execute (no [C])
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed from workspace config)
+    rule_of_two_properties = set()
 
     def __init__(
         self,
@@ -42,6 +52,34 @@ class ReadFileToolsBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "read_file_tools"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on workspace characteristics:
+        - [A] UNTRUSTED_INPUT: Only if workspace has untrusted files (external data, uploads, etc.)
+        - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files (.env, credentials, keys)
+        - Current Jetbox repo: [] (trusted codebase, no secrets)
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context (could be [], [A], [B], or [AB])
+        """
+        props = set()
+
+        # [A] UNTRUSTED_INPUT - only if workspace contains untrusted files
+        if security_context and security_context.workspace_has_untrusted_files:
+            props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
+
+        # [B] SENSITIVE_ACCESS - only if workspace contains sensitive files
+        if security_context and security_context.workspace_has_sensitive_files:
+            props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+
+        return props
 
     def on_initial_context(
         self,

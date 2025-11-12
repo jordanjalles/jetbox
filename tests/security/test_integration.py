@@ -74,7 +74,7 @@ class TestRuleOfTwoCompliance:
 
         # Check defense layers NOT injected (compliant [AB] agent)
         defense_layers = [
-            "InputValidationBehavior",
+            "PromptInjectionDetectorBehavior",
             "SensitiveAccessAuditorBehavior",
             "NetworkAuditBehavior"
         ]
@@ -102,7 +102,7 @@ class TestRuleOfTwoCompliance:
 
         # Check no defense layers
         defense_layers = [
-            "InputValidationBehavior",
+            "PromptInjectionDetectorBehavior",
             "SensitiveAccessAuditorBehavior",
             "NetworkAuditBehavior"
         ]
@@ -123,11 +123,16 @@ class TestABCAgentBlocking:
 
         behaviors_config = [
             {"type": "ReadFileToolsBehavior"},  # [AB] in user workspace
-            {"type": "WriteFileToolsBehavior"},  # [C]
+            {"type": "CommandToolsBehavior"},  # [C] with network access
         ]
 
         security_config = {
             "enabled": True,
+            "workspace": {
+                "has_untrusted_files": True,  # Workspace has untrusted files
+                "has_sensitive_files": True,  # Workspace has sensitive files
+                "has_network_access": True     # Network enabled for [C]
+            },
             "rule_of_two": {
                 "enforcement": "block",
                 "acknowledge_abc_risk": False,  # No acknowledgment
@@ -157,6 +162,10 @@ class TestABCAgentBlocking:
 
         security_config = {
             "enabled": True,
+            "workspace": {
+                "has_untrusted_files": True,
+                "has_sensitive_files": True
+            },
             "rule_of_two": {
                 "enforcement": "warn",  # Warn instead of block
                 "acknowledge_abc_risk": False
@@ -179,11 +188,16 @@ class TestDefenseLayerInjection:
 
         behaviors_config = [
             {"type": "ReadFileToolsBehavior"},  # [AB] in user workspace
-            {"type": "WriteFileToolsBehavior"},  # [C]
+            {"type": "CommandToolsBehavior"},  # [C] with network access
         ]
 
         security_config = {
             "enabled": True,
+            "workspace": {
+                "has_untrusted_files": True,
+                "has_sensitive_files": True,
+                "has_network_access": True
+            },
             "rule_of_two": {
                 "enforcement": "block",
                 "acknowledge_abc_risk": True,  # Acknowledged
@@ -203,7 +217,7 @@ class TestDefenseLayerInjection:
 
         # Check all 3 defense layers were injected
         layer_names = [b.__class__.__name__ for b in agent.behaviors]
-        assert "InputValidationBehavior" in layer_names, "Layer 1 should be injected"
+        assert "PromptInjectionDetectorBehavior" in layer_names, "Layer 1 should be injected"
         assert "SensitiveAccessAuditorBehavior" in layer_names, "Layer 2 should be injected"
         assert "NetworkAuditBehavior" in layer_names, "Layer 3 should be injected"
 
@@ -214,11 +228,16 @@ class TestDefenseLayerInjection:
 
         behaviors_config = [
             {"type": "ReadFileToolsBehavior"},  # [AB] in user workspace
-            {"type": "WriteFileToolsBehavior"},  # [C]
+            {"type": "CommandToolsBehavior"},  # [C] with network
         ]
 
         security_config = {
             "enabled": True,
+            "workspace": {
+                "has_untrusted_files": True,
+                "has_sensitive_files": True,
+                "has_network_access": True
+            },
             "rule_of_two": {
                 "enforcement": "block",
                 "acknowledge_abc_risk": True,  # Acknowledged
@@ -233,7 +252,7 @@ class TestDefenseLayerInjection:
 
         # Check defense layers were NOT injected
         layer_names = [b.__class__.__name__ for b in agent.behaviors]
-        assert "InputValidationBehavior" not in layer_names
+        assert "PromptInjectionDetectorBehavior" not in layer_names
         assert "SensitiveAccessAuditorBehavior" not in layer_names
         assert "NetworkAuditBehavior" not in layer_names
 
@@ -244,11 +263,16 @@ class TestDefenseLayerInjection:
 
         behaviors_config = [
             {"type": "ReadFileToolsBehavior"},  # [AB] in user workspace
-            {"type": "WriteFileToolsBehavior"},  # [C]
+            {"type": "CommandToolsBehavior"},  # [C] with network
         ]
 
         security_config = {
             "enabled": True,
+            "workspace": {
+                "has_untrusted_files": True,
+                "has_sensitive_files": True,
+                "has_network_access": True
+            },
             "rule_of_two": {
                 "enforcement": "block",
                 "acknowledge_abc_risk": True,
@@ -266,7 +290,7 @@ class TestDefenseLayerInjection:
         agent.event_system.trigger_goal_start("test goal")
 
         layer_names = [b.__class__.__name__ for b in agent.behaviors]
-        assert "InputValidationBehavior" in layer_names
+        assert "PromptInjectionDetectorBehavior" in layer_names
         assert "SensitiveAccessAuditorBehavior" not in layer_names  # Disabled
         assert "NetworkAuditBehavior" in layer_names
 
@@ -332,12 +356,16 @@ class TestEndToEndAttackScenario:
 
         behaviors_config = [
             {"type": "ReadFileToolsBehavior"},  # [AB] in user workspace
-            {"type": "WriteFileToolsBehavior"},  # [C]
-            {"type": "CommandToolsBehavior"},  # [BC]
+            {"type": "CommandToolsBehavior"},  # [ABC] with all three
         ]
 
         security_config = {
             "enabled": True,
+            "workspace": {
+                "has_untrusted_files": True,
+                "has_sensitive_files": True,
+                "has_network_access": True
+            },
             "rule_of_two": {
                 "enforcement": "block",
                 "acknowledge_abc_risk": True,  # Acknowledged
@@ -356,7 +384,7 @@ class TestEndToEndAttackScenario:
 
         # Verify all 3 defense layers present
         layer_names = [b.__class__.__name__ for b in agent.behaviors]
-        assert "InputValidationBehavior" in layer_names
+        assert "PromptInjectionDetectorBehavior" in layer_names
         assert "SensitiveAccessAuditorBehavior" in layer_names
         assert "NetworkAuditBehavior" in layer_names
 

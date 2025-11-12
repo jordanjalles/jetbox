@@ -280,20 +280,33 @@ def main():
 
     # Run tasks
     results = []
+    failure_count = 0
 
     for i, task in enumerate(l5_l7_tasks, 1):
         print(f"\n\n{'#'*80}")
         print(f"# Task {i}/{len(l5_l7_tasks)}")
         print(f"{'#'*80}")
 
-        # Timeout based on level
-        timeout = {5: 15, 6: 20, 7: 25}.get(task.level, 15)
+        # Tighter timeout based on level (reduced from previous)
+        timeout = {5: 12, 6: 15, 7: 18}.get(task.level, 12)
 
         result = run_task_with_orchestrator(task, timeout_minutes=timeout)
         results.append(result)
 
+        # Track failures
+        if not result["success"]:
+            failure_count += 1
+            print(f"\n⚠️  Failure count: {failure_count}/4")
+
         # Save incremental results
         save_results(results, f"evaluation_results/orchestrator_l5_l7_incremental.json")
+
+        # Stop if failures exceed 4
+        if failure_count > 4:
+            print(f"\n{'='*80}")
+            print(f"STOPPING: Failure count ({failure_count}) exceeded threshold (4)")
+            print(f"{'='*80}")
+            break
 
     # Print summary
     success_rate = print_summary(results)

@@ -41,7 +41,12 @@ class ContextInspectorBehavior(AgentBehavior):
     - Saves as JSON with timestamps
     - Handles large contexts gracefully
     - Creates output directory automatically
+
+    Security: [] None (writes local JSON snapshots, not network communication)
     """
+
+    # Rule of Two: Empty (utility behavior for debugging/analysis)
+    rule_of_two_properties = set()
 
     def __init__(
         self,

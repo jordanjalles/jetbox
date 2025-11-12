@@ -11,6 +11,7 @@ adds only relevant tools when queried.
 
 from typing import Any, List, Dict
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 import difflib
 
 
@@ -18,7 +19,12 @@ class SearchToolsBehavior(AgentBehavior):
     """
     Dynamic tool filtering for context management - removes all tools except search_tools,
     then adds only relevant tools when queried.
+
+    Security: [] None (only reads agent's internal state/tools, not workspace files)
     """
+
+    # Rule of Two: Empty (utility behavior for tool search)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """

@@ -6,6 +6,7 @@ EnvironmentBehavior provides tools to get and set environment variables.
 from typing import Any
 import os
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class EnvironmentBehavior(AgentBehavior):
@@ -14,7 +15,14 @@ class EnvironmentBehavior(AgentBehavior):
 
     This behavior provides tools for getting and setting environment variables
     within the current process.
+
+    Security: DYNAMIC based on workspace characteristics
+    - [B] SENSITIVE_ACCESS: Only if workspace has sensitive info (env vars can contain API keys, tokens)
+    - [] None: If workspace has no sensitive info (e.g., Jetbox repo)
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """
@@ -36,6 +44,29 @@ class EnvironmentBehavior(AgentBehavior):
             Behavior name string (e.g., "EnvironmentBehavior")
         """
         return "EnvironmentBehavior"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on workspace characteristics:
+        - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files (env vars can contain API keys)
+        - [] None: If workspace has no sensitive files
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context ([] or [B])
+        """
+        props = set()
+
+        # [B] SENSITIVE_ACCESS - only if workspace contains sensitive files
+        if security_context and security_context.workspace_has_sensitive_files:
+            props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+
+        return props
 
     def get_tools(self) -> list[dict[str, Any]]:
         """

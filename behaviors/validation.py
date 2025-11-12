@@ -13,6 +13,7 @@ This behavior enables agents to validate generated code before installation.
 from typing import Any
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 # Import validation utilities
 from utils.behavior_validator import (
@@ -36,7 +37,12 @@ class ValidationBehavior(AgentBehavior):
     This behavior wraps the validation utilities from utils/ and exposes them
     as tools that agents can use. All validations return structured results
     with "valid" boolean and optional "error" message.
+
+    Security: [] None (validates agent-generated code, not user data)
     """
+
+    # Rule of Two: Empty (utility behavior for meta-programming validation)
+    rule_of_two_properties = set()
 
     def __init__(self, **kwargs):
         """Initialize validation behavior."""

@@ -159,6 +159,51 @@ Before modifying delegation, workspace, or file tool code:
 
 **This system has broken 5+ times during refactors.** The test suite and docs prevent regression.
 
+## Workspace Delegation Strategy
+
+**CRITICAL: Workspace inheritance during delegation is ENFORCED by DelegationBehavior, not LLM choice.**
+
+When orchestrator delegates to sub-agents (architect → task_executor), workspace inheritance is controlled by **enforceable strategy** configured in agent YAML files.
+
+### Strategy Configuration
+
+In `config/agents/orchestrator.yaml`:
+```yaml
+delegation:
+  workspace_strategy: "enforce_inherit"  # DEFAULT - prevents workspace fragmentation
+```
+
+**Options:**
+- **`enforce_inherit`** (default): Sub-agents ALWAYS work in same workspace (recommended)
+- **`enforce_new`**: Sub-agents ALWAYS create isolated workspaces (testing isolation)
+- **`llm_chooses`**: Let LLM decide workspace_mode (less predictable, advanced only)
+
+### Why This Matters
+
+**Without enforcement**, LLM might choose `workspace_mode="new"` for tasks it considers "standalone":
+- Architect creates docs in `/tmp/project/architecture/`
+- Task_executor creates code in `/tmp/isolated_xyz/` (WRONG!)
+- Validators check `/tmp/project/` → find no Python files → false failure
+
+**With `enforce_inherit`**, DelegationBehavior intercepts and strips workspace parameters:
+- Both architect AND task_executor work in `/tmp/project/`
+- Code created alongside architecture docs
+- Validators find everything in expected location
+
+### Implementation
+
+- **Enforcement**: `behaviors/delegation.py` - `_enforce_workspace_strategy()`
+- **Configuration**: `src/behavior_loader.py` - Reads `delegation.workspace_strategy`
+- **Documentation**: [docs/WORKSPACE_DELEGATION_STRATEGY.md](docs/WORKSPACE_DELEGATION_STRATEGY.md)
+
+**Startup message:**
+```
+[orchestrator] Auto-added DelegationBehavior (can delegate to: architect, task_executor)
+[orchestrator]   Workspace strategy: enforce_inherit (sub-agents inherit workspace (prevents fragmentation))
+```
+
+**This prevents workspace fragmentation bugs that caused 100% failure rate in L5-L7 evaluations.**
+
 ## Architecture
 
 ### Agent Behavior System (NEW)
@@ -356,6 +401,94 @@ All tools in `agent.py` are tolerant of edge cases:
 - `escalation.max_approach_retries` - Retry attempts at root (default: 3)
 
 **See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for full configuration reference.**
+
+## Security System (Rule of Two)
+
+Jetbox implements a **graduated security model** based on Google's "Rule of Two" principle. Security overhead is proportional to risk: compliant agents get zero-overhead validation, while high-risk configurations receive automatic defense-in-depth protection.
+
+### Core Principle
+
+**Rule of Two**: An agent should satisfy no more than two of:
+- **[A]** Process untrustworthy inputs (prompt injection risk)
+- **[B]** Access sensitive systems/data (.env, credentials, API keys)
+- **[C]** Change state or communicate externally (git push, curl, npm publish)
+
+**Safe combinations**: [AB], [AC], [BC]
+**Requires defense**: [ABC] (all three)
+
+### Workspace-Centric Model
+
+Security properties are determined by **workspace configuration**, not behavior types:
+
+```yaml
+# config/security_defaults.yaml
+security:
+  enabled: false  # Opt-in during Phase 6-7, default in Phase 8
+  workspace:
+    has_untrusted_files: false   # External data (APIs, downloads, user uploads)?
+    has_sensitive_files: false   # .env, credentials, API keys present?
+    has_network_access: true     # Can use git push, npm install, curl?
+```
+
+**How it works**: Behaviors inherit [A], [B], [C] dynamically based on workspace state:
+- ReadFileBehavior: `[A]` if untrusted workspace, `[B]` if sensitive workspace
+- CommandToolsBehavior: `[]` to `[ABC]` depending on workspace + whitelist
+- WriteFileBehavior: `[]` always (writes agent-generated content)
+
+See [docs/security/WORKSPACE_CENTRIC_MODEL.md](docs/security/WORKSPACE_CENTRIC_MODEL.md) for complete explanation.
+
+### Current Status (Default Configuration)
+
+```yaml
+# Default: Safe development (public code, no secrets)
+has_untrusted_files: false  # Jetbox repo has no external data
+has_sensitive_files: false  # No secrets in repo
+has_network_access: true    # Network enabled (pip, git work)
+```
+
+**Result**: Most agents have `[]` or `[C]` properties → Compliant, ~0.01% overhead
+
+**Validation (Phase 6.1)**:
+- ✅ All agents passed Rule of Two validation
+- ✅ 0% false positive rate
+- ✅ 226 security tests passing (100%)
+
+### Defense-in-Depth (for [ABC] configurations)
+
+When all three risk factors combine, three layers auto-inject:
+1. **PromptInjectionDetectorBehavior**: Scans untrusted files for malicious instructions
+2. **SensitiveAccessAuditorBehavior**: Monitors credential file access, detects harvesting
+3. **NetworkAuditBehavior**: Audits external communication, prevents exfiltration
+
+**Enable defense-in-depth**:
+```yaml
+security:
+  enabled: true
+  workspace:
+    has_untrusted_files: true   # Processing external data
+    has_sensitive_files: true   # Has credentials
+    has_network_access: true    # Network enabled
+  rule_of_two:
+    acknowledge_abc_risk: true         # Required for [ABC]
+    skip_defense_in_depth: false       # Auto-inject all 3 layers
+```
+
+### Documentation
+
+**Quick start**: [docs/security/README.md](docs/security/README.md)
+**Architecture**: [docs/security/SECURITY_ARCHITECTURE.md](docs/security/SECURITY_ARCHITECTURE.md)
+**Behavior matrix**: [docs/security/BEHAVIOR_SECURITY_MATRIX.md](docs/security/BEHAVIOR_SECURITY_MATRIX.md)
+**Extension guide**: [SECURITY_ARCHITECTURE.md#extending-the-system](docs/security/SECURITY_ARCHITECTURE.md#extending-the-system)
+
+### Environment Overrides
+
+```bash
+# Emergency disable security
+export JETBOX_DISABLE_SECURITY=1
+
+# Explicit enable/disable
+export JETBOX_SECURITY_ENABLED=false
+```
 
 ## Jetbox Notes System
 

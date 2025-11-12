@@ -14,6 +14,7 @@ from typing import Any
 from pathlib import Path
 import json
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class CreateBehaviorBehavior(AgentBehavior):
@@ -26,7 +27,12 @@ class CreateBehaviorBehavior(AgentBehavior):
     - Multi-stage validation (YAML, config, code quality)
     - Sandbox testing in isolated environment
     - Safety modes for different deployment scenarios
+
+    Security: [] None (meta-programming - generates behaviors, security evaluated when invoked)
     """
+
+    # Rule of Two: Empty (meta-programming utility)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """

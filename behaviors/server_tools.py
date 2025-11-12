@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class ServerToolsBehavior(AgentBehavior):
@@ -28,7 +29,14 @@ class ServerToolsBehavior(AgentBehavior):
     Provides server management tools: start_server, stop_server, check_server, list_servers.
 
     Servers are managed by the orchestrator via request/response files.
+
+    Security: DYNAMIC based on workspace and network access
+    - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files (servers can access them)
+    - [C] EXTERNAL_ACTION: Only if network enabled (servers can bind to public interfaces)
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
 
     def __init__(
         self,
@@ -50,6 +58,33 @@ class ServerToolsBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "server_tools"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on workspace and network access:
+        - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files (servers can access them)
+        - [C] EXTERNAL_ACTION: Only if network enabled (servers can bind to public interfaces)
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context ([], [B], [C], or [BC])
+        """
+        props = set()
+
+        # [B] SENSITIVE_ACCESS - only if workspace has sensitive files
+        if security_context and security_context.workspace_has_sensitive_files:
+            props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+
+        # [C] EXTERNAL_ACTION - only if workspace has network access
+        if security_context and security_context.workspace_has_network_access:
+            props.add(RuleOfTwoProperty.EXTERNAL_ACTION)
+
+        return props
 
     def on_initial_context(
         self,

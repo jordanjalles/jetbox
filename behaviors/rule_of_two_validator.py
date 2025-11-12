@@ -78,17 +78,17 @@ class RuleOfTwoValidator(AgentBehavior):
     def _collect_properties(
         self,
         agent: "BaseAgent",
-        context: "SecurityContext"
+        security_context: "SecurityContext"
     ) -> set[RuleOfTwoProperty]:
         """
         Collect Rule of Two properties from all agent behaviors.
 
-        Calls get_rule_of_two_properties() on each behavior with context,
+        Calls get_rule_of_two_properties() on each behavior with security context,
         enabling context-aware dynamic property resolution.
 
         Args:
             agent: Agent instance with behaviors loaded
-            context: SecurityContext for dynamic property resolution
+            security_context: SecurityContext for dynamic property resolution
 
         Returns:
             Set of all Rule of Two properties across all behaviors
@@ -101,7 +101,7 @@ class RuleOfTwoValidator(AgentBehavior):
                 continue
 
             # Call context-aware method (falls back to static attribute)
-            behavior_props = behavior.get_rule_of_two_properties(agent, context)
+            behavior_props = behavior.get_rule_of_two_properties(agent, security_context)
             all_properties.update(behavior_props)
 
         return all_properties
@@ -278,7 +278,7 @@ Behaviors with properties:
         Auto-inject defense-in-depth behaviors for [ABC] agent.
 
         Injects (if enabled in config):
-        - InputValidationBehavior (Layer 1)
+        - PromptInjectionDetectorBehavior (Layer 1)
         - SensitiveAccessAuditorBehavior (Layer 2)
         - NetworkAuditBehavior (Layer 3)
 
@@ -293,15 +293,15 @@ Behaviors with properties:
 
         injected_count = 0
 
-        # Layer 1: Input Validation (Phase 4A)
+        # Layer 1: Prompt Injection Detection (Phase 4A)
         if defense_config.get("input_validation", {}).get("enabled", True):
             try:
-                from behaviors.security_input_validation import InputValidationBehavior
-                agent.behaviors.append(InputValidationBehavior())
+                from behaviors.security_prompt_injection_detector import PromptInjectionDetectorBehavior
+                agent.behaviors.append(PromptInjectionDetectorBehavior())
                 injected_count += 1
-                print(f"[{agent.name}]   → Layer 1: Input Validation (prompt injection detection)")
+                print(f"[{agent.name}]   → Layer 1: Prompt Injection Detection")
             except ImportError as e:
-                print(f"[{agent.name}]   ⚠️  Layer 1: Failed to import InputValidationBehavior: {e}")
+                print(f"[{agent.name}]   ⚠️  Layer 1: Failed to import PromptInjectionDetectorBehavior: {e}")
 
         # Layer 2: Access Auditing (Phase 4B)
         if defense_config.get("access_auditing", {}).get("enabled", True):

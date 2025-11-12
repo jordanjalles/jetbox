@@ -1,5 +1,5 @@
 """
-Unit tests for InputValidationBehavior.
+Unit tests for PromptInjectionDetectorBehavior.
 
 Tests:
 - Pattern matching (10+ patterns tested)
@@ -12,8 +12,8 @@ Tests:
 
 import pytest
 from unittest.mock import Mock, MagicMock
-from behaviors.security_input_validation import (
-    InputValidationBehavior,
+from behaviors.security_prompt_injection_detector import (
+    PromptInjectionDetectorBehavior,
     SecurityViolationError
 )
 from behaviors.security_context import SecurityContext
@@ -24,7 +24,7 @@ class TestPatternMatching:
 
     def setup_method(self):
         """Create behavior instance for testing."""
-        self.behavior = InputValidationBehavior()
+        self.behavior = PromptInjectionDetectorBehavior()
 
     def test_detect_ignore_previous_instructions(self):
         """Test detection of 'ignore previous instructions' pattern."""
@@ -129,7 +129,7 @@ class TestHeuristicDetection:
 
     def setup_method(self):
         """Create behavior instance for testing."""
-        self.behavior = InputValidationBehavior()
+        self.behavior = PromptInjectionDetectorBehavior()
 
     def test_heuristic_excessive_imperatives(self):
         """Test detection of excessive imperative verbs."""
@@ -208,7 +208,7 @@ class TestConfidenceScoring:
 
     def setup_method(self):
         """Create behavior instance for testing."""
-        self.behavior = InputValidationBehavior()
+        self.behavior = PromptInjectionDetectorBehavior()
 
     def test_confidence_no_matches_no_heuristics(self):
         """Test confidence with no detections."""
@@ -254,7 +254,7 @@ class TestResponseActions:
 
     def setup_method(self):
         """Create behavior and mock agent for testing."""
-        self.behavior = InputValidationBehavior()
+        self.behavior = PromptInjectionDetectorBehavior()
         self.agent = Mock()
         self.agent.security_context = SecurityContext()
 
@@ -345,7 +345,7 @@ class TestToolCallIntegration:
 
     def setup_method(self):
         """Create behavior and mock agent for testing."""
-        self.behavior = InputValidationBehavior()
+        self.behavior = PromptInjectionDetectorBehavior()
         self.agent = Mock()
         self.agent.security_context = SecurityContext()
 
@@ -460,7 +460,7 @@ class TestEndToEndScenarios:
 
     def setup_method(self):
         """Create behavior and mock agent for testing."""
-        self.behavior = InputValidationBehavior()
+        self.behavior = PromptInjectionDetectorBehavior()
         self.agent = Mock()
         self.agent.security_context = SecurityContext()
 
@@ -590,19 +590,19 @@ class TestRuleOfTwoIntegration:
     """Test Rule of Two integration."""
 
     def test_behavior_has_no_properties(self):
-        """Test that InputValidationBehavior has no Rule of Two properties."""
-        behavior = InputValidationBehavior()
+        """Test that PromptInjectionDetectorBehavior has no Rule of Two properties."""
+        behavior = PromptInjectionDetectorBehavior()
         assert behavior.rule_of_two_properties == set()
         # Defense layer should not contribute to [ABC] trifecta
 
     def test_behavior_name(self):
         """Test that behavior has correct name."""
-        behavior = InputValidationBehavior()
-        assert behavior.get_name() == "security_input_validation"
+        behavior = PromptInjectionDetectorBehavior()
+        assert behavior.get_name() == "security_prompt_injection_detector"
 
     def test_behavior_instructions(self):
         """Test that behavior provides system prompt instructions."""
-        behavior = InputValidationBehavior()
+        behavior = PromptInjectionDetectorBehavior()
         instructions = behavior.get_instructions()
         assert "Input Validation Security" in instructions
         assert "prompt injection" in instructions.lower()

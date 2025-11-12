@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 if TYPE_CHECKING:
     pass
@@ -27,7 +28,14 @@ class WorkspaceManagementBehavior(AgentBehavior):
     - Strategy recommendations based on user goals
 
     Only used by orchestrator-level agents, not task executors.
+
+    Security: DYNAMIC based on workspace characteristics
+    - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files
+    - [] None: If workspace has no sensitive files (e.g., Jetbox repo)
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
 
     def __init__(self, workspaces_root: str = ".agent_workspaces"):
         """
@@ -41,6 +49,29 @@ class WorkspaceManagementBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "workspace_management"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on workspace characteristics:
+        - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files
+        - [] None: If workspace has no sensitive files (Jetbox repo, public code)
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context ([] or [B])
+        """
+        props = set()
+
+        # [B] SENSITIVE_ACCESS - only if workspace contains sensitive files
+        if security_context and security_context.workspace_has_sensitive_files:
+            props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+
+        return props
 
     def get_instructions(self) -> str:
         """

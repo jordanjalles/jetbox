@@ -20,7 +20,12 @@ class TimeBoxBehavior(AgentBehavior):
     intervals. Agents can schedule custom reminders using schedule_reminder().
 
     Time tracking uses wall-clock if budget set, otherwise falls back to rounds.
+
+    Security: [] None (utility behavior, no security properties)
     """
+
+    # Rule of Two: Empty (utility behavior for time tracking)
+    rule_of_two_properties = set()
 
     def __init__(
         self,

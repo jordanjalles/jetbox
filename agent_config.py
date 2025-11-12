@@ -262,6 +262,62 @@ def load_runtime_config() -> dict:
         return DEFAULT_CONFIG.copy()
 
 
+def load_security_config() -> dict:
+    """
+    Load security configuration from config/security_defaults.yaml.
+
+    Returns:
+        Dictionary with security settings (rule_of_two, defense_in_depth, etc.)
+    """
+    import os
+
+    # Check environment variable override (emergency disable)
+    if os.getenv("JETBOX_DISABLE_SECURITY") == "1" or \
+       os.getenv("JETBOX_SECURITY_ENABLED", "").lower() == "false":
+        return {
+            "enabled": False,
+            "rule_of_two": {"enforcement": "off"}
+        }
+
+    config_path = PROJECT_ROOT / "config/security_defaults.yaml"
+
+    # Defaults if file doesn't exist
+    defaults = {
+        "enabled": False,  # Opt-in during development
+        "rule_of_two": {
+            "enforcement": "block",
+            "defense_in_depth": {
+                "input_validation": {
+                    "enabled": True,
+                    "warn_threshold": 0.6,
+                    "block_threshold": 0.8,
+                },
+                "access_auditing": {
+                    "enabled": True,
+                    "max_credentials_per_session": 2,
+                    "alert_on_anomaly": True,
+                },
+                "network_audit": {
+                    "enabled": True,
+                    "require_approval": True,
+                    "audit_log_filename": "network_audit.log",
+                },
+            }
+        }
+    }
+
+    if not config_path.exists() or not YAML_AVAILABLE:
+        return defaults
+
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f) or {}
+            return config.get("security", defaults)
+    except Exception as e:
+        print(f"Warning: Failed to load {config_path}: {e}")
+        return defaults
+
+
 def list_available_teams() -> list[dict]:
     """
     List all available team configurations.

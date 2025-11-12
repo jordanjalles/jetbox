@@ -6,12 +6,18 @@ JsonToolsBehavior provides JSON manipulation tools for parsing, formatting, and 
 from typing import Any, Dict, List
 import json
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class JsonToolsBehavior(AgentBehavior):
     """
     Provides JSON manipulation tools for parsing, formatting, and validation.
+
+    Security: [] None (utility behavior, JSON operations only)
     """
+
+    # Rule of Two: Empty (utility behavior for JSON manipulation)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """

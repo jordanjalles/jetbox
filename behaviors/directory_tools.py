@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class DirectoryToolsBehavior(AgentBehavior):
@@ -23,7 +24,17 @@ class DirectoryToolsBehavior(AgentBehavior):
     Provides directory navigation tool: list_dir.
 
     Workspace-aware directory listing with error handling.
+
+    Security: DYNAMIC based on workspace characteristics
+    - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files
+    - [] None: If workspace has no sensitive files (e.g., Jetbox repo)
+    - Lists directory contents (reveals file structure)
+    - Can reveal sensitive file names (.env, credentials.json) IF they exist
+    - Does not read file contents or execute commands
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
 
     def __init__(
         self,
@@ -42,6 +53,29 @@ class DirectoryToolsBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "directory_tools"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on workspace characteristics:
+        - [B] SENSITIVE_ACCESS: Only if workspace has sensitive files
+        - [] None: If workspace has no sensitive files (Jetbox repo, public code)
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context ([] or [B])
+        """
+        props = set()
+
+        # [B] SENSITIVE_ACCESS - only if workspace contains sensitive files
+        if security_context and security_context.workspace_has_sensitive_files:
+            props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+
+        return props
 
     def on_initial_context(
         self,

@@ -6,12 +6,21 @@ HttpRequestBehavior provides tools for performing HTTP GET and POST requests.
 from typing import Any
 import requests
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class HttpRequestBehavior(AgentBehavior):
     """
     Provides HTTP GET/POST request tools for API interaction.
+
+    Security: DYNAMIC based on network access
+    - [A] UNTRUSTED_INPUT: Always (HTTP responses are untrusted external data)
+    - [C] EXTERNAL_ACTION: Only if network enabled (makes external HTTP requests)
+    - No [B]: Doesn't read sensitive files (agent might pass sensitive data, but behavior doesn't access it)
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """
@@ -33,6 +42,35 @@ class HttpRequestBehavior(AgentBehavior):
             Behavior name string (e.g., "HttpRequestBehavior")
         """
         return "HttpRequestBehavior"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on network access:
+        - [A] UNTRUSTED_INPUT: Always (HTTP responses are untrusted external data)
+        - [C] EXTERNAL_ACTION: Only if network enabled (makes external HTTP requests)
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context ([] or [AC])
+        """
+        if not security_context or not security_context.workspace_has_network_access:
+            # No network access = behavior effectively disabled
+            return set()
+
+        props = set()
+
+        # [A] UNTRUSTED_INPUT - HTTP responses are external untrusted data
+        props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
+
+        # [C] EXTERNAL_ACTION - makes HTTP requests to external servers
+        props.add(RuleOfTwoProperty.EXTERNAL_ACTION)
+
+        return props
 
     def get_tools(self) -> list[dict[str, Any]]:
         """

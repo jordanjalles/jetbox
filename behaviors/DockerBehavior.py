@@ -9,6 +9,7 @@ import os
 import uuid
 import subprocess
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class DockerBehavior(AgentBehavior):
@@ -17,7 +18,14 @@ class DockerBehavior(AgentBehavior):
 
     This behavior offers tools to start, stop, and list Docker containers,
     maintaining an internal state of container IDs and statuses across agent runs.
+
+    Security: [B] SENSITIVE_ACCESS only
+    - Runs Docker containers with filesystem access
+    - Does not push to network on its own (containers might, but behavior doesn't)
     """
+
+    # Rule of Two: [B] only - Docker containers have filesystem access
+    rule_of_two_properties = {RuleOfTwoProperty.SENSITIVE_ACCESS}
 
     def __init__(self, workspace_manager=None, **kwargs):
         """

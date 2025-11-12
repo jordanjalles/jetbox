@@ -128,8 +128,22 @@ class BaseAgent:
         else:
             workspace_trust = "user"
 
-        self.security_context = SecurityContext(workspace_trust_level=workspace_trust)
-        print(f"[{name}] Security context: workspace_trust={workspace_trust} (IS_SANDBOX={is_sandbox})")
+        # Load workspace characteristics from security config
+        from agent_config import load_security_config
+        security_config = load_security_config()
+        workspace_config = security_config.get("workspace", {})
+        has_untrusted = workspace_config.get("has_untrusted_files", False)
+        has_sensitive = workspace_config.get("has_sensitive_files", False)
+        has_network = workspace_config.get("has_network_access", False)
+
+        self.security_context = SecurityContext(
+            workspace_trust_level=workspace_trust,
+            workspace_has_untrusted_files=has_untrusted,
+            workspace_has_sensitive_files=has_sensitive,
+            workspace_has_network_access=has_network
+        )
+        print(f"[{name}] Security context: workspace_trust={workspace_trust} (IS_SANDBOX={is_sandbox}), "
+              f"untrusted={has_untrusted}, sensitive={has_sensitive}, network={has_network}")
 
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
         self.workspace_manager = None  # For workspace isolation
@@ -397,7 +411,7 @@ class BaseAgent:
             # Attempt Ollama restart if configured
             if self.auto_restart_ollama:
                 print("[timeout] auto_restart_ollama is enabled - attempting restart...")
-                from llm_utils import restart_ollama
+                from src.llm_utils import restart_ollama
                 restart_success = restart_ollama()
                 if restart_success:
                     print("[timeout] Ollama restarted successfully - resetting timeout counter")

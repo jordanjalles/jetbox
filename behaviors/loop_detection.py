@@ -23,6 +23,7 @@ from typing import Any
 import hashlib
 import json
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class LoopDetectionBehavior(AgentBehavior):
@@ -34,6 +35,10 @@ class LoopDetectionBehavior(AgentBehavior):
 
     NOTE: Empty round detection has been moved to ExecutionModeBehavior.
 
+    Security: No security properties (utility behavior)
+    - Only observes and warns (no input/access/action)
+    - Purely analytical behavior
+
     Features:
     - Tracks action signatures (tool_name + args hash)
     - Tracks result signatures (action + result hash)
@@ -42,6 +47,9 @@ class LoopDetectionBehavior(AgentBehavior):
     - Mode-aware: Only tracks in execution mode (not chat mode)
     - Configurable max_repeats threshold
     """
+
+    # Rule of Two: No properties - utility behavior only
+    rule_of_two_properties = set()
 
     def __init__(self, max_repeats: int = 5):
         """

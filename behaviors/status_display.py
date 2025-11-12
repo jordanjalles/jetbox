@@ -21,6 +21,7 @@ The behavior delegates to the StatusDisplay class for actual rendering.
 import warnings
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 # DEPRECATED: StatusDisplay class was removed, this import is commented out
 # from status_display import StatusDisplay
 StatusDisplay = None  # Stub to prevent errors
@@ -47,7 +48,12 @@ class StatusDisplayBehavior(AgentBehavior):
 
     This is a utility behavior (no tools) that integrates the
     StatusDisplay system with the behavior framework.
+
+    Security: [] None (utility behavior - status display only)
     """
+
+    # Rule of Two: Empty (utility behavior for status display)
+    rule_of_two_properties = set()
 
     def __init__(self, reset_stats: bool = False, show_hierarchical: bool = True):
         """

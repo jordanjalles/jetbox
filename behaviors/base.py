@@ -32,6 +32,12 @@ from typing import Any, TYPE_CHECKING
 if TYPE_CHECKING:
     from behaviors.base_agent import BaseAgent
 
+# Import for type hints only (avoids circular import)
+try:
+    from behaviors.rule_of_two_types import RuleOfTwoProperty
+except ImportError:
+    RuleOfTwoProperty = None  # type: ignore
+
 
 class AgentBehavior(ABC):
     """
@@ -43,6 +49,11 @@ class AgentBehavior(ABC):
     - System prompt instructions (get_instructions)
     - Event handlers (on_goal_start, on_tool_call, on_round_end, etc.)
     - Custom event communication (on_custom_event)
+
+    Security (Rule of Two):
+    - Each behavior declares its security properties via rule_of_two_properties
+    - Properties: [A] untrusted input, [B] sensitive access, [C] external action
+    - Default: {A, B, C} (safest assumption, requires explicit override)
 
     Lifecycle Events (in chronological order):
     1. on_goal_start(agent, goal) - Once at goal start
@@ -59,6 +70,9 @@ class AgentBehavior(ABC):
     Example:
         ```python
         class MyBehavior(AgentBehavior):
+            # Declare security properties (override safe default)
+            rule_of_two_properties = {RuleOfTwoProperty.EXTERNAL_ACTION}  # [C] only
+
             def get_name(self) -> str:
                 return "my_behavior"
 
@@ -101,6 +115,57 @@ class AgentBehavior(ABC):
                 print(f"Tool called: {tool_name}")
         ```
     """
+
+    # Rule of Two security properties
+    # Default: {A, B, C} = safest assumption, requires explicit override
+    # Behaviors MUST override to declare their actual properties
+    # Example: rule_of_two_properties = {RuleOfTwoProperty.EXTERNAL_ACTION}
+    rule_of_two_properties: set  # Will be set to {A, B, C} after import
+
+    def get_rule_of_two_properties(
+        self,
+        agent: "BaseAgent",
+        security_context: Any = None
+    ) -> set:
+        """
+        Get Rule of Two properties for this behavior (context-aware).
+
+        This method enables dynamic, context-aware property resolution.
+        Behaviors can override this to change properties based on:
+        - Workspace characteristics (untrusted files, sensitive files, network access)
+        - Workspace trust level (isolated vs user files)
+        - Execution mode
+
+        Args:
+            agent: Agent instance (for accessing workspace, state, etc.)
+            security_context: SecurityContext with runtime security state (optional)
+
+        Returns:
+            Set of RuleOfTwoProperty values for current security context
+
+        Default Implementation:
+            Returns static rule_of_two_properties attribute (backwards compatible).
+
+        Example (Dynamic Properties):
+            ```python
+            def get_rule_of_two_properties(self, agent, security_context):
+                props = {RuleOfTwoProperty.SENSITIVE_ACCESS}  # Always [B]
+
+                # [A] only if workspace contains untrusted files
+                if context and context.workspace_trust_level == "user":
+                    props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
+
+                return props
+            ```
+
+        Example (Static Properties - default behavior):
+            ```python
+            # Don't override method, just set class attribute:
+            rule_of_two_properties = {RuleOfTwoProperty.EXTERNAL_ACTION}
+            ```
+        """
+        # Default: return static class attribute (backwards compatible)
+        return self.rule_of_two_properties
 
     @abstractmethod
     def get_name(self) -> str:
@@ -633,3 +698,13 @@ class AgentBehavior(ABC):
             ```
         """
         return ""
+
+
+# Set default rule_of_two_properties after class definition
+# Default to {A, B, C} for maximum safety (requires explicit override)
+if RuleOfTwoProperty is not None:
+    AgentBehavior.rule_of_two_properties = {
+        RuleOfTwoProperty.UNTRUSTED_INPUT,
+        RuleOfTwoProperty.SENSITIVE_ACCESS,
+        RuleOfTwoProperty.EXTERNAL_ACTION
+    }

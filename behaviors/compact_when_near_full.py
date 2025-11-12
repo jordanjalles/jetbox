@@ -29,7 +29,12 @@ class CompactWhenNearFullBehavior(AgentBehavior):
     - Full message history when possible
     - Automatic compaction when needed
     - Recent context always preserved
+
+    Security: [] None (utility behavior, no security properties)
     """
+
+    # Rule of Two: Empty (utility behavior for context management)
+    rule_of_two_properties = set()
 
     def __init__(
         self,

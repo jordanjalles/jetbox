@@ -23,6 +23,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class WriteFileToolsBehavior(AgentBehavior):
@@ -30,7 +31,16 @@ class WriteFileToolsBehavior(AgentBehavior):
     Provides file writing tool: write_file.
 
     Workspace-aware file operations with safety checks and audit logging.
+
+    Security: [] None
+    - Writes/modifies files locally (internal state change, not external communication)
+    - Does not read untrusted input (writes are agent-generated)
+    - Does not access sensitive data (not inherently, though could write to sensitive locations)
+    - Does not communicate externally via network
     """
+
+    # Rule of Two: [] - local file writes are internal state changes, not network communication
+    rule_of_two_properties = set()
 
     def __init__(
         self,

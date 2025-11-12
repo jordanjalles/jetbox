@@ -38,7 +38,12 @@ class ExecutionModeBehavior(AgentBehavior):
     - Empty round detection and warnings
     - Completion signal detection and nudging
     - Event-based mode coordination
+
+    Security: [] None (utility behavior, no security properties)
     """
+
+    # Rule of Two: Empty (utility behavior for mode management)
+    rule_of_two_properties = set()
 
     def __init__(
         self,

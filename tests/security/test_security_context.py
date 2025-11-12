@@ -222,7 +222,7 @@ class TestDynamicPropertyMethod:
         context = SecurityContext()
 
         # Should return static properties by default
-        props = behavior.get_rule_of_two_properties(agent=None, context=context)
+        props = behavior.get_rule_of_two_properties(agent=None, security_context=context)
         assert props == {RuleOfTwoProperty.EXTERNAL_ACTION}
 
     def test_can_override_with_dynamic_logic(self):
@@ -236,10 +236,10 @@ class TestDynamicPropertyMethod:
             def get_name(self) -> str:
                 return "dynamic"
 
-            def get_rule_of_two_properties(self, agent, context):
+            def get_rule_of_two_properties(self, agent, security_context):
                 # Dynamic: remove [A] in isolated workspace
                 props = {RuleOfTwoProperty.SENSITIVE_ACCESS}
-                if context and context.workspace_trust_level == "user":
+                if security_context and security_context.workspace_trust_level == "user":
                     props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
                 return props
 
@@ -247,7 +247,7 @@ class TestDynamicPropertyMethod:
 
         # In user workspace: [AB]
         user_context = SecurityContext(workspace_trust_level="user")
-        props = behavior.get_rule_of_two_properties(agent=None, context=user_context)
+        props = behavior.get_rule_of_two_properties(agent=None, security_context=user_context)
         assert props == {
             RuleOfTwoProperty.UNTRUSTED_INPUT,
             RuleOfTwoProperty.SENSITIVE_ACCESS
@@ -255,11 +255,11 @@ class TestDynamicPropertyMethod:
 
         # In isolated workspace: [B] only
         isolated_context = SecurityContext(workspace_trust_level="isolated")
-        props = behavior.get_rule_of_two_properties(agent=None, context=isolated_context)
+        props = behavior.get_rule_of_two_properties(agent=None, security_context=isolated_context)
         assert props == {RuleOfTwoProperty.SENSITIVE_ACCESS}
 
     def test_backwards_compatible_with_no_context(self):
-        """Test method works even if context=None (backwards compatibility)."""
+        """Test method works even if security_context=None (backwards compatibility)."""
         class MockBehavior(AgentBehavior):
             rule_of_two_properties = {RuleOfTwoProperty.EXTERNAL_ACTION}
 
@@ -268,8 +268,8 @@ class TestDynamicPropertyMethod:
 
         behavior = MockBehavior()
 
-        # Should work with context=None
-        props = behavior.get_rule_of_two_properties(agent=None, context=None)
+        # Should work with security_context=None
+        props = behavior.get_rule_of_two_properties(agent=None, security_context=None)
         assert props == {RuleOfTwoProperty.EXTERNAL_ACTION}
 
 

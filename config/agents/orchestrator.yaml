@@ -8,6 +8,16 @@
 # Agent role (human-readable description)
 role: "User interface and task coordinator"
 
+# Delegation Configuration
+# Controls how workspace inheritance works during delegation
+# See docs/WORKSPACE_DELEGATION_STRATEGY.md for full details
+delegation:
+  workspace_strategy: "enforce_inherit"  # Always reuse same workspace (recommended)
+  # Options:
+  #   - "enforce_inherit": Sub-agents inherit workspace (prevents fragmentation) [DEFAULT]
+  #   - "enforce_new": Sub-agents create isolated workspaces (for testing isolation)
+  #   - "llm_chooses": LLM decides workspace mode (less predictable, advanced use only)
+
 # Agent Blurb (3-5 sentences describing specialty/purpose for parent agents)
 # If not specified, uses blurb from agents.yaml
 blurb: |
@@ -132,6 +142,12 @@ behaviors:
   # ServerManagementBehavior manages development server lifecycle
   # (orchestrator and task_executor - architect doesn't run code)
   - type: ServerManagementBehavior
+
+  # ContextInspectorBehavior captures context snapshots for debugging
+  - type: ContextInspectorBehavior
+    params:
+      output_dir: ".context_inspection"
+      save_full_context: true
 
   # NOTE: DelegationBehavior is automatically added based on agents.yaml relationships.
   # The orchestrator can delegate to: architect, task_executor (defined in agents.yaml)

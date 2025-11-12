@@ -14,6 +14,7 @@ NOT used by:
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 if TYPE_CHECKING:
     pass
@@ -27,7 +28,14 @@ class ServerManagementBehavior(AgentBehavior):
     - Server initialization on demand
     - Pre-task cleanup (remove old server requests)
     - Post-execution cleanup (stop all servers)
+
+    Security: DYNAMIC based on network access
+    - [C] EXTERNAL_ACTION: Only if workspace has network access (servers communicate externally)
+    - [] None: If network isolated (localhost only)
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
 
     def __init__(self):
         """Initialize server management behavior."""
@@ -36,6 +44,29 @@ class ServerManagementBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "server_management"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware).
+
+        Dynamic behavior based on network access:
+        - [C] EXTERNAL_ACTION: Only if workspace has network access (servers can communicate externally)
+        - [] None: If network isolated (localhost only, no external communication)
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties for current context ([] or [C])
+        """
+        props = set()
+
+        # [C] EXTERNAL_ACTION - only if workspace has network access
+        if security_context and security_context.workspace_has_network_access:
+            props.add(RuleOfTwoProperty.EXTERNAL_ACTION)
+
+        return props
 
     def on_goal_start(self, agent: Any, goal: str) -> None:
         """

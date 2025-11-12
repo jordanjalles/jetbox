@@ -10,10 +10,18 @@ from pathlib import Path
 import json
 from datetime import datetime
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class TaskManagementBehavior(AgentBehavior):
-    """Provides tools for managing structured task breakdowns in workspace."""
+    """
+    Provides tools for managing structured task breakdowns in workspace.
+
+    Security: [] None (manages agent-generated task breakdowns, not user data)
+    """
+
+    # Rule of Two: Empty (utility behavior for task tracking)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None):
         """

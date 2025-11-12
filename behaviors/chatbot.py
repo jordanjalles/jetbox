@@ -69,7 +69,12 @@ class ChatbotBehavior(AgentBehavior):
     - Does NOT handle delegation (use DelegationBehavior)
     - Does NOT implement its own chat loop (agent handles I/O)
     - ONLY manages chat mode state and provides chat tools
+
+    Security: [] None (utility behavior, no security properties)
     """
+
+    # Rule of Two: Empty (utility behavior for chat mode management)
+    rule_of_two_properties = set()
 
     def __init__(self, params: dict[str, Any] | None = None):
         """Initialize chatbot behavior."""

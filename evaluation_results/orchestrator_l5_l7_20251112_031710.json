@@ -1,0 +1,132 @@
+{
+  "timestamp": "2025-11-12T03:17:10.582634",
+  "total_tasks": 5,
+  "successful_tasks": 0,
+  "results": [
+    {
+      "task": "blog_system",
+      "level": 5,
+      "success": false,
+      "duration": 369.84061,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "blog.py",
+        "models.py",
+        "storage.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from blog import BlogManager; bm=BlogManager(); bm.create_post('Title', 'Content'); assert len(bm.get_posts())==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'blog'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_blog_system_i9ke645d",
+      "stdout_lines": 149,
+      "stderr_lines": 0
+    },
+    {
+      "task": "todo_app",
+      "level": 5,
+      "success": false,
+      "duration": 439.747344,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "todo.py",
+        "models.py",
+        "manager.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from todo import TodoManager; tm=TodoManager(); tm.add_todo('Task 1', 'work'); assert len(tm.get_todos())==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'todo'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_todo_app_6rrj6jg1",
+      "stdout_lines": 143,
+      "stderr_lines": 0
+    },
+    {
+      "task": "inventory_system",
+      "level": 5,
+      "success": false,
+      "duration": 288.17939,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "inventory.py",
+        "product.py",
+        "alerts.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from inventory import Inventory; inv=Inventory(); inv.add_product('Widget', 10, 2.5); assert len(inv.get_products())==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'inventory'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_inventory_system_bs5z1_g1",
+      "stdout_lines": 128,
+      "stderr_lines": 0
+    },
+    {
+      "task": "url_shortener",
+      "level": 5,
+      "success": false,
+      "duration": 413.755728,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "shortener.py",
+        "storage.py",
+        "stats.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from shortener import URLShortener; us=URLShortener(); short=us.shorten('https://example.com'); assert len(short)<20",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'shortener'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_url_shortener_bib5rq7j",
+      "stdout_lines": 157,
+      "stderr_lines": 17
+    },
+    {
+      "task": "email_validator_service",
+      "level": 5,
+      "success": false,
+      "duration": 582.235063,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "email_service.py",
+        "validators.py",
+        "blacklist.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from email_service import EmailValidator; ev=EmailValidator(); assert ev.validate('test@example.com')",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'email_service'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_email_validator_service_itnzxdan",
+      "stdout_lines": 94,
+      "stderr_lines": 50
+    }
+  ]
+}

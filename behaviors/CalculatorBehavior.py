@@ -9,12 +9,18 @@ CalculatorBehavior provides basic arithmetic calculation tools (add, subtract).
 
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class CalculatorBehavior(AgentBehavior):
     """
     Provides basic arithmetic calculation tools (add, subtract).
+
+    Security: [] None (utility behavior, arithmetic operations only)
     """
+
+    # Rule of Two: Empty (utility behavior for calculations)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """

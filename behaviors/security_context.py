@@ -29,11 +29,23 @@ class SecurityContext:
         - "user": IS_SANDBOX=0 or not set → User workspace with pre-existing files (untrusted, injection risk)
         - "mixed": Programmatically set → Combination, track per-file using WorkspaceManager.created_files
 
+    workspace_has_untrusted_files: Set via config (security.workspace.has_untrusted_files)
+        - True: Workspace contains files from external sources that may have prompt injection
+        - False: Workspace only contains trusted code (e.g., Jetbox's own codebase)
+
+    workspace_has_sensitive_files: Set via config (security.workspace.has_sensitive_files)
+        - True: Workspace contains .env, credentials, SSH keys, secrets
+        - False: Workspace contains no sensitive data (e.g., public code only)
+
+    workspace_has_network_access: Set via config (security.workspace.has_network_access)
+        - True: Agent can use network commands (git push, curl, HTTP APIs)
+        - False: Network isolated (localhost only, no external communication)
+
     Reactively Detected:
     -------------------
     sensitive_data_detected: Set to True when .env, *.key, credentials files accessed
     sensitive_files_seen: Accumulates list of sensitive file paths accessed
-    prompt_injection_detected: Set when InputValidationBehavior detects injection
+    prompt_injection_detected: Set when PromptInjectionDetectorBehavior detects injection
     injection_sources: Files that contained suspected prompt injection
 
     Future Expansion:
@@ -44,6 +56,11 @@ class SecurityContext:
 
     # User-controlled via IS_SANDBOX env var (IS_SANDBOX=1 → isolated, else → user)
     workspace_trust_level: Literal["isolated", "user", "mixed"] = "user"
+
+    # User-controlled via config (security.workspace.*)
+    workspace_has_untrusted_files: bool = False  # True if workspace has external/untrusted files
+    workspace_has_sensitive_files: bool = False  # True if workspace has .env, credentials, keys
+    workspace_has_network_access: bool = False   # True if agent can use network (git push, curl, APIs)
 
     # Detected reactively during execution
     sensitive_data_detected: bool = False
@@ -75,7 +92,7 @@ class SecurityContext:
         Mark that prompt injection was detected in a file.
 
         Updates prompt_injection_detected flag and records source.
-        Called by InputValidationBehavior (Phase 4A).
+        Called by PromptInjectionDetectorBehavior (Phase 4A).
 
         Args:
             file_path: Path to file containing suspected injection

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class CommandToolsBehavior(AgentBehavior):
@@ -26,7 +27,45 @@ class CommandToolsBehavior(AgentBehavior):
     Provides bash command execution tool: run_bash.
 
     Full shell access for flexible command execution in the workspace.
+
+    Security: DYNAMIC based on whitelist contents and workspace config
+    - [A] UNTRUSTED_INPUT: If whitelist contains file-reading commands AND workspace has untrusted files
+    - [B] SENSITIVE_ACCESS: If whitelist has non-safe commands AND workspace has sensitive files
+    - [C] EXTERNAL_ACTION: If whitelist contains network commands AND workspace has network access
     """
+
+    # Rule of Two: Empty static fallback (dynamically computed at runtime)
+    rule_of_two_properties = set()
+
+    # Command categories for dynamic classification
+    FILE_READING_COMMANDS = {
+        'cat', 'head', 'tail', 'less', 'more',
+        'grep', 'rg', 'ag', 'ack', 'egrep', 'fgrep',
+        'find', 'diff', 'cmp', 'wc', 'sort', 'uniq'
+    }
+
+    CODE_EXECUTION_COMMANDS = {
+        'python', 'python3', 'python2',
+        'node', 'nodejs',
+        'ruby', 'perl', 'php',
+        'bash', 'sh', 'zsh', 'fish',
+        'java', 'javac',
+        'gcc', 'g++', 'clang',
+        'cargo', 'rustc',
+        'go', 'run'
+    }
+
+    NETWORK_COMMANDS = {
+        'curl', 'wget', 'http', 'httpie',
+        'ping', 'traceroute', 'nslookup', 'dig',
+        'ssh', 'scp', 'rsync', 'sftp',
+        'npm', 'yarn', 'pip', 'pipenv',  # Package managers can fetch from network
+        'git'  # git push/pull/fetch/clone communicate over network
+    }
+
+    SAFE_COMMANDS = {
+        'echo', 'date', 'pwd', 'whoami', 'sleep', 'true', 'false'
+    }
 
     def __init__(
         self,
@@ -48,7 +87,11 @@ class CommandToolsBehavior(AgentBehavior):
         self.ledger_file = ledger_file
 
         # Load whitelist from jetbox_commands_whitelist file or use parameter
-        self.whitelist = whitelist or self._load_whitelist_from_file()
+        # Convert to set if provided as list
+        if whitelist is not None:
+            self.whitelist = set(whitelist) if isinstance(whitelist, list) else whitelist
+        else:
+            self.whitelist = self._load_whitelist_from_file()
 
     def _load_whitelist_from_file(self) -> set[str] | None:
         """
@@ -79,6 +122,55 @@ class CommandToolsBehavior(AgentBehavior):
     def get_name(self) -> str:
         """Return behavior identifier."""
         return "command_tools"
+
+    def get_rule_of_two_properties(self, agent, security_context):
+        """
+        Get Rule of Two properties (context-aware and whitelist-aware).
+
+        Dynamic behavior based on whitelist contents AND workspace config:
+        - [A] UNTRUSTED_INPUT: If whitelist has file-reading commands AND workspace has untrusted files
+        - [B] SENSITIVE_ACCESS: If whitelist has non-safe commands AND workspace has sensitive files
+        - [C] EXTERNAL_ACTION: If whitelist has network commands AND workspace has network access
+
+        Args:
+            agent: Agent instance
+            security_context: SecurityContext with workspace characteristics
+
+        Returns:
+            Set of properties based on whitelist and workspace config
+        """
+        props = set()
+
+        # If no whitelist, assume all commands possible (maximum properties)
+        if self.whitelist is None:
+            # No whitelist = full shell access
+            if security_context:
+                if security_context.workspace_has_untrusted_files:
+                    props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
+                if security_context.workspace_has_sensitive_files:
+                    props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+                if security_context.workspace_has_network_access:
+                    props.add(RuleOfTwoProperty.EXTERNAL_ACTION)
+            return props
+
+        # Check if whitelist can access untrusted files (read or execute)
+        has_file_access = bool(self.whitelist & (self.FILE_READING_COMMANDS | self.CODE_EXECUTION_COMMANDS))
+        if has_file_access and security_context and security_context.workspace_has_untrusted_files:
+            props.add(RuleOfTwoProperty.UNTRUSTED_INPUT)
+
+        # Check if whitelist contains network commands
+        has_network = bool(self.whitelist & self.NETWORK_COMMANDS)
+        if has_network and security_context and security_context.workspace_has_network_access:
+            props.add(RuleOfTwoProperty.EXTERNAL_ACTION)
+
+        # [B] SENSITIVE_ACCESS: Only if whitelist has non-safe commands AND workspace has sensitive files
+        # If whitelist is exclusively safe commands (echo, date, pwd), no sensitive access
+        # If workspace has no sensitive files (.env, credentials, keys), no sensitive access
+        is_only_safe = self.whitelist.issubset(self.SAFE_COMMANDS)
+        if not is_only_safe and security_context and security_context.workspace_has_sensitive_files:
+            props.add(RuleOfTwoProperty.SENSITIVE_ACCESS)
+
+        return props
 
     def on_initial_context(
         self,

@@ -31,14 +31,15 @@ class ArchitectToolsBehavior(AgentBehavior):
 
     Creates structured documentation in workspace/architecture/ directory.
 
-    Security: [C] EXTERNAL_ACTION only
-    - Writes architecture documentation files
+    Security: [] None
+    - Writes architecture documentation files locally (internal state change)
     - Does NOT read untrusted input (no [A])
     - Does NOT access sensitive data (no [B])
+    - Does NOT communicate externally via network (no [C])
     """
 
-    # Rule of Two: [C] only - writes architecture files
-    rule_of_two_properties = {RuleOfTwoProperty.EXTERNAL_ACTION}
+    # Rule of Two: [] - local file writes are internal state changes, not network communication
+    rule_of_two_properties = set()
 
     def __init__(
         self,

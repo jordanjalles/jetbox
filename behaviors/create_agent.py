@@ -7,12 +7,18 @@ This behavior provides tools for generating agent configuration YAML files.
 from typing import Any
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class CreateAgentBehavior(AgentBehavior):
     """
     Provides tools for generating agent configuration files.
+
+    Security: [] None (meta-programming - generates agent configs, security evaluated when invoked)
     """
+
+    # Rule of Two: Empty (meta-programming utility)
+    rule_of_two_properties = set()
 
     def __init__(self, workspace_manager=None, **kwargs):
         """Initialize CreateAgentBehavior."""

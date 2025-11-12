@@ -12,7 +12,24 @@
 security:
   # Global feature flag for security system
   # Set to false during development to disable all security features
-  enabled: false  # Will be enabled in Phase 7 (opt-in), default in Phase 8
+  enabled: true  # PHASE 6.1: Enabled for dogfooding and L5-L7 evaluation
+
+  # Workspace characteristics (affects behavior security classifications)
+  workspace:
+    # Does workspace contain files from untrusted sources?
+    # True: User projects with external data, API responses, web scraping, uploaded files
+    # False: Trusted codebases (Jetbox itself, internal tools, verified repos)
+    has_untrusted_files: false
+
+    # Does workspace contain sensitive credentials/keys?
+    # True: User projects with .env, credentials.json, *.key, SSH keys
+    # False: Public code only (no secrets, safe to read everything)
+    has_sensitive_files: false
+
+    # Can agent use network commands?
+    # True: Agent can git push, curl, call APIs, communicate externally (pip install, npm install, etc.)
+    # False: Network isolated (localhost only, no external communication)
+    has_network_access: true  # Jetbox has network access (pip, git, npm work)
 
   rule_of_two:
     # Enforcement level:

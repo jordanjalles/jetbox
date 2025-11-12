@@ -19,6 +19,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 # ============================================================================
 # UTILITY FUNCTIONS (workspace task notes implementation)
@@ -406,7 +407,12 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
     2. on_initial_context(agent, context) - Load existing notes once
     3. on_goal_complete(agent, success, summary) - Generate summaries
     4. on_timeout(agent, elapsed_seconds) - Generate timeout summaries
+
+    Security: [] None (reads/writes agent-generated notes, not user data)
     """
+
+    # Rule of Two: Empty (utility behavior for context management)
+    rule_of_two_properties = set()
 
     def __init__(self, **kwargs):
         """

@@ -1,9 +1,9 @@
 """
-Input validation behavior for detecting prompt injection attacks.
+Prompt injection detection behavior for Rule of Two defense-in-depth.
 
 This is Defense Layer 1 of the Rule of Two security model.
 
-The InputValidationBehavior intercepts file read operations and scans
+The PromptInjectionDetectorBehavior intercepts file read operations and scans
 content for known prompt injection patterns. It uses both pattern matching
 and heuristic analysis to detect malicious instructions.
 
@@ -38,9 +38,9 @@ class SecurityViolationError(Exception):
     pass
 
 
-class InputValidationBehavior(AgentBehavior):
+class PromptInjectionDetectorBehavior(AgentBehavior):
     """
-    Defense Layer 1: Input validation for prompt injection detection.
+    Defense Layer 1: Prompt injection detection for untrusted inputs.
 
     This behavior intercepts read_file results and scans for prompt injection
     patterns. It's auto-injected by RuleOfTwoValidator for [ABC] agents.
@@ -111,7 +111,7 @@ class InputValidationBehavior(AgentBehavior):
 
     def get_name(self) -> str:
         """Return behavior identifier."""
-        return "security_input_validation"
+        return "security_prompt_injection_detector"
 
     def get_instructions(self) -> str:
         """Return instructions for system prompt."""

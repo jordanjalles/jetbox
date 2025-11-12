@@ -98,7 +98,7 @@ class BehaviorLoader:
             )
 
         # Auto-add DelegationBehavior if this agent can delegate
-        self._auto_add_delegation_behavior()
+        self._auto_add_delegation_behavior(config)
 
         # Load behaviors
         if "behaviors" not in config:
@@ -412,7 +412,7 @@ class BehaviorLoader:
 
         return errors
 
-    def _auto_add_delegation_behavior(self) -> None:
+    def _auto_add_delegation_behavior(self, config: dict[str, Any]) -> None:
         """
         Auto-add DelegationBehavior if this agent can delegate to others.
 
@@ -422,6 +422,10 @@ class BehaviorLoader:
         agents).
 
         Reads team config to check if this agent has can_delegate_to list.
+        Reads delegation configuration (workspace_strategy, etc.) from agent config.
+
+        Args:
+            config: Agent config dict containing delegation settings
         If yes, adds DelegationBehavior with delegation tools
         (consult_X, delegate_to_X).
         """
@@ -461,11 +465,18 @@ class BehaviorLoader:
                 )
                 agent_relationships[target_agent] = agent_info
 
+            # Read delegation configuration (workspace strategy, etc.)
+            delegation_config = config.get("delegation", {})
+            workspace_strategy = delegation_config.get(
+                "workspace_strategy", "enforce_inherit"
+            )
+
             # Create and add DelegationBehavior
             from behaviors.delegation import DelegationBehavior
 
             delegation_behavior = DelegationBehavior(
-                agent_relationships=agent_relationships
+                agent_relationships=agent_relationships,
+                workspace_strategy=workspace_strategy
             )
 
             # Register with agent
@@ -477,9 +488,22 @@ class BehaviorLoader:
                 )
             self.agent._behaviors.append(delegation_behavior)
 
+            # Create human-readable strategy description
+            strategy_descriptions = {
+                "enforce_inherit": "sub-agents inherit workspace (prevents fragmentation)",
+                "enforce_new": "sub-agents create isolated workspaces (testing isolation)",
+                "llm_chooses": "LLM decides workspace mode (less predictable)"
+            }
+            strategy_desc = strategy_descriptions.get(
+                workspace_strategy,
+                workspace_strategy
+            )
+
             print(
                 f"[{self.agent.name}] Auto-added DelegationBehavior "
-                f"(can delegate to: {', '.join(can_delegate_to)})"
+                f"(can delegate to: {', '.join(can_delegate_to)})\n"
+                f"[{self.agent.name}]   Workspace strategy: {workspace_strategy} "
+                f"({strategy_desc})"
             )
 
         except Exception as e:
@@ -499,7 +523,7 @@ class BehaviorLoader:
             agents: Agents dict from team config
 
         Returns:
-            Agent info dict with delegation_tool and blurb (if available)
+            Agent info dict with delegation_tool, blurb, and behaviors (if available)
         """
         from agent_config import load_agent_config
 
@@ -517,6 +541,10 @@ class BehaviorLoader:
             # Add blurb if present
             if target_config and "blurb" in target_config:
                 agent_info["blurb"] = target_config["blurb"]
+
+            # Add behaviors list if present (for security property computation)
+            if target_config and "behaviors" in target_config:
+                agent_info["behaviors"] = target_config["behaviors"]
 
         except Exception as e:
             print(

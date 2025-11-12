@@ -20,6 +20,7 @@ import shutil
 import sys
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class SandboxTestBehavior(AgentBehavior):
@@ -28,7 +29,12 @@ class SandboxTestBehavior(AgentBehavior):
 
     Runs tests in isolated temporary workspaces with timeouts and
     resource constraints to prevent damage to the production environment.
+
+    Security: [] None (testing utility - runs tests in isolation)
     """
+
+    # Rule of Two: Empty (utility behavior for testing)
+    rule_of_two_properties = set()
 
     def __init__(self, **kwargs):
         """Initialize sandbox test behavior."""
