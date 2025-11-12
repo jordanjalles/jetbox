@@ -104,7 +104,9 @@ class EventSystem:
         Trigger on_round_start event on all behaviors.
 
         Called at the start of EVERY round, before LLM call.
-        Behaviors are processed in priority order (lower priority first).
+        Behaviors are processed in sequence number order (lower numbers first).
+        Behaviors without get_sequence_number() default to 0.
+        Same sequence numbers maintain config file order (stable sort).
 
         Args:
             round_number: Current round number (1-indexed)
@@ -113,12 +115,13 @@ class EventSystem:
         Returns:
             Modified context after all behaviors have processed it
         """
-        # Sort behaviors by priority (lower values first, higher values last)
-        # This ensures ContextInspectorBehavior (priority=999) runs last
-        # and captures the final context including all nudges
+        # Sort behaviors by sequence number (lower values first, higher values last)
+        # Default is 0 for behaviors without get_sequence_number() method
+        # Behaviors with same number maintain config file order (stable sort)
+        # ContextInspectorBehavior (sequence=999) runs last to capture final context
         sorted_behaviors = sorted(
             self.agent._behaviors,
-            key=lambda b: b.get_priority() if hasattr(b, 'get_priority') else 0
+            key=lambda b: b.get_sequence_number() if hasattr(b, 'get_sequence_number') else 0
         )
 
         for behavior in sorted_behaviors:
