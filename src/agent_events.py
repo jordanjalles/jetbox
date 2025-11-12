@@ -104,6 +104,7 @@ class EventSystem:
         Trigger on_round_start event on all behaviors.
 
         Called at the start of EVERY round, before LLM call.
+        Behaviors are processed in priority order (lower priority first).
 
         Args:
             round_number: Current round number (1-indexed)
@@ -112,7 +113,15 @@ class EventSystem:
         Returns:
             Modified context after all behaviors have processed it
         """
-        for behavior in self.agent._behaviors:
+        # Sort behaviors by priority (lower values first, higher values last)
+        # This ensures ContextInspectorBehavior (priority=999) runs last
+        # and captures the final context including all nudges
+        sorted_behaviors = sorted(
+            self.agent._behaviors,
+            key=lambda b: b.get_priority() if hasattr(b, 'get_priority') else 0
+        )
+
+        for behavior in sorted_behaviors:
             try:
                 # Try new API first
                 if hasattr(behavior, 'on_round_start') and callable(behavior.on_round_start):

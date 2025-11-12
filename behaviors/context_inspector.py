@@ -76,6 +76,19 @@ class ContextInspectorBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "context_inspector"
 
+    def get_priority(self) -> int:
+        """
+        Return behavior priority for execution ordering.
+
+        Higher priority behaviors run later in the chain.
+        ContextInspector should run LAST to capture the final context
+        that the LLM actually sees (including nudges from other behaviors).
+
+        Returns:
+            999 (very high priority = run last)
+        """
+        return 999
+
     def on_initial_context(
         self,
         agent: Any,
@@ -234,6 +247,7 @@ class ContextInspectorBehavior(AgentBehavior):
                 "round": round_number,
                 "phase": phase,
                 "timestamp": time.time(),
+                "_note": "Context captured by ContextInspectorBehavior (priority=999, runs last). This is the final context sent to LLM, including all nudges and modifications from other behaviors."
             }
 
             # Add context (messages)
