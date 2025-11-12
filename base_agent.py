@@ -116,6 +116,21 @@ class BaseAgent:
         if loaded_state:
             self.state = loaded_state
 
+        # Initialize security context (Phase 1.5: Environment-aware Rule of Two)
+        from behaviors.security_context import SecurityContext
+
+        # Check IS_SANDBOX env var (aligns with Claude Code conventions)
+        # IS_SANDBOX=1 → isolated (trusted sandbox)
+        # IS_SANDBOX=0 or not set → user (untrusted workspace)
+        is_sandbox = os.environ.get("IS_SANDBOX", "0").lower()
+        if is_sandbox in ("1", "true", "yes"):
+            workspace_trust = "isolated"
+        else:
+            workspace_trust = "user"
+
+        self.security_context = SecurityContext(workspace_trust_level=workspace_trust)
+        print(f"[{name}] Security context: workspace_trust={workspace_trust} (IS_SANDBOX={is_sandbox})")
+
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
         self.workspace_manager = None  # For workspace isolation
         self.perf_stats = None  # For performance tracking
@@ -161,6 +176,9 @@ class BaseAgent:
         self.behavior_loader = BehaviorLoader(self)
         self.behavior_loader.load_from_config_dict(agent_config)
         self.behavior_loader.load_extra_behaviors(extra_behaviors)
+
+        # Auto-inject RuleOfTwoValidator if security enabled (Phase 5)
+        self._inject_security_validator()
 
         # Initialize event system (after behaviors are loaded)
         self.event_system = EventSystem(self)
@@ -673,6 +691,44 @@ class BaseAgent:
 
         self._behaviors.append(behavior)
 
+    def _inject_security_validator(self) -> None:
+        """
+        Auto-inject RuleOfTwoValidator if security is enabled.
+
+        This is called after all behaviors are loaded from config,
+        allowing the validator to analyze the final behavior configuration.
+
+        Phase 5: Integration & Auto-Injection
+        """
+        try:
+            # Load security config
+            from agent_config import load_security_config
+            security_config = load_security_config()
+
+            # Check if security is enabled
+            if not security_config.get("enabled", False):
+                return  # Security disabled, skip injection
+
+            # Check environment variable override
+            if os.environ.get("JETBOX_DISABLE_SECURITY", "0") == "1":
+                print(f"[{self.name}] Security: DISABLED (JETBOX_DISABLE_SECURITY=1)")
+                return
+
+            if os.environ.get("JETBOX_SECURITY_ENABLED", "true").lower() == "false":
+                print(f"[{self.name}] Security: DISABLED (JETBOX_SECURITY_ENABLED=false)")
+                return
+
+            # Import and inject validator
+            from behaviors.rule_of_two_validator import RuleOfTwoValidator
+            validator = RuleOfTwoValidator(security_config=security_config)
+            self.add_behavior(validator)
+
+            print(f"[{self.name}] Security: ENABLED (RuleOfTwoValidator auto-injected)")
+
+        except ImportError as e:
+            print(f"[{self.name}] Security: Failed to load validator: {e}")
+        except Exception as e:
+            print(f"[{self.name}] Security: Unexpected error during injection: {e}")
 
     def get_behavior_instructions(self) -> str:
         """

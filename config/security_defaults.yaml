@@ -1,0 +1,75 @@
+# Security Configuration Defaults
+#
+# This file controls Jetbox's graduated security model based on the "Rule of Two" principle.
+#
+# Rule of Two: An autonomous agent should satisfy no more than two of:
+#   [A] Process untrustworthy inputs
+#   [B] Access sensitive systems/data
+#   [C] Change state or communicate externally
+#
+# See docs/SECURITY_THREAT_MODEL.md for complete documentation.
+
+security:
+  # Global feature flag for security system
+  # Set to false during development to disable all security features
+  enabled: false  # Will be enabled in Phase 7 (opt-in), default in Phase 8
+
+  rule_of_two:
+    # Enforcement level:
+    #   "off" - No validation (not recommended)
+    #   "warn" - Log warnings for [ABC] agents but allow
+    #   "block" - Block [ABC] agents without risk acknowledgment (recommended)
+    enforcement: "block"
+
+    # Acknowledge [ABC] risk to enable defense-in-depth instead of blocking
+    # Set to true only if you understand the security implications
+    acknowledge_abc_risk: false
+
+    # Skip defense-in-depth layers even with acknowledged risk
+    # Set to true only for testing or if you have alternative security measures
+    skip_defense_in_depth: false
+
+    # Message shown when security disabled
+    disabled_message: |
+      Security features are available but currently disabled.
+      To enable: Set security.enabled: true in config/security_defaults.yaml
+      See docs/SECURITY_RULE_OF_TWO.md for details.
+
+    # Defense-in-depth configuration for [ABC] agents
+    # These layers are automatically enabled when [ABC] configuration detected
+    defense_in_depth:
+      # Layer 1: Input validation (prompt injection detection)
+      input_validation:
+        enabled: true
+        # Confidence threshold for warnings (0.0-1.0)
+        # Values chosen to prefer false negatives over false positives
+        warn_threshold: 0.45
+        # Confidence threshold for blocking (0.0-1.0)
+        block_threshold: 0.75
+        # Patterns to detect (loaded from behavior)
+        use_pattern_matching: true
+        use_heuristics: true
+
+      # Layer 2: Access auditing (credential harvesting detection)
+      access_auditing:
+        enabled: true
+        # Maximum credential files per session before flagging anomaly
+        max_credentials_per_session: 2
+        # Alert user when anomaly detected (vs silent logging)
+        alert_on_anomaly: true
+        # Sensitive file patterns (additional to defaults)
+        extra_sensitive_patterns: []
+
+      # Layer 3: Network audit (exfiltration prevention)
+      network_audit:
+        enabled: true
+        # Require user approval for network operations
+        require_approval: true
+        # Audit log filename (relative to .agent_context/)
+        audit_log_filename: "network_audit.log"
+        # Flag commits containing sensitive files
+        check_git_staging: true
+
+# Environment variable overrides (highest priority)
+# JETBOX_SECURITY_ENABLED=false - Emergency disable
+# JETBOX_DISABLE_SECURITY=1 - Same as above

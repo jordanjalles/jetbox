@@ -1,0 +1,13 @@
+I want you to deeply consider and ultrathink about how to bake the rule of two (will follow) into the jetbox agent framework:
+
+The "Agents Rule of Two" is a safety guideline for Large Language Model (LLM) agents that helps manage the risks of prompt injection attacks. It states that until robust safety solutions are available, an autonomous agent should be designed to satisfy no more than two of the following three properties within a single session: 
+[A] Process untrustworthy inputs: The agent can take in data from external, potentially malicious, sources (e.g., public emails, web pages).
+[B] Access sensitive systems or private data: The agent has access to confidential information or internal systems.
+[C] Change state or communicate externally: The agent can perform actions in the real world, such as sending emails, making reservations, or executing code. 
+The goal is to prevent a "lethal trifecta" where an attacker can exploit an agent that possesses all three properties simultaneously, which could lead to high-impact consequences like unauthorized access to data and malicious actions. 
+Implementation Examples
+By limiting an agent to only two properties, security is enhanced in different ways: 
+[BC] configuration (Trusted Inputs Only): The agent can access private data and communicate externally but is restricted to processing inputs only from trusted sources, which prevents the initial injection attack from reaching the agent's context window.
+[AC] configuration (No Sensitive Access): The agent can process untrusted inputs and communicate externally (e.g., browse the web) but operates in a sandbox with no access to sensitive data or systems. This minimizes the impact of a successful attack.
+[AB] configuration (Human-in-the-Loop for Actions): The agent can process untrusted inputs and access sensitive data, but any external actions or communication must be approved by a human or strictly limited to trusted recipients, preventing the completion of an attack chain. 
+If an application requires an agent to have all three capabilities, human supervision or another reliable validation method is needed to prevent autonomous malicious operation

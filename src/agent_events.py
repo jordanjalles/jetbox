@@ -64,6 +64,9 @@ class EventSystem:
                 elif hasattr(behavior, 'onGoalStart') and callable(behavior.onGoalStart):
                     behavior.onGoalStart(goal=goal, agent=self.agent)
             except Exception as e:
+                # Re-raise SecurityViolationError to stop agent
+                if e.__class__.__name__ == 'SecurityViolationError':
+                    raise
                 print(f"[{self.agent.name}] Behavior {behavior.get_name()} on_goal_start error: {e}")
 
     def inject_initial_context(self) -> None:

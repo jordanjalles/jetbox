@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Any
 
 from behaviors.base import AgentBehavior
+from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class ArchitectToolsBehavior(AgentBehavior):
@@ -29,7 +30,15 @@ class ArchitectToolsBehavior(AgentBehavior):
     Provides architecture artifact creation tools.
 
     Creates structured documentation in workspace/architecture/ directory.
+
+    Security: [C] EXTERNAL_ACTION only
+    - Writes architecture documentation files
+    - Does NOT read untrusted input (no [A])
+    - Does NOT access sensitive data (no [B])
     """
+
+    # Rule of Two: [C] only - writes architecture files
+    rule_of_two_properties = {RuleOfTwoProperty.EXTERNAL_ACTION}
 
     def __init__(
         self,
