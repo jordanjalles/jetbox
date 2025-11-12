@@ -23,7 +23,9 @@ from dataclasses import dataclass, field
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.task_executor_agent import TaskExecutorAgent
+# Use BaseAgent with config instead of wrapper classes
+from base_agent import BaseAgent
+from agent_config import PROJECT_ROOT
 
 
 @dataclass
@@ -266,13 +268,14 @@ class EvaluationSuite:
         agent_output = ""
 
         try:
-            # Create task executor
-            executor = TaskExecutorAgent(
+            # Create task executor using BaseAgent with config
+            config_file = PROJECT_ROOT / "config/agents/task_executor.yaml"
+            executor = BaseAgent(
+                name="task_executor",
                 workspace=workspace,
-                goal=task.goal,
-                max_rounds=task.timeout_rounds,
-                model=self.model
+                config_file=str(config_file)
             )
+            executor.set_goal(task.goal)
 
             # Note: We would normally run executor.run() here, but for testing
             # we'll just verify the setup works and manually check files

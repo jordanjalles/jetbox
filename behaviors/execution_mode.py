@@ -367,9 +367,13 @@ Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
                 if last_assistant_msg:
                     last_response = last_assistant_msg.get('content', '')
                     if self._detect_completion_signal(last_response):
+                        # Get goal for reminder
+                        goal = agent.goal if hasattr(agent, 'goal') else "your goal"
+
                         self.pending_nudge = (
-                            "🎯 It looks like you've completed the task. "
-                            "Please call mark_complete(summary) with a brief summary."
+                            f"ℹ️ Completion signal detected in your output. "
+                            f"Remember to use mark_complete(summary) if your goal \"{goal}\" is complete. "
+                            f"Otherwise, continue on the next step towards completing your goal."
                         )
 
         # Reset tool counter for next round
@@ -378,6 +382,9 @@ Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
     def _detect_completion_signal(self, text: str) -> bool:
         """
         Detect completion indicators in text.
+
+        Only triggers on completion signals that refer to the agent's OWN work,
+        not sub-agent delegation results or file contents.
 
         Args:
             text: Text to analyze
@@ -390,8 +397,38 @@ Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
             "implementation complete", "all done", "finished implementing",
             "tests pass", "linting clean", "all requirements met"
         ]
+
+        # Words that indicate completion signal is about sub-agent work or file contents
+        # If these appear near completion signal, ignore it
+        sub_context_indicators = [
+            "architect", "executor", "delegat", "consult",  # Sub-agent delegation
+            "read_file", "file contains", "documentation", "spec",  # File contents
+            "task delegated", "phase is complete", "delegation",
+            "summary:", "workspace:", "files created:",  # Delegation result format
+        ]
+
         text_lower = text.lower()
-        return any(phrase in text_lower for phrase in completion_phrases)
+
+        # Check each completion phrase
+        for phrase in completion_phrases:
+            if phrase in text_lower:
+                # Find position of completion phrase
+                phrase_pos = text_lower.find(phrase)
+
+                # Check 200 chars before and after for sub-context indicators
+                context_start = max(0, phrase_pos - 200)
+                context_end = min(len(text_lower), phrase_pos + 200)
+                context_window = text_lower[context_start:context_end]
+
+                # If any sub-context indicator appears near the completion phrase,
+                # this is probably referring to a sub-task, not the agent's own goal
+                if any(indicator in context_window for indicator in sub_context_indicators):
+                    continue  # Ignore this completion signal
+
+                # No sub-context indicators - this seems to be about the agent's own work
+                return True
+
+        return False
 
     # ============================================
     # Tools (Mode Activation + Completion)

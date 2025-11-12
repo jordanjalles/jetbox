@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-11T22:04:38.347105",
+  "timestamp": "2025-11-12T00:38:45.129908",
   "total_tasks": 4,
   "successful_tasks": 0,
   "results": [
@@ -7,7 +7,7 @@
       "task": "blog_system",
       "level": 5,
       "success": false,
-      "duration": 461.191969,
+      "duration": 352.092008,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -24,26 +24,26 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'blog'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_blog_system_mnnu7r80",
-      "stdout_lines": 128,
-      "stderr_lines": 33
+      "workspace": "/tmp/orch_L5_blog_system_2w9197ym",
+      "stdout_lines": 145,
+      "stderr_lines": 0
     },
     {
       "task": "todo_app",
       "level": 5,
       "success": false,
-      "duration": 899.981631,
+      "duration": 900.011089,
       "agent_success": false,
       "files_success": false,
       "validation_success": false,
       "timeout": true,
-      "workspace": "/tmp/orch_L5_todo_app_qke8rxn_"
+      "workspace": "/tmp/orch_L5_todo_app_rvag72c8"
     },
     {
       "task": "inventory_system",
       "level": 5,
       "success": false,
-      "duration": 530.670641,
+      "duration": 670.452733,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -60,20 +60,20 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'inventory'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_inventory_system_om707daw",
-      "stdout_lines": 385,
+      "workspace": "/tmp/orch_L5_inventory_system_c_gtjfom",
+      "stdout_lines": 250,
       "stderr_lines": 0
     },
     {
       "task": "url_shortener",
       "level": 5,
       "success": false,
-      "duration": 899.968869,
+      "duration": 900.02223,
       "agent_success": false,
       "files_success": false,
       "validation_success": false,
       "timeout": true,
-      "workspace": "/tmp/orch_L5_url_shortener_ecm64rpb"
+      "workspace": "/tmp/orch_L5_url_shortener_yqgon45h"
     }
   ]
 }
