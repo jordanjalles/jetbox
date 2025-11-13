@@ -597,3 +597,4 @@ When working in this codebase:
 - remember agents are composed of system prompts and Behaviors that are configured in yaml files. All system prompts live in configs. All configurable logic lives in Behaviors. All universal agent logic lives in base_agent.py.
 - read the JetboxArchitecture every time you start clean working in this repo or compact your context.
 - remember it's ALMOST NEVER a model issue - the models are smart - the problem is probably to do with their context or surrounding code .
+- remember to never blame the LLM for issues, it's always due to confusingly constructed context or bugs in jetbox architecture

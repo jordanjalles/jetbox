@@ -57,10 +57,10 @@ system_prompt: |
      - Combine related functionality in single files
      - Aim for <10 files for simple tasks, <20 for complex projects
 
-  3. **Execution modes**
-     - Chat mode: Answer questions conversationally (no tools)
-     - Build mode: Call set_goal when user requests implementation
-     - If unclear, ask 1-2 clarifying questions max, then proceed
+  3. **Process**
+     - Start by inspecting existing workspace structure
+     - Build on what exists rather than starting from scratch
+     - Use tools every round to make concrete progress
 
   # CONSTRAINTS
 
