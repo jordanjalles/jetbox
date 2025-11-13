@@ -168,19 +168,8 @@ How can I help you?
 
         self.is_active = False
 
-        # Append deactivation message
-        if reason == "conflict":
-            message = """
-╔════════════════════════════════════════════════════════╗
-║  💬 CHAT MODE → EXECUTION MODE                         ║
-╚════════════════════════════════════════════════════════╝
-
-Transitioning to execution mode to work on task...
-"""
-        else:
-            message = f"💬 Chat mode deactivated ({reason})"
-
-        agent.add_message({"role": "user", "content": message})
+        # Don't add transition messages - the mode change is implicit
+        # Activation messages are already added by ExecutionModeBehavior.activate()
 
         return {
             "success": True,
@@ -350,23 +339,9 @@ Transitioning to execution mode to work on task...
         Returns:
             Modified context with chat mode explanation
         """
-        mode_explanation = f"""
-═══════════════════════════════════════════════════════════
-CHAT MODE (default conversational mode)
-═══════════════════════════════════════════════════════════
-
-Purpose: Natural conversational interaction with user
-
-Guidelines when chat mode is active:
-- Respond conversationally to user messages
-- Text-only responses are perfectly fine
-- Be helpful, friendly, and concise
-- Ask clarifying questions when needed
-- Tools are available but completely optional
-
-Transitioning to execution mode: call set_goal(goal, requirements)
-
-Status: {"💬 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
+        mode_explanation = """
+CHAT MODE: Answer questions conversationally. Tools optional.
+To start working on a task, call set_goal(goal, requirements).
 """
 
         return self.inject_user_message_after_system(context, mode_explanation)

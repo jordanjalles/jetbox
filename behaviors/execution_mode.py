@@ -101,25 +101,8 @@ class ExecutionModeBehavior(AgentBehavior):
 
         self.is_active = True
 
-        # Append mode activation message to history
-        goal = agent.goal if hasattr(agent, 'goal') else "Unknown"
-        activation_message = f"""
-╔════════════════════════════════════════════════════════╗
-║  🔧 EXECUTION MODE ACTIVATED                           ║
-╚════════════════════════════════════════════════════════╝
-
-Goal: {goal}
-
-EXECUTION MODE REQUIREMENTS:
-- You MUST use tools to make progress
-- No text-only responses allowed
-- Make concrete progress each round
-- Call mark_complete() when done or mark_failed() if blocked
-
-Tools available: write_file, read_file, run_bash, list_dir, etc.
-
-Let's get to work!
-"""
+        # Append simple activation message to history
+        activation_message = "🔧 EXECUTION MODE: You must call at least one tool every round."
 
         agent.add_message({"role": "user", "content": activation_message})
 
@@ -222,24 +205,10 @@ Switching to another mode...
         Returns:
             Modified context with execution mode explanation
         """
-        mode_explanation = f"""
-═══════════════════════════════════════════════════════════
-EXECUTION MODE (activated when working on tasks)
-═══════════════════════════════════════════════════════════
-
-Purpose: Complete coding tasks using available tools
-
-Requirements when execution mode is active:
-- You MUST use tools to make progress (no text-only responses)
-- Write files, run commands, read outputs
-- Verify work (run tests, check linting)
-- Call mark_complete(summary) when task is done
-- Call mark_failed(reason) if blocked
-
-Tools available: write_file, read_file, list_dir, run_bash, etc.
-
-Activation: Automatically activated when set_goal() is called
-Status: {"🔧 ACTIVE" if self.is_active else "⏸️  INACTIVE"}
+        # Simplified explanation - just the essentials
+        mode_explanation = """
+EXECUTION MODE: You must call at least one tool every round to make progress.
+No text-only responses allowed when working on a task.
 """
 
         return self.inject_user_message_after_system(context, mode_explanation)

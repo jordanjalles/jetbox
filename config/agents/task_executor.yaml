@@ -101,10 +101,7 @@ behaviors:
       min_rounds_before_nudge: 3
       max_empty_rounds: 3
 
-  # Chatbot Mode
-  # NOTE: All agents now have core goal/completion functionality built into BaseAgent
-  # ChatbotBehavior provides interactive chat mode when no goal provided
-  - type: ChatbotBehavior
+  # Note: ChatbotBehavior removed - task_executor is execution-only (always has a goal)
 
   # Context Management
   # CompactWhenNearFullBehavior handles context compaction

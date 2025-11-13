@@ -283,9 +283,19 @@ class BaseAgent:
             *self.state.messages
         ]
 
-        # Inject goal context if goal is set (core agent functionality)
+        # Inject goal context if goal is set AND not already in state.messages
+        # (state.messages already contains GOAL from inject_initial_context,
+        #  unless set_goal was called mid-run via tool)
         if self.goal:
-            context = self._inject_goal_context(context)
+            # Check if GOAL message is already in state.messages
+            has_goal_message = any(
+                'GOAL:' in str(msg.get('content', '')) or 'DELEGATED GOAL:' in str(msg.get('content', ''))
+                for msg in self.state.messages
+            )
+
+            # Only inject if not already present
+            if not has_goal_message:
+                context = self._inject_goal_context(context)
 
         # NOTE: Context enhancement by behaviors is now handled by lifecycle events:
         # - on_initial_context() for first-time setup
