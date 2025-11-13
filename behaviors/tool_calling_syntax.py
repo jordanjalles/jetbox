@@ -10,7 +10,7 @@ Key features:
 - Supports multiple formats with fallback
 - Swappable syntax handlers
 
-Event: inject_initial_context() - Add format example after system prompt
+Event: on_initial_context() - Add format example after system prompt
 Event: on_llm_response() - Parse tool calls from content if not natively parsed
 """
 
@@ -78,7 +78,7 @@ class ToolCallingSyntaxBehavior(AgentBehavior):
             raise ValueError(f"Unknown syntax: {syntax}. Available: {list(handlers.keys())}")
         return handlers[syntax]
 
-    def inject_initial_context(self, context: list) -> list:
+    def on_initial_context(self, agent: Any, context: list) -> list:
         """Add format example after system prompt."""
         example = self.primary_syntax.get_example()
 
@@ -241,10 +241,9 @@ Examples:
         """
         Extract XML tool calls and convert to standard format.
 
-        Parses patterns like:
-        <invoke name="tool_name">
-          <parameter name="arg">value</parameter>
-        </invoke>
+        Parses two XML formats:
+        1. Anthropic style: <invoke name="tool_name"><parameter name="arg">value</parameter></invoke>
+        2. qwen3-coder style: <function=tool_name><parameter=arg>value</parameter></function>
 
         Args:
             content: LLM response content
@@ -254,16 +253,37 @@ Examples:
         """
         tool_calls = []
 
-        # Pattern: <invoke name="tool_name">..params..</invoke>
+        # Try Anthropic format first: <invoke name="tool_name">..params..</invoke>
         invoke_pattern = r'<invoke name="([^"]+)">(.*?)</invoke>'
-        param_pattern = r'<parameter name="([^"]+)">([^<]*)</parameter>'
+        param_named_pattern = r'<parameter name="([^"]+)">([^<]*)</parameter>'
 
         for tool_match in re.finditer(invoke_pattern, content, re.DOTALL):
             tool_name = tool_match.group(1)
             params_block = tool_match.group(2)
 
             arguments = {}
-            for param_match in re.finditer(param_pattern, params_block):
+            for param_match in re.finditer(param_named_pattern, params_block):
+                arg_name = param_match.group(1)
+                arg_value = param_match.group(2).strip()
+                arguments[arg_name] = arg_value
+
+            tool_calls.append({
+                "function": {
+                    "name": tool_name,
+                    "arguments": arguments
+                }
+            })
+
+        # Try qwen3-coder format: <function=tool_name>..params..</function>
+        function_pattern = r'<function=([^>]+)>(.*?)</function>'
+        param_equals_pattern = r'<parameter=([^>]+)>([^<]*)</parameter>'
+
+        for tool_match in re.finditer(function_pattern, content, re.DOTALL):
+            tool_name = tool_match.group(1)
+            params_block = tool_match.group(2)
+
+            arguments = {}
+            for param_match in re.finditer(param_equals_pattern, params_block):
                 arg_name = param_match.group(1)
                 arg_value = param_match.group(2).strip()
                 arguments[arg_name] = arg_value
