@@ -1,0 +1,271 @@
+{
+  "timestamp": "2025-11-13T01:12:14.390186",
+  "total_tasks": 12,
+  "successful_tasks": 3,
+  "results": [
+    {
+      "task": "bubble_sort",
+      "level": 3,
+      "success": false,
+      "duration": 195.030443,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "sorting.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from sorting import bubble_sort; assert bubble_sort([3,1,4,1,5,9,2,6])==[1,1,2,3,4,5,6,9]",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'sorting'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L3_bubble_sort_yqnaqm0z",
+      "stdout_lines": 139,
+      "stderr_lines": 0
+    },
+    {
+      "task": "binary_search",
+      "level": 3,
+      "success": true,
+      "duration": 164.024668,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "search.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from search import binary_search; assert binary_search([1,2,3,4,5], 3)==2; assert binary_search([1,2,3,4,5], 6)==-1",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L3_binary_search_qh1rn4r_",
+      "stdout_lines": 171,
+      "stderr_lines": 0
+    },
+    {
+      "task": "json_parser",
+      "level": 3,
+      "success": false,
+      "duration": 20.825664,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "json_utils.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from json_utils import save_json, load_json; save_json('test.json', {'name':'Alice'}); data=load_json('test.json'); assert data['name']=='Alice'",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'json_utils'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L3_json_parser_x5z6hh60",
+      "stdout_lines": 58,
+      "stderr_lines": 0
+    },
+    {
+      "task": "csv_processor",
+      "level": 3,
+      "success": true,
+      "duration": 173.639598,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "csv_utils.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from csv_utils import write_csv, read_csv; write_csv('test.csv', [['name','age'],['Alice','30']]); rows=read_csv('test.csv'); assert len(rows)==2",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L3_csv_processor_zrn1lyob",
+      "stdout_lines": 165,
+      "stderr_lines": 0
+    },
+    {
+      "task": "cache_decorator",
+      "level": 3,
+      "success": false,
+      "duration": 219.1924,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": false,
+      "files_created": [
+        "cache.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from cache import cache; @cache\ndef fib(n): return n if n<2 else fib(n-1)+fib(n-2)\nassert fib(10)==55",
+          "passed": false,
+          "output": "  File \"<string>\", line 1\n    from cache import cache; @cache\n                             ^\nSyntaxError: invalid syntax\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L3_cache_decorator_62c921pm",
+      "stdout_lines": 169,
+      "stderr_lines": 0
+    },
+    {
+      "task": "linked_list",
+      "level": 3,
+      "success": false,
+      "duration": 14.005134,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "linked_list.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from linked_list import LinkedList; ll=LinkedList(); ll.append(1); ll.append(2); ll.append(3); assert ll.to_list()==[1,2,3]; assert ll.contains(2)",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'linked_list'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L3_linked_list_2bui882a",
+      "stdout_lines": 59,
+      "stderr_lines": 0
+    },
+    {
+      "task": "rest_api_mock",
+      "level": 4,
+      "success": false,
+      "duration": 541.703936,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "api.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from api import app; assert app is not None",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'api'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L4_rest_api_mock_o7n4ozu9",
+      "stdout_lines": 298,
+      "stderr_lines": 0
+    },
+    {
+      "task": "sqlite_manager",
+      "level": 4,
+      "success": false,
+      "duration": 258.61409,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": false,
+      "files_created": [
+        "db.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from db import Database; db=Database(':memory:'); db.create_table('users', 'name TEXT, age INTEGER'); db.insert('users', {'name':'Alice','age':30}); rows=db.query('users'); assert len(rows)==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/tmp/orch_L4_sqlite_manager_zr8rntgz/db.py\", line 33, in create_table\n    columns_def = \", \".join([f\"{name} {type_}\" for name, type_ in columns.items()])\n                                                                  ^^^^^^^^^^^^^\nAttributeError: 'str' object has no attribute 'items'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L4_sqlite_manager_zr8rntgz",
+      "stdout_lines": 138,
+      "stderr_lines": 0
+    },
+    {
+      "task": "async_downloader",
+      "level": 4,
+      "success": true,
+      "duration": 273.982537,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "downloader.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from downloader import download_multiple; import asyncio; assert download_multiple is not None",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L4_async_downloader_qo1jhp4z",
+      "stdout_lines": 272,
+      "stderr_lines": 0
+    },
+    {
+      "task": "test_framework_basic",
+      "level": 4,
+      "success": false,
+      "duration": 335.006552,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": false,
+      "files_created": [
+        "test_framework.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from test_framework import TestRunner; runner=TestRunner(); assert hasattr(runner, 'run')",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nAssertionError\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L4_test_framework_basic_zct2esum",
+      "stdout_lines": 186,
+      "stderr_lines": 0
+    },
+    {
+      "task": "command_parser",
+      "level": 4,
+      "success": false,
+      "duration": 599.994402,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L4_command_parser_5xd3svap"
+    },
+    {
+      "task": "config_loader",
+      "level": 4,
+      "success": false,
+      "duration": 26.318918,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "config.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from config import Config; c=Config(); assert hasattr(c, 'load')",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'config'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L4_config_loader_hjt81rwk",
+      "stdout_lines": 61,
+      "stderr_lines": 0
+    }
+  ]
+}

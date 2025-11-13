@@ -168,5 +168,11 @@ behaviors:
   # Task executor loads these notes and can find/use the architecture artifacts
   - type: WorkspaceTaskNotesBehavior
 
+  # ContextInspectorBehavior captures context snapshots for debugging
+  - type: ContextInspectorBehavior
+    params:
+      output_dir: ".context_inspection"
+      save_full_context: true
+
   # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
   # Status display is being redesigned for the behavior system.

@@ -1,77 +1,30 @@
 {
-  "timestamp": "2025-11-12T23:45:27.793195",
-  "total_tasks": 5,
-  "successful_tasks": 0,
+  "timestamp": "2025-11-13T00:24:25.134496",
+  "total_tasks": 1,
+  "successful_tasks": 1,
   "results": [
     {
-      "task": "blog_system",
-      "level": 5,
-      "success": false,
-      "duration": 719.978141,
-      "agent_success": false,
-      "files_success": false,
-      "validation_success": false,
-      "timeout": true,
-      "workspace": "/tmp/orch_L5_blog_system_i00hrhrw"
-    },
-    {
-      "task": "todo_app",
-      "level": 5,
-      "success": false,
-      "duration": 720.005684,
-      "agent_success": false,
-      "files_success": false,
-      "validation_success": false,
-      "timeout": true,
-      "workspace": "/tmp/orch_L5_todo_app_qdpryie8"
-    },
-    {
-      "task": "inventory_system",
-      "level": 5,
-      "success": false,
-      "duration": 318.877408,
+      "task": "bubble_sort",
+      "level": 3,
+      "success": true,
+      "duration": 248.398803,
       "agent_success": true,
-      "files_success": false,
-      "validation_success": false,
+      "files_success": true,
+      "validation_success": true,
       "files_created": [
-        "inventory.py",
-        "product.py"
+        "sorting.py"
       ],
-      "files_missing": [
-        "alerts.py"
-      ],
+      "files_missing": [],
       "validation_results": [
         {
-          "command": "python -c from inventory import Inventory; inv=Inventory(); inv.add_product('Widget', 10, 2.5); assert len(inv.get_products())==1",
-          "passed": false,
-          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nTypeError: Inventory.add_product() takes 2 positional arguments but 4 were given\n"
+          "command": "python -c from sorting import bubble_sort; assert bubble_sort([3,1,4,1,5,9,2,6])==[1,1,2,3,4,5,6,9]",
+          "passed": true,
+          "output": ""
         }
       ],
-      "workspace": "/tmp/orch_L5_inventory_system_ra4vaddy",
-      "stdout_lines": 160,
+      "workspace": "/tmp/orch_L3_bubble_sort_os11boca",
+      "stdout_lines": 180,
       "stderr_lines": 0
-    },
-    {
-      "task": "url_shortener",
-      "level": 5,
-      "success": false,
-      "duration": 720.011296,
-      "agent_success": false,
-      "files_success": false,
-      "validation_success": false,
-      "timeout": true,
-      "workspace": "/tmp/orch_L5_url_shortener_7_7nlaxg"
-    },
-    {
-      "task": "email_validator_service",
-      "level": 5,
-      "success": false,
-      "duration": 720.04203,
-      "agent_success": false,
-      "files_success": false,
-      "validation_success": false,
-      "timeout": true,
-      "workspace": "/tmp/orch_L5_email_validator_service_mu3izubc"
     }
   ]
 }
