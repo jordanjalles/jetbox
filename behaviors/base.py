@@ -312,7 +312,7 @@ class AgentBehavior(ABC):
         self,
         agent: "BaseAgent",
         response: dict[str, Any]
-    ) -> None:
+    ) -> dict[str, Any]:
         """
         Called after LLM responds, before tool dispatch.
 
@@ -324,13 +324,17 @@ class AgentBehavior(ABC):
         - Detecting empty rounds (no tool_calls)
         - Logging LLM behavior
         - Tracking reasoning patterns
+        - Modifying/enriching response (e.g., parsing tool calls from content)
 
         Args:
             agent: Agent instance
             response: LLM response dict (contains 'content', 'tool_calls', etc.)
 
+        Returns:
+            Modified or unmodified response dict (MUST return response)
+
         Default Implementation:
-            Does nothing (no-op).
+            Returns response unchanged (no-op).
 
         Example:
             ```python
@@ -338,9 +342,10 @@ class AgentBehavior(ABC):
                 if not response.get('tool_calls'):
                     self.empty_round_count += 1
                     print(f"Empty round: LLM didn't call tools")
+                return response  # MUST return response!
             ```
         """
-        pass
+        return response
 
     def on_tool_call(
         self,
