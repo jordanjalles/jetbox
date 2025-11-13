@@ -531,6 +531,11 @@ class BaseAgent:
             # Reset timeout counter on successful LLM call
             self.consecutive_timeouts = 0
 
+            # Allow behaviors to post-process response (e.g., parse tool calls from XML)
+            for behavior in self.behaviors:
+                if hasattr(behavior, 'on_llm_response'):
+                    response = behavior.on_llm_response(self, response)
+
             return response
 
         except TimeoutError as e:

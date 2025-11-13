@@ -138,6 +138,13 @@ system_prompt: |
 # Adjust based on your model: 16K for larger models, 128K for Claude/GPT-4.
 
 behaviors:
+  # Tool Calling Syntax
+  # Manages tool calling format (JSON/XML) with examples and parsing
+  - type: ToolCallingSyntaxBehavior
+    params:
+      syntax: "json"  # Primary format
+      fallback_syntaxes: ["xml"]  # Try XML if JSON fails
+
   # Execution Mode
   # Manages execution mode activation, tool usage enforcement, and completion signals
   - type: ExecutionModeBehavior

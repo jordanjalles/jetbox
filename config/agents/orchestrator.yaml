@@ -109,6 +109,13 @@ system_prompt: |
   ```
 
 behaviors:
+  # Tool Calling Syntax
+  # Manages tool calling format (JSON/XML) with examples and parsing
+  - type: ToolCallingSyntaxBehavior
+    params:
+      syntax: "json"  # Primary format
+      fallback_syntaxes: ["xml"]  # Try XML if JSON fails
+
   # Execution Mode
   # Manages execution mode activation, tool usage enforcement, and completion signals
   - type: ExecutionModeBehavior

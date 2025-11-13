@@ -313,14 +313,32 @@ No text-only responses allowed when working on a task.
         if self.tools_called_this_round == 0:
             self.consecutive_empty_rounds += 1
 
-            if self.consecutive_empty_rounds >= self.max_empty_rounds:
+            # IMMEDIATE WARNING on first empty round
+            if self.consecutive_empty_rounds == 1:
                 self.pending_nudge = (
-                    f"⚠️ EXECUTION MODE VIOLATION: Empty round detected "
-                    f"({self.consecutive_empty_rounds} consecutive).\n\n"
-                    "You are in EXECUTION MODE. You MUST call tools to make progress.\n"
-                    "- If task is complete: call mark_complete(summary)\n"
-                    "- If blocked: call mark_failed(reason)\n"
-                    "- Otherwise: call write_file(), run_bash(), or other tools"
+                    "⚠️ EMPTY ROUND - NO TOOL CALLS DETECTED\n\n"
+                    "Problem: You didn't call any tools in your last response.\n\n"
+                    "You are in EXECUTION MODE. You MUST call tools to make progress.\n\n"
+                    "Available actions:\n"
+                    "- Task complete? Call mark_complete(summary)\n"
+                    "- Blocked? Call mark_failed(reason)\n"
+                    "- Need to work? Call write_file(), run_bash(), read_file(), list_dir(), etc.\n\n"
+                    "Review the available tools and call at least one."
+                )
+
+            # STRONGER WARNING after multiple empty rounds
+            elif self.consecutive_empty_rounds >= self.max_empty_rounds:
+                self.pending_nudge = (
+                    f"🚨 CRITICAL: {self.consecutive_empty_rounds} CONSECUTIVE EMPTY ROUNDS\n\n"
+                    "You have repeatedly failed to call tools despite being in EXECUTION MODE.\n\n"
+                    "This is a VIOLATION of execution mode requirements.\n\n"
+                    "You MUST:\n"
+                    "1. Review the available tools below\n"
+                    "2. Call at least one tool\n"
+                    "3. Make concrete progress\n\n"
+                    "If you cannot proceed:\n"
+                    "- Call mark_failed(reason) explaining why you're blocked\n"
+                    "- Or call mark_complete(summary) if work is actually done"
                 )
         else:
             self.consecutive_empty_rounds = 0
