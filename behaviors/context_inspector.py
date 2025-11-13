@@ -115,6 +115,13 @@ class ContextInspectorBehavior(AgentBehavior):
         # Store agent name for snapshot filenames
         self.agent_name = agent.name if hasattr(agent, 'name') else "unknown"
 
+        # Use workspace-relative directory if agent has workspace
+        if hasattr(agent, 'workspace') and agent.workspace:
+            from pathlib import Path
+            workspace_path = Path(agent.workspace) if not isinstance(agent.workspace, Path) else agent.workspace
+            self.output_dir = workspace_path / ".agent_context" / "context_snapshots"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+
         # Capture snapshot
         self._capture_snapshot(agent, context, round_number=0, phase="initial")
 
@@ -161,22 +168,39 @@ class ContextInspectorBehavior(AgentBehavior):
                 "timestamp": time.time(),
             }
 
-            # Capture LLM response if available
-            if hasattr(agent, 'last_response'):
-                response = agent.last_response
-                snapshot["response"] = {
-                    "content": response.get("content", "") if isinstance(response, dict) else "",
-                    "thinking": response.get("thinking", "") if isinstance(response, dict) else "",
-                    "role": response.get("role", "assistant") if isinstance(response, dict) else "assistant",
-                }
+            # Capture LLM response from message history
+            # The last assistant message in history is the LLM response
+            if hasattr(agent, 'messages') and agent.messages:
+                for msg in reversed(agent.messages):
+                    if msg.get('role') == 'assistant':
+                        content = msg.get("content", "")
+                        tool_calls = msg.get("tool_calls")
 
-                # Capture tool calls if present
-                if isinstance(response, dict) and "tool_calls" in response:
-                    snapshot["response"]["tool_calls"] = self._serialize_tool_calls(response["tool_calls"])
+                        snapshot["llm_response"] = {
+                            "content": content,
+                            "content_length": len(content),
+                            "tool_calls": self._serialize_tool_calls(tool_calls) if tool_calls else None,
+                            "tool_call_count": len(tool_calls) if tool_calls else 0,
+                            "is_empty": not content and not tool_calls
+                        }
+                        break
 
-            # Capture tools that were actually called
-            if hasattr(agent, 'last_tools_executed'):
-                snapshot["tools_executed"] = agent.last_tools_executed
+            # Also capture raw tool results from this round
+            tool_results = []
+            if hasattr(agent, 'messages') and agent.messages:
+                # Look for tool messages added this round
+                for msg in reversed(agent.messages):
+                    if msg.get('role') == 'tool':
+                        tool_results.append({
+                            "name": msg.get("name"),
+                            "content": msg.get("content", "")[:500]  # Truncate for readability
+                        })
+                    elif msg.get('role') == 'assistant':
+                        # Stop when we hit the assistant message (before tools)
+                        break
+
+            if tool_results:
+                snapshot["tool_results"] = list(reversed(tool_results))
 
             # Save to file
             filename = f"{self.agent_name}_round_{round_number:03d}_post_llm.json"
