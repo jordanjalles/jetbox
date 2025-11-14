@@ -130,8 +130,8 @@ behaviors:
   # TimeBoxBehavior provides temporal awareness with automatic nudges
   - type: TimeBoxBehavior
     params:
-      total_budget_minutes: 60  # 1 hour default for solo tasks
-      default_nudges: [25, 50, 75]
+      total_budget_minutes: 15  # Match typical delegation timeout
+      default_nudges: [20, 40, 60, 80]  # More frequent nudges for tighter timeboxes
 
   # LoopDetectionBehavior detects repeated actions (infinite loops)
   - type: LoopDetectionBehavior
