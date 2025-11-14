@@ -367,6 +367,13 @@ class AgentLifecycle:
             # Dispatch tool
             result = self.agent.dispatch_tool(tool_call)
 
+            # Check for parameter validation error
+            if result.get("status") == "parameter_error":
+                print(f"[{self.agent.name}] Parameter validation failed:")
+                print(f"  Tool: {result.get('tool_name')}")
+                print(f"  Invalid params: {result.get('invalid_params')}")
+                # Continue execution - LLM will see error message and retry
+
             # Add tool result to messages
             tool_result_str = json.dumps(result)
             tool_message = {
