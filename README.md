@@ -76,11 +76,11 @@ behaviors:
   - type: ExecutionModeBehavior
     params: {}
 
-  # Context management
+  # Context management (max_tokens comes from llm_config.yaml)
   - type: CompactWhenNearFullBehavior
     params:
-      max_tokens: 131072
-      compact_threshold: 0.75
+      compact_threshold: 0.75  # Compact at 75% of model's context window
+      keep_recent: 5           # Keep last 5 messages intact
 
   # Tools
   - type: WriteFileToolsBehavior
@@ -402,8 +402,6 @@ behaviors:
       whitelist: ["python", "psql", "mysql"]
   - type: ExecutionModeBehavior
   - type: CompactWhenNearFullBehavior
-    params:
-      max_tokens: 131072
 ```
 
 **2. Register in team:**
@@ -625,8 +623,6 @@ system_prompt: |
 behaviors:
   - type: ExecutionModeBehavior
   - type: CompactWhenNearFullBehavior
-    params:
-      max_tokens: 131072
   - type: WriteFileToolsBehavior
   - type: ReadFileToolsBehavior
   - type: DirectoryToolsBehavior
@@ -714,12 +710,14 @@ behaviors:
 
 **Symptom:** Error about context length
 
-**Fix:** Adjust compaction in `config/behavior_defaults.yaml`:
+**Fix:** Ensure `max_tokens` is set correctly in `config/llm_config.yaml`:
 
 ```yaml
-CompactWhenNearFullBehavior:
-  max_tokens: 131072      # Match model's context window
-  compact_threshold: 0.75 # Compact at 75%
+# config/llm_config.yaml
+max_tokens: 131072  # 128K - must match model's context window
+
+# CompactWhenNearFullBehavior reads max_tokens from llm_config at runtime
+# and compacts at 75% threshold by default
 ```
 
 ## Design Philosophy
