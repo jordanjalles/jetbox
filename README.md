@@ -1,142 +1,201 @@
 # Jetbox - Local-First Coding Agent Framework
 
-A composable agent framework for autonomous code generation powered by local LLMs via Ollama. Built for Windows but runs anywhere.
+A composable agent framework for autonomous code generation powered by local LLMs via Ollama. Built for speed, autonomy, and total on-device control.
 
-**JetBox — a local agent framework built for speed, autonomy, and total on-device control. Makes your fan scream like a jet at takeoff.**
+**JetBox — a local agent framework that makes your fan scream like a jet at takeoff. 🚀**
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 pip install -e .
 
-# Pull the default model (qwen3-coder:30b - ~17GB)
-ollama pull qwen3-coder:30b
+# 2. Pull the default model (~9GB)
+ollama pull qwen3:14b
 
-# Run a simple task with solo agent (TaskExecutor)
+# 3. Run your first task
 python agent.py --team solo "Create a calculator package with add/subtract/multiply/divide"
 
-# Run a complex task with default team (Orchestrator → TaskExecutor)
-python agent.py --team default "Create a Flask REST API for managing books with SQLite storage"
-
-# Chat mode (interactive)
+# 4. Or start interactive chat
 python agent.py --team chatbot
 ```
 
+That's it! The agent will create an isolated workspace, write code, run tests, and mark the task complete.
+
+## Why Jetbox?
+
+### 🏗️ Composable Architecture
+Build custom agents by mixing and matching behaviors in YAML. No code changes needed.
+
+### 🔧 Behavior-Driven Design
+Every capability is a self-contained behavior. Add, remove, or create behaviors without touching core code.
+
+### 📝 Configuration Over Code
+Change agent behavior, tools, prompts, and strategies via YAML files. Iterate fast.
+
+### 🌐 Local-First
+All processing via Ollama. No API keys, no cloud services, no data leaving your machine.
+
+### 🔄 Crash-Resilient
+Expects interruption. All state persisted to plaintext files. Resume from where you left off.
+
+### 👁️ Human-Inspectable
+No databases. Everything is files you can read with `cat` or open in an editor.
+
 ## Core Concepts
 
-### 1. Agent Types by Task Size
+### 1. Teams: Different Configurations for Different Tasks
 
-Jetbox provides different agent modes optimized for different task complexities:
+Jetbox provides pre-configured teams optimized for different complexities:
 
-| Agent Mode | Best For | Max Rounds | Workspace | Example |
-|------------|----------|------------|-----------|---------|
-| **Solo Agent** | Simple packages, utilities | 50 | Single isolated dir | "Create string utils package" |
-| **Orchestrator + TaskExecutor** | Full applications, APIs | 50 (orchestrator) + 50 (executor) | Project structure | "Create Flask API with auth" |
-| **Orchestrator + Multi-Executor** | Complex systems | 50 + N×50 | Multi-module projects | "Create microservices system" |
+```bash
+# Solo: Simple tasks, single agent
+python agent.py --team solo "Create string utils package"
 
-**When to use which:**
+# Default: Complex tasks, multi-agent coordination
+python agent.py --team default "Create Flask API with auth"
 
-- **Solo Agent** (`--team solo`): Simple tasks
-  - Single package/module
-  - < 10 files
-  - Clear, focused goal
-  - Examples: validators package, data structures, file utils
+# Chatbot: Interactive requirements gathering
+python agent.py --team chatbot
+```
 
-- **Default Team** (`--team default`): Moderate to complex tasks
-  - Full applications with multiple modules
-  - 10+ files
-  - Architecture planning helpful
-  - Examples: REST APIs, web apps with auth, CLI tools
+| Team | Agents | Best For |
+|------|--------|----------|
+| **solo** | TaskExecutor only | Simple packages, utilities, < 10 files |
+| **default** | Orchestrator → Architect + TaskExecutor | Full applications, APIs, 10+ files |
+| **chatbot** | Interactive mode | Requirements gathering, Q&A |
 
-- **Chatbot** (`--team chatbot`): Interactive mode
-  - Requirements gathering
-  - Question answering
-  - Exploratory conversations
-  - Can transition to task execution via `set_goal`
+### 2. Behaviors: Self-Contained Capability Modules
 
-### 2. Behavior-Based Composition
-
-All agent capabilities are provided by **composable behaviors**. Mix and match behaviors to create custom agents:
+Every agent capability comes from composable behaviors:
 
 ```yaml
-# task_executor_config.yaml
+# config/agents/task_executor.yaml
 behaviors:
-  # Core execution
-  - type: SubAgentModeBehavior
-    params:
-      enable_completion_nudging: true
-      min_rounds_before_nudge: 3
+  # Execution control
+  - type: ExecutionModeBehavior
+    params: {}
 
   # Context management
   - type: CompactWhenNearFullBehavior
     params:
-      max_tokens: 96000
+      max_tokens: 131072
+      compact_threshold: 0.75
 
   # Tools
-  - type: FileToolsBehavior
+  - type: WriteFileToolsBehavior
+  - type: ReadFileToolsBehavior
+  - type: DirectoryToolsBehavior
   - type: CommandToolsBehavior
     params:
       whitelist: ["python", "pytest", "ruff", "pip"]
 
   # Utilities
   - type: LoopDetectionBehavior
-    params:
-      max_repeats: 5
   - type: WorkspaceTaskNotesBehavior
 ```
 
-**Key behaviors:**
+**Each behavior is independent:**
+- Provides tools (e.g., `write_file`, `run_bash`)
+- Modifies context (e.g., inject completion nudges)
+- Reacts to events (e.g., on round end, on goal complete)
+- **Never imports other behaviors** (zero coupling)
 
-- **SubAgentModeBehavior**: Provides `mark_complete`/`mark_failed` tools, completion nudging
-- **CompactWhenNearFullBehavior**: Automatic context management when nearing token limit
-- **FileToolsBehavior**: `write_file`, `read_file`, `list_dir`
-- **CommandToolsBehavior**: `run_bash` with command whitelist
-- **LoopDetectionBehavior**: Detects repeated actions, injects recovery prompts
-- **WorkspaceTaskNotesBehavior**: Persistent summaries across runs
-- **DelegationBehavior**: Task delegation (orchestrator only)
-- **ArchitectToolsBehavior**: Architecture design artifacts (architect only)
+### 3. Configuration-Driven: YAML All the Way
 
-### 3. Configuration-Driven Architecture
+Change everything via config files:
 
-Configure agent behavior without code changes:
-
-```yaml
-# agent_config.yaml
-llm:
-  model: "qwen3-coder:30b"  # Default model: code-specialized, 128K context
-  temperature: 0.2
-  timeout:
-    inactivity_timeout: 30  # Max seconds without LLM activity
-    max_total_time: null    # No limit on total call time
-
-behavior_defaults:
-  CompactWhenNearFullBehavior:
-    max_tokens: 96000  # 75% of 128K context window
-
-rounds:
-  max_per_subtask: 50
-  max_global: 256
+```
+config/
+├── llm_config.yaml           # Model, temperature, timeouts
+├── agent_runtime.yaml        # Round limits, escalation strategy
+├── behavior_defaults.yaml    # Default behavior parameters
+├── agents/
+│   ├── orchestrator.yaml     # Orchestrator config + system prompt
+│   ├── architect.yaml        # Architect config + system prompt
+│   └── task_executor.yaml    # TaskExecutor config + system prompt
+└── teams/
+    ├── default.yaml          # Multi-agent team
+    ├── solo.yaml             # Single agent
+    └── chatbot.yaml          # Interactive mode
 ```
 
-## Usage Patterns
+**No code changes to:**
+- Switch models
+- Adjust timeouts
+- Add/remove tools
+- Change system prompts
+- Create new agent types
 
-### Pattern 1: Simple Task (Solo Agent)
+## Installation
+
+### Prerequisites
+
+- Python 3.11+
+- [Ollama](https://ollama.ai/) installed
+- 8GB+ RAM (16GB recommended)
+- 10GB+ disk space for models
+
+### Install
 
 ```bash
-python agent.py --team solo "Create a validators package with email, url, phone validation"
+# Clone repository
+git clone <repository-url>
+cd jetbox
+
+# Install in development mode
+pip install -e .
+
+# Pull default model
+ollama pull qwen3:14b
+
+# Verify installation
+python agent.py --team solo "Create a hello.py file"
+```
+
+### Optional: Pull Alternative Models
+
+```bash
+# Smaller model (resource-constrained systems)
+ollama pull qwen3:8b
+
+# Alternative general-purpose model
+ollama pull gpt-oss:20b
+```
+
+## Usage
+
+### Simple Tasks (Solo Agent)
+
+For simple packages, utilities, or scripts:
+
+```bash
+python agent.py --team solo "Create a validators package with email and URL validation"
 ```
 
 **What happens:**
-1. TaskExecutor starts with goal
-2. Creates isolated workspace (`.agent_workspaces/create-a-validators-package-with-email-url`)
-3. Executes for up to 50 rounds
-4. Writes files, runs tests, calls `mark_complete` when done
-5. Returns summary
+1. Creates isolated workspace: `.agent_workspaces/create-a-validators-package/`
+2. Writes files, runs tests, checks linting
+3. Calls `mark_complete()` when done
+4. Saves summary to `workspace_task_notes.md`
 
-**Use when:** Single-purpose packages, utilities, simple scripts
+**Output:**
+```
+.agent_workspaces/create-a-validators-package/
+├── validators/
+│   ├── __init__.py
+│   ├── email.py
+│   └── url.py
+├── tests/
+│   ├── test_email.py
+│   └── test_url.py
+├── README.md
+└── workspace_task_notes.md  # Persistent context
+```
 
-### Pattern 2: Complex Task (Default Team - Orchestrator)
+### Complex Tasks (Default Team)
+
+For full applications requiring architecture planning:
 
 ```bash
 python agent.py --team default "Create a Flask REST API for managing books with CRUD endpoints and SQLite storage"
@@ -144,168 +203,325 @@ python agent.py --team default "Create a Flask REST API for managing books with 
 
 **What happens:**
 1. Orchestrator analyzes goal
-2. Delegates to TaskExecutor with detailed requirements
-3. TaskExecutor creates files, runs tests, verifies linting
-4. TaskExecutor marks subtask complete
-5. Orchestrator marks overall goal complete
+2. Delegates to Architect for design
+   - Creates `architecture.md`
+   - Creates `task-breakdown.json`
+3. Delegates to TaskExecutor for implementation
+   - Writes application files
+   - Runs tests and linting
+4. Returns results to Orchestrator
+5. Marks goal complete
 
-**Use when:** Full applications, APIs, multi-module systems
+**Output:**
+```
+.agent_workspaces/create-a-flask-rest-api/
+├── app/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── routes.py
+│   └── database.py
+├── tests/
+│   └── test_api.py
+├── architecture/
+│   ├── architecture.md
+│   └── task-breakdown.json
+├── requirements.txt
+└── workspace_task_notes.md
+```
 
-### Pattern 3: Resume Interrupted Work
+### Interactive Mode
+
+For requirements gathering or Q&A:
 
 ```bash
-# Original run (interrupted)
-python orchestrator_main.py "Create calculator with scientific functions"
+python agent.py --team chatbot
+```
+
+Then transition to execution:
+```
+You: I need a web scraper
+Agent: What URL do you want to scrape? What data are you looking for?
+You: set_goal Create a web scraper for news articles from example.com
+Agent: [Switches to execution mode, creates scraper]
+```
+
+### Resume Interrupted Work
+
+All work is resumable:
+
+```bash
+# Original run (interrupted by timeout or error)
+python agent.py "Create calculator with scientific functions"
 
 # Resume from same workspace
-python orchestrator_main.py --workspace .agent_workspaces/create-calculator-with-scientific "Continue work"
+python agent.py --workspace .agent_workspaces/create-calculator "Continue work"
 ```
 
-**What happens:**
-- Loads `workspace_task_notes.md` with previous progress
-- Agent sees what was already done
-- Continues from where it left off
-- No duplicate work
+The agent loads `workspace_task_notes.md` and continues from where it left off.
 
-### Pattern 4: Custom Agent Configuration
+### Override Model
 
-```python
-from task_executor_agent import TaskExecutorAgent
+```bash
+# Temporary override via environment variable
+OLLAMA_MODEL=gpt-oss:20b python agent.py "Your goal"
 
-agent = TaskExecutorAgent(
-    workspace=".",
-    goal="Create custom package",
-    use_behaviors=True,
-    config_file="my_custom_config.yaml"
-)
-
-result = agent.execute()
+# Permanent override: edit config/llm_config.yaml
+# model: "gpt-oss:20b"
 ```
 
-**Use when:** Need custom behavior composition, specialized workflows
+## Extending Jetbox
 
-## Extending the Framework
+### Creating a Custom Behavior
 
-### Adding a New Behavior
+Behaviors are self-contained modules that provide tools, modify context, or react to events.
+
+**Example: Add a custom notification tool**
 
 ```python
-# behaviors/my_behavior.py
+# behaviors/notification_behavior.py
 from typing import Any
 from behaviors.base import AgentBehavior
 
-class MyCustomBehavior(AgentBehavior):
+class NotificationBehavior(AgentBehavior):
+    """Sends notifications when tasks complete."""
+
     def get_name(self) -> str:
-        return "my_custom"
+        return "notification"
+
+    def get_sequence_number(self) -> int:
+        """Controls execution order (higher = runs later)."""
+        return 50
 
     def get_tools(self) -> list[dict[str, Any]]:
+        """Define tools this behavior provides."""
         return [{
             "type": "function",
             "function": {
-                "name": "my_tool",
-                "description": "Does something custom",
+                "name": "send_notification",
+                "description": "Send a notification message",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "arg": {"type": "string"}
-                    }
+                        "message": {
+                            "type": "string",
+                            "description": "Notification message"
+                        },
+                        "priority": {
+                            "type": "string",
+                            "enum": ["low", "normal", "high"],
+                            "description": "Notification priority"
+                        }
+                    },
+                    "required": ["message"]
                 }
             }
         }]
 
     def dispatch_tool(self, tool_name: str, args: dict[str, Any], **kwargs):
-        if tool_name == "my_tool":
-            # Implement tool logic
-            return {"result": f"Processed: {args['arg']}"}
+        """Handle tool calls."""
+        if tool_name == "send_notification":
+            message = args["message"]
+            priority = args.get("priority", "normal")
+
+            # Your notification logic here
+            print(f"[{priority.upper()}] {message}")
+
+            return {"success": True, "sent": message}
+
         return super().dispatch_tool(tool_name, args, **kwargs)
 
-    def enhance_context(self, context: list[dict[str, Any]], **kwargs):
-        # Modify context before LLM call
-        return context
-
-    def on_round_end(self, round_number: int, **kwargs):
-        # Hook into agent lifecycle
-        pass
+    def on_goal_complete(self, agent: Any, success: bool, summary: str):
+        """React to goal completion event."""
+        if success:
+            print(f"✅ Task completed: {summary}")
 ```
 
-**Then add to config:**
+**Register in config:**
 
 ```yaml
-# my_agent_config.yaml
+# config/agents/my_agent.yaml
 behaviors:
-  - type: MyCustomBehavior
-    params:
-      custom_param: value
+  - type: NotificationBehavior
+    params: {}
 ```
+
+**Behavior lifecycle events:**
+
+```python
+def on_goal_start(self, agent, goal):
+    """Called once at goal start"""
+
+def on_initial_context(self, agent, context):
+    """Called once for initial setup"""
+
+def on_round_start(self, agent, round_number, context):
+    """Called before each LLM call - can modify context"""
+
+def on_llm_response(self, agent, response):
+    """Called after LLM responds"""
+
+def on_tool_call(self, agent, tool_name, args, result):
+    """Called after each tool execution"""
+
+def on_round_end(self, agent, round_number):
+    """Called after all tools in round"""
+
+def on_goal_complete(self, agent, success, summary):
+    """Called when goal finishes"""
+
+def on_timeout(self, agent, elapsed):
+    """Called when time budget exceeded"""
+
+def on_custom_event(self, agent, event_name, **event_data):
+    """Called for inter-behavior communication"""
+```
+
+See [BEHAVIORS_DOCUMENTATION.md](BEHAVIORS_DOCUMENTATION.md) for complete API reference.
 
 ### Creating a Custom Agent
 
+Agents are just `BaseAgent` + YAML configuration. Create new agents without subclassing:
+
+**1. Create agent config:**
+
+```yaml
+# config/agents/my_specialist.yaml
+system_prompt: |
+  You are a specialist for database migrations.
+
+  Focus on:
+  - Safe schema changes
+  - Data preservation
+  - Rollback strategies
+
+behaviors:
+  - type: WriteFileToolsBehavior
+  - type: ReadFileToolsBehavior
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "psql", "mysql"]
+  - type: ExecutionModeBehavior
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 131072
+```
+
+**2. Register in team:**
+
+```yaml
+# config/teams/migration_team.yaml
+agents:
+  orchestrator:
+    class: BaseAgent
+    config: orchestrator
+    can_delegate_to: [my_specialist]
+
+  my_specialist:
+    class: BaseAgent
+    config: my_specialist
+    can_delegate_to: []
+```
+
+**3. Use it:**
+
+```bash
+python agent.py --team migration_team "Migrate users table to add email verification"
+```
+
+**That's it!** No Python code needed. The framework dynamically loads your config.
+
+### Adding Custom Tools to Existing Behaviors
+
+Extend behaviors via parameter passing:
+
+```yaml
+# config/agents/my_agent.yaml
+behaviors:
+  - type: CommandToolsBehavior
+    params:
+      whitelist:
+        - python
+        - pytest
+        - ruff
+        - docker      # Add docker
+        - kubectl     # Add kubectl
+```
+
+Or create behavior variants:
+
 ```python
-# my_agent.py
-from base_agent import BaseAgent
+# behaviors/docker_tools_behavior.py
+from behaviors.command_tools_behavior import CommandToolsBehavior
 
-class MyAgent(BaseAgent):
-    def __init__(self, workspace: str, goal: str, **kwargs):
-        super().__init__(
-            workspace=workspace,
-            use_behaviors=True,
-            config_file="my_agent_config.yaml"
-        )
-        self.goal = goal
+class DockerToolsBehavior(CommandToolsBehavior):
+    """Variant with Docker commands pre-whitelisted."""
 
-    def execute(self):
-        # Custom execution logic
-        self.fire_event("goal_start", goal=self.goal)
-
-        for round_num in range(1, self.max_rounds + 1):
-            context = self.build_context()
-            response = self.call_llm(context)
-            results = self.execute_tool_calls(response.tool_calls)
-
-            self.fire_event("round_end", round_number=round_num)
-
-            if self.check_completion(results):
-                break
-
-        self.fire_event("goal_complete", success=True)
+    def __init__(self):
+        super().__init__(whitelist=[
+            "docker", "docker-compose",
+            "docker build", "docker run", "docker ps"
+        ])
 ```
 
 ## Architecture Deep Dive
 
-### Agent Hierarchy
+### Agent Lifecycle
 
 ```
-Orchestrator (orchestrator_agent.py)
-├─ Behaviors:
-│  ├─ DelegationBehavior (delegate_task tool)
-│  ├─ HierarchicalContextBehavior
-│  └─ LoopDetectionBehavior
-│
-├─ Delegates to Architect (architect_agent.py)
-│  └─ Behaviors:
-│     ├─ ArchitectToolsBehavior (write_task_list, write_architecture_doc)
-│     ├─ ArchitectContextBehavior
-│     └─ SubAgentModeBehavior
-│
-└─ Delegates to TaskExecutor (task_executor_agent.py)
-   └─ Behaviors:
-      ├─ SubAgentModeBehavior (mark_complete, completion nudging)
-      ├─ FileToolsBehavior
-      ├─ CommandToolsBehavior
-      ├─ ServerToolsBehavior
-      ├─ WorkspaceTaskNotesBehavior
-      └─ LoopDetectionBehavior
+┌─────────────────────────────────────────────┐
+│           Agent Execution Flow              │
+└─────────────────────────────────────────────┘
+
+1. Goal Start
+   └─> on_goal_start() event to all behaviors
+
+2. Initial Context
+   └─> on_initial_context() event
+
+3. Main Loop (for each round):
+   ├─> Build context (system prompt + messages)
+   ├─> on_round_start() → behaviors can modify context
+   ├─> Call LLM with context
+   ├─> on_llm_response() → behaviors can parse response
+   ├─> Execute tool calls
+   │   └─> on_tool_call() for each tool
+   └─> on_round_end()
+
+4. Completion
+   └─> on_goal_complete() or on_timeout()
 ```
 
-### Context Management Strategies
+### Team Architecture
 
-Different behaviors provide different context management:
+```
+Default Team (config/teams/default.yaml):
 
-| Behavior | Strategy | When to Use |
-|----------|----------|-------------|
-| **CompactWhenNearFullBehavior** | Append until 75% full, then LLM-compact | General purpose, moderate tasks |
-| **HierarchicalContextBehavior** | Keep last N exchanges, clear on subtask | Orchestrator with task switching |
-| **SubAgentContextBehavior** | Append all messages, 128K limit | Delegated execution, needs full history |
-| **ArchitectContextBehavior** | Optimized for long design discussions | Architecture planning phase |
+┌──────────────────────────────────────┐
+│      Orchestrator (BaseAgent)        │
+│                                      │
+│  Behaviors:                          │
+│  - DelegationBehavior (auto)         │
+│  - CompactWhenNearFullBehavior       │
+│  - TimeBoxBehavior                   │
+│  - StatusDisplayBehavior             │
+└─────────┬────────────────────────────┘
+          │
+          ├──► consult_architect()
+          │    └─> Architect (BaseAgent)
+          │        - ArchitectToolsBehavior
+          │        - Creates architecture.md
+          │        - Creates task-breakdown.json
+          │
+          └──► delegate_to_task_executor()
+               └─> TaskExecutor (BaseAgent)
+                   - WriteFileToolsBehavior
+                   - ReadFileToolsBehavior
+                   - CommandToolsBehavior
+                   - LoopDetectionBehavior
+                   - WorkspaceTaskNotesBehavior
+```
+
+**Key insight:** All agents are `BaseAgent` instances. No subclassing. Everything configured via YAML.
 
 ### Workspace Isolation
 
@@ -313,181 +529,216 @@ Each goal gets an isolated workspace:
 
 ```
 .agent_workspaces/
-├─ create-calculator-package/
-│  ├─ calculator/
-│  │  ├─ __init__.py
-│  │  └─ operations.py
-│  ├─ tests/
-│  │  └─ test_calculator.py
-│  └─ workspace_task_notes.md  # Persistent context
+├── create-calculator-package/
+│   ├── calculator/
+│   │   ├── __init__.py
+│   │   └── operations.py
+│   ├── tests/
+│   │   └── test_calculator.py
+│   ├── .agent_context/
+│   │   ├── state.json          # Agent state
+│   │   ├── history.jsonl       # Action log
+│   │   └── stats.json          # Performance
+│   └── workspace_task_notes.md # Persistent context
 │
-└─ create-flask-api-for-books/
-   ├─ app.py
-   ├─ models.py
-   ├─ routes.py
-   ├─ tests/
-   └─ workspace_task_notes.md
+└── create-flask-api/
+    ├── app/
+    ├── tests/
+    └── workspace_task_notes.md
 ```
 
 **Benefits:**
-- No context pollution from other projects
-- Clean slate for each goal
-- Easy to resume work
-- Human-inspectable output
+- No cross-project pollution
+- Clean slate per goal
+- Resumable from any workspace
+- Human-readable state
 
-## Performance Characteristics
+### Behavior Composition
 
-Based on evaluation across 40 tasks (L3-L6 complexity):
+Behaviors communicate through events, not direct imports:
 
-| Metric | qwen3-coder:30b (Default) | Notes |
-|--------|-------------------|-------|
-| **Success Rate** | TBD | Code-specialized model, maximum capability |
-| **Context Window** | 128K tokens | Sufficient for complex workflows |
-| **Model Size** | ~17GB | Largest qwen3-coder variant |
-| **Specialization** | Code-focused | Fine-tuned specifically for programming tasks |
+```python
+# BAD: Direct coupling
+class BehaviorA:
+    def __init__(self):
+        self.behavior_b = BehaviorB()  # ❌ Tight coupling
 
-**Task complexity vs success rate:**
-- L3 (simple packages): 20% → 40-50% (after fixes)
-- L4 (moderate packages): 40% → 60-70%
-- L5 (REST APIs): 60% → 70-80%
-- L6 (Full apps): 80% → 90-95%
-- L7 (Complex systems): 100% (1/1)
+# GOOD: Event-driven communication
+class BehaviorA(AgentBehavior):
+    def on_round_end(self, agent, round_number):
+        # Broadcast event to all behaviors
+        agent.event_system.fire_custom_event(
+            "round_complete",
+            round=round_number,
+            status="success"
+        )
 
-**Key finding:** qwen3-coder models are specifically fine-tuned for code generation, offering better performance on programming tasks compared to general-purpose models.
+class BehaviorB(AgentBehavior):
+    def on_custom_event(self, agent, event_name, **event_data):
+        if event_name == "round_complete":
+            # React to event from BehaviorA
+            print(f"Round {event_data['round']} complete!")
+```
+
+**Zero coupling:** Add, remove, or replace behaviors without affecting others.
+
+## Configuration Reference
+
+### Key Configuration Files
+
+| File | Purpose | Example |
+|------|---------|---------|
+| `config/llm_config.yaml` | Model selection, timeouts | `model: "qwen3:14b"` |
+| `config/agent_runtime.yaml` | Round limits, escalation | `max_per_subtask: 50` |
+| `config/behavior_defaults.yaml` | Behavior parameters | `max_tokens: 131072` |
+| `config/agents/{name}.yaml` | Agent configuration | Behaviors + system prompt |
+| `config/teams/{name}.yaml` | Team composition | Agent relationships |
+
+### Example: LLM Configuration
+
+```yaml
+# config/llm_config.yaml
+model: "qwen3:14b"
+temperature: 0.2
+max_tokens: 131072  # 128K context window
+
+timeout:
+  inactivity_timeout: 30      # Max seconds without LLM activity
+  max_call_time: 180          # Max seconds per LLM call
+  max_consecutive_timeouts: 3 # Circuit breaker threshold
+  auto_restart_ollama: true   # Auto-restart Ollama on failures
+```
+
+### Example: Agent Configuration
+
+```yaml
+# config/agents/task_executor.yaml
+system_prompt: |
+  You are a coding agent that implements software.
+
+  Process:
+  1. Read any existing files/architecture
+  2. Write implementation files
+  3. Run tests and linting
+  4. Call mark_complete() when done
+
+behaviors:
+  - type: ExecutionModeBehavior
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 131072
+  - type: WriteFileToolsBehavior
+  - type: ReadFileToolsBehavior
+  - type: DirectoryToolsBehavior
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "pytest", "ruff", "pip"]
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 5
+  - type: WorkspaceTaskNotesBehavior
+```
+
+See [CONFIG_SYSTEM.md](CONFIG_SYSTEM.md) for complete reference.
 
 ## Command Reference
 
-### Main Entry Point
-
 ```bash
-# Run with default settings
-python orchestrator_main.py "Your goal here"
+# Basic usage
+python agent.py --team TEAM "Your goal here"
+
+# Available teams
+--team solo              # Single agent (TaskExecutor)
+--team default           # Multi-agent (Orchestrator → Architect + TaskExecutor)
+--team chatbot           # Interactive chat
 
 # Resume from workspace
-python orchestrator_main.py --workspace .agent_workspaces/previous-goal "Continue"
+python agent.py --workspace PATH "Continue work"
+
+# Add behaviors dynamically
+python agent.py --ContextInspectorBehavior "Debug context"
 
 # Override model
-OLLAMA_MODEL=qwen3-coder:7b python orchestrator_main.py "Your goal"
+OLLAMA_MODEL=gpt-oss:20b python agent.py "Goal"
+
+# Testing
+pytest -q                           # Run unit tests
+pytest tests/test_behaviors.py -q  # Run specific test
+
+# Linting
+ruff check .                        # Check code
+ruff check --fix .                  # Auto-fix issues
 ```
-
-### Testing
-
-```bash
-# Run unit tests
-pytest -q
-
-# Run agent on test goal
-python orchestrator_main.py "Create a test package"
-
-# Run evaluations
-python tests/evaluation_scripts/run_model_comparison_eval.py
-```
-
-### Linting
-
-```bash
-# Check code
-ruff check .
-
-# Auto-fix
-ruff check --fix .
-```
-
-## Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `agent_config.yaml` | Global defaults (model, timeouts, limits) |
-| `orchestrator_config.yaml` | Orchestrator-specific behaviors and settings |
-| `architect_config.yaml` | Architect-specific behaviors and settings |
-| `task_executor_config.yaml` | TaskExecutor-specific behaviors and settings |
-| `agents.yaml` | Agent registry and delegation relationships |
 
 ## Troubleshooting
-
-### Agent hits max rounds without completing
-
-**Symptom:** Task exits with "Max rounds (12) reached" but work looks complete
-
-**Fix:** Completion nudging should catch this. Check config:
-
-```yaml
-# task_executor_config.yaml
-behaviors:
-  - type: SubAgentModeBehavior
-    params:
-      enable_completion_nudging: true  # Should be true
-      min_rounds_before_nudge: 3
-```
 
 ### LLM call hangs
 
 **Symptom:** Agent starts round but never responds
 
-**Fix:** Check timeout settings:
+**Fix:** Check model and timeouts in `config/llm_config.yaml`:
 
 ```yaml
-# agent_config.yaml
-llm:
-  timeout:
-    inactivity_timeout: 30  # Max seconds without activity
-    max_total_time: 180     # Max seconds per call (recommended)
+model: "qwen3:14b"  # Ensure using a working model
+timeout:
+  inactivity_timeout: 30
+  max_call_time: 180
 ```
 
-### Context window exceeded
+### Agent doesn't mark task complete
 
-**Symptom:** Error about context length
+**Symptom:** Task exits with "Max rounds reached" but work looks done
 
-**Fix:** Adjust max_tokens for compaction:
+**Fix:** Ensure `ExecutionModeBehavior` is present:
 
 ```yaml
-# agent_config.yaml
-behavior_defaults:
-  CompactWhenNearFullBehavior:
-    max_tokens: 96000  # 75% of 128K (leave headroom)
+# config/agents/task_executor.yaml
+behaviors:
+  - type: ExecutionModeBehavior  # Required for completion detection
 ```
 
 ### Command not allowed
 
 **Symptom:** "Command not in whitelist" error
 
-**Fix:** Add command to whitelist:
+**Fix:** Add to whitelist in agent config:
 
 ```yaml
-# task_executor_config.yaml
 behaviors:
   - type: CommandToolsBehavior
     params:
-      whitelist: ["python", "pytest", "ruff", "pip", "npm", "git"]
+      whitelist: ["python", "pytest", "ruff", "npm", "git"]
 ```
 
-Or edit `jetbox_commands_whitelist` file in root.
+### Context window exceeded
 
-## Documentation
+**Symptom:** Error about context length
 
-- **[CLAUDE.md](CLAUDE.md)** - Complete architecture reference for AI assistants
-- **[AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)** - Detailed architecture documentation
-- **[BEHAVIORS_DOCUMENTATION.md](BEHAVIORS_DOCUMENTATION.md)** - All behaviors reference
-- **[CONFIG_SYSTEM.md](CONFIG_SYSTEM.md)** - Configuration system guide
-- **[STATUS_DISPLAY.md](STATUS_DISPLAY.md)** - Progress visualization system
-- **[docs/implementation_notes/](docs/implementation_notes/)** - Implementation details and decisions
-- **[evaluation_results/](evaluation_results/)** - Model evaluation results and analysis
+**Fix:** Adjust compaction in `config/behavior_defaults.yaml`:
+
+```yaml
+CompactWhenNearFullBehavior:
+  max_tokens: 131072      # Match model's context window
+  compact_threshold: 0.75 # Compact at 75%
+```
 
 ## Design Philosophy
 
-1. **Local-first**: All processing happens locally via Ollama. No API keys, no cloud services.
+1. **Composable** - Mix and match behaviors freely
+2. **Configuration-driven** - YAML over code changes
+3. **Zero coupling** - Behaviors don't import each other
+4. **Event-driven** - Communication via lifecycle events
+5. **Local-first** - No cloud, no API keys
+6. **Crash-resilient** - State persisted to plaintext
+7. **Human-inspectable** - No databases, just files
 
-2. **Crash-resilient**: Agent expects to be interrupted. All state persisted to plaintext files. Fast rehydration from logs.
+## Documentation
 
-3. **Human-inspectable**: No databases. Everything is files you can read with `cat` or open in an editor.
-
-4. **Composable**: Behaviors are self-contained, single-responsibility modules. Mix and match freely.
-
-5. **Config-driven**: Change agent behavior via YAML, not code. Iterate without rewriting logic.
-
-6. **Verify-first**: Always probe actual state (file existence, test results) before deciding what to do. No hallucination.
-
-7. **Backward-chaining**: Plan from desired end state (tests pass) back to current state.
+- **[BEHAVIORS_DOCUMENTATION.md](BEHAVIORS_DOCUMENTATION.md)** - All behaviors reference
+- **[CONFIG_SYSTEM.md](CONFIG_SYSTEM.md)** - Configuration guide
+- **[CLAUDE.md](CLAUDE.md)** - Complete architecture reference
+- **[AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)** - Detailed architecture
+- **[docs/](docs/)** - Implementation notes
 
 ## License
 
@@ -501,5 +752,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 Built with:
 - [Ollama](https://ollama.ai/) - Local LLM inference
-- [qwen3:8b](https://ollama.ai/library/qwen3) - Default model (Alibaba Cloud)
+- [qwen3:14b](https://ollama.ai/library/qwen3) - Default model (Alibaba Cloud)
 - Python 3.11+

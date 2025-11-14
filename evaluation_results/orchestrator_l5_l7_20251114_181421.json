@@ -1,13 +1,13 @@
 {
-  "timestamp": "2025-11-14T18:38:09.410665",
-  "total_tasks": 4,
+  "timestamp": "2025-11-14T18:14:21.492219",
+  "total_tasks": 5,
   "successful_tasks": 0,
   "results": [
     {
       "task": "blog_system",
       "level": 5,
       "success": false,
-      "duration": 70.268602,
+      "duration": 304.093263,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -24,26 +24,40 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'blog'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_blog_system_ldwzi_9f",
-      "stdout_lines": 259,
+      "workspace": "/tmp/orch_L5_blog_system_dipu5jbr",
+      "stdout_lines": 318,
       "stderr_lines": 0
     },
     {
       "task": "todo_app",
       "level": 5,
       "success": false,
-      "duration": 720.027466,
-      "agent_success": false,
+      "duration": 215.658913,
+      "agent_success": true,
       "files_success": false,
       "validation_success": false,
-      "timeout": true,
-      "workspace": "/tmp/orch_L5_todo_app_an8l2joa"
+      "files_created": [],
+      "files_missing": [
+        "todo.py",
+        "models.py",
+        "manager.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from todo import TodoManager; tm=TodoManager(); tm.add_todo('Task 1', 'work'); assert len(tm.get_todos())==1",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nImportError: cannot import name 'TodoManager' from 'todo' (unknown location)\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_todo_app_ctw8pbvb",
+      "stdout_lines": 293,
+      "stderr_lines": 0
     },
     {
       "task": "inventory_system",
       "level": 5,
       "success": false,
-      "duration": 112.716206,
+      "duration": 73.151636,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -60,15 +74,15 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'inventory'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_inventory_system_x67x7uwv",
-      "stdout_lines": 259,
+      "workspace": "/tmp/orch_L5_inventory_system_ss4zvqvz",
+      "stdout_lines": 203,
       "stderr_lines": 0
     },
     {
       "task": "url_shortener",
       "level": 5,
       "success": false,
-      "duration": 180.59056,
+      "duration": 153.849181,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -85,8 +99,33 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'shortener'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_url_shortener_0a36xm9l",
-      "stdout_lines": 250,
+      "workspace": "/tmp/orch_L5_url_shortener_2gjovwj1",
+      "stdout_lines": 212,
+      "stderr_lines": 0
+    },
+    {
+      "task": "email_validator_service",
+      "level": 5,
+      "success": false,
+      "duration": 142.114299,
+      "agent_success": true,
+      "files_success": false,
+      "validation_success": false,
+      "files_created": [],
+      "files_missing": [
+        "email_service.py",
+        "validators.py",
+        "blacklist.py"
+      ],
+      "validation_results": [
+        {
+          "command": "python -c from email_service import EmailValidator; ev=EmailValidator(); assert ev.validate('test@example.com')",
+          "passed": false,
+          "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'email_service'\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L5_email_validator_service_n6ygfj9a",
+      "stdout_lines": 224,
       "stderr_lines": 0
     }
   ]

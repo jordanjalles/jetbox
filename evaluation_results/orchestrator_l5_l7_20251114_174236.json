@@ -1,13 +1,13 @@
 {
-  "timestamp": "2025-11-14T18:38:09.410665",
-  "total_tasks": 4,
+  "timestamp": "2025-11-14T17:42:36.556621",
+  "total_tasks": 5,
   "successful_tasks": 0,
   "results": [
     {
       "task": "blog_system",
       "level": 5,
       "success": false,
-      "duration": 70.268602,
+      "duration": 44.704116,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -24,26 +24,26 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'blog'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_blog_system_ldwzi_9f",
-      "stdout_lines": 259,
+      "workspace": "/tmp/orch_L5_blog_system_okq17vlr",
+      "stdout_lines": 169,
       "stderr_lines": 0
     },
     {
       "task": "todo_app",
       "level": 5,
       "success": false,
-      "duration": 720.027466,
+      "duration": 720.017484,
       "agent_success": false,
       "files_success": false,
       "validation_success": false,
       "timeout": true,
-      "workspace": "/tmp/orch_L5_todo_app_an8l2joa"
+      "workspace": "/tmp/orch_L5_todo_app_1mrkzblu"
     },
     {
       "task": "inventory_system",
       "level": 5,
       "success": false,
-      "duration": 112.716206,
+      "duration": 33.893507,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -60,15 +60,15 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'inventory'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_inventory_system_x67x7uwv",
-      "stdout_lines": 259,
+      "workspace": "/tmp/orch_L5_inventory_system_9ees8__b",
+      "stdout_lines": 179,
       "stderr_lines": 0
     },
     {
       "task": "url_shortener",
       "level": 5,
       "success": false,
-      "duration": 180.59056,
+      "duration": 249.704013,
       "agent_success": true,
       "files_success": false,
       "validation_success": false,
@@ -85,9 +85,20 @@
           "output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'shortener'\n"
         }
       ],
-      "workspace": "/tmp/orch_L5_url_shortener_0a36xm9l",
-      "stdout_lines": 250,
+      "workspace": "/tmp/orch_L5_url_shortener_71v1gex0",
+      "stdout_lines": 343,
       "stderr_lines": 0
+    },
+    {
+      "task": "email_validator_service",
+      "level": 5,
+      "success": false,
+      "duration": 719.989892,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_email_validator_service_rqcjlu_0"
     }
   ]
 }

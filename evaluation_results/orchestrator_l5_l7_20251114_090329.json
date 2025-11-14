@@ -1,0 +1,62 @@
+{
+  "timestamp": "2025-11-14T09:03:29.113651",
+  "total_tasks": 5,
+  "successful_tasks": 0,
+  "results": [
+    {
+      "task": "blog_system",
+      "level": 5,
+      "success": false,
+      "duration": 720.077267,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_blog_system_qsgf3ghy"
+    },
+    {
+      "task": "todo_app",
+      "level": 5,
+      "success": false,
+      "duration": 719.973954,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_todo_app_zsyrjn1h"
+    },
+    {
+      "task": "inventory_system",
+      "level": 5,
+      "success": false,
+      "duration": 719.979572,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_inventory_system_2vkp8pi_"
+    },
+    {
+      "task": "url_shortener",
+      "level": 5,
+      "success": false,
+      "duration": 719.984528,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_url_shortener_t9bw0oak"
+    },
+    {
+      "task": "email_validator_service",
+      "level": 5,
+      "success": false,
+      "duration": 719.978068,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_email_validator_service_y6rl79e3"
+    }
+  ]
+}

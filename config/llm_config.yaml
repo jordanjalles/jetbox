@@ -2,12 +2,13 @@
 # Model selection, timeouts, and inference parameters
 
 # Model to use (can be overridden by OLLAMA_MODEL env var)
-# qwen3-coder:30b chosen for maximum coding performance:
-# - Code-specific fine-tuning for better programming tasks
+# qwen3:14b chosen for optimal performance:
 # - 128K context window
-# - Largest qwen3-coder variant (~17GB)
-# - Maximum capability for complex code generation
-model: "qwen3-coder:30b"
+# - 14B parameters (general model, not code-specific)
+# - Fastest completion times in testing (avg 3 min per L5 task)
+# - 0% LLM timeout rate (proven reliable)
+# - Excellent code generation capabilities
+model: "qwen3:14b"
 
 # Temperature for inference (0.0 = deterministic, 1.0 = creative)
 temperature: 0.2

@@ -19,3 +19,5 @@ jetprojects/
 # Documentation and analysis (except README)
 docs/
 .agent_workspaces/
+/.context_inspection/
+/debug_snapshots/
