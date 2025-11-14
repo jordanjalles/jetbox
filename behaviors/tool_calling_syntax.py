@@ -276,14 +276,14 @@ Examples:
 
         # Try qwen3-coder format: <function=tool_name>..params..</function>
         function_pattern = r'<function=([^>]+)>(.*?)</function>'
-        param_equals_pattern = r'<parameter=([^>]+)>([^<]*)</parameter>'
+        param_equals_pattern = r'<parameter=([^>]+)>(.*?)</parameter>'
 
         for tool_match in re.finditer(function_pattern, content, re.DOTALL):
             tool_name = tool_match.group(1)
             params_block = tool_match.group(2)
 
             arguments = {}
-            for param_match in re.finditer(param_equals_pattern, params_block):
+            for param_match in re.finditer(param_equals_pattern, params_block, re.DOTALL):
                 arg_name = param_match.group(1)
                 arg_value = param_match.group(2).strip()
                 arguments[arg_name] = arg_value
