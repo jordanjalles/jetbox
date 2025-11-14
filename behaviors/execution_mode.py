@@ -266,10 +266,8 @@ No text-only responses allowed when working on a task.
 
         if self.pending_nudge:
             # Append warning at END of context (immediate feedback about recent empty rounds)
-            context.append({
-                "role": "user",
-                "content": self.pending_nudge
-            })
+            # Use default role="system" for framework nudges
+            self.append_message(context, self.pending_nudge)
             self.pending_nudge = None
 
         return context

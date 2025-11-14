@@ -579,6 +579,75 @@ class AgentBehavior(ABC):
             })
         return context
 
+    def inject_message_after_system(
+        self,
+        context: list[dict[str, Any]],
+        message: str,
+        role: str = "system"
+    ) -> list[dict[str, Any]]:
+        """
+        Inject a message after the system prompt (position 1).
+
+        Use for framework instructions that need to appear early in context
+        (tool docs, delegation info, format examples).
+
+        Args:
+            context: Current context (list of message dicts)
+            message: Message content to inject
+            role: Message role - "system" for framework (default),
+                  "user" for actual user messages
+
+        Returns:
+            Modified context with message injected
+
+        Examples:
+            # Tool documentation (system - default)
+            self.inject_message_after_system(context, tool_docs)
+
+            # Goal from user (user - explicit)
+            self.inject_message_after_system(context, f"GOAL: {goal}", role="user")
+        """
+        if len(context) > 0:
+            context.insert(1, {
+                "role": role,
+                "content": message
+            })
+        return context
+
+    def append_message(
+        self,
+        context: list[dict[str, Any]],
+        message: str,
+        role: str = "system"
+    ) -> list[dict[str, Any]]:
+        """
+        Append a message to the end of context.
+
+        Use for nudges, warnings, and reminders that should appear at the
+        end of context (near where the issue is occurring).
+
+        Args:
+            context: Current context
+            message: Message content to append
+            role: Message role - "system" for framework nudges (default),
+                  "user" for actual user messages
+
+        Returns:
+            Modified context with message appended
+
+        Examples:
+            # Loop warning (system - default)
+            self.append_message(context, loop_warning)
+
+            # Chat mode instructions (user - explicit)
+            self.append_message(context, chat_instructions, role="user")
+        """
+        context.append({
+            "role": role,
+            "content": message
+        })
+        return context
+
     # Tool registration
 
     def get_tools(self) -> list[dict[str, Any]]:

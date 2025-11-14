@@ -240,10 +240,8 @@ class LoopDetectionBehavior(AgentBehavior):
         if loop_warnings:
             warning_text = "\n".join(loop_warnings)
             # Append warning at END of context (near where looping is happening)
-            context.append({
-                "role": "user",
-                "content": warning_text
-            })
+            # Use default role="system" for framework warnings
+            self.append_message(context, warning_text)
 
         return context
 

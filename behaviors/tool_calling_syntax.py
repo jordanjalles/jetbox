@@ -83,10 +83,8 @@ class ToolCallingSyntaxBehavior(AgentBehavior):
         example = self.primary_syntax.get_example()
 
         # Insert after system prompt (position 1)
-        context.insert(1, {
-            "role": "user",
-            "content": example
-        })
+        # Use default role="system" for framework tool format example
+        self.inject_message_after_system(context, example)
 
         return context
 

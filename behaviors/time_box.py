@@ -152,8 +152,8 @@ class TimeBoxBehavior(AgentBehavior):
             msg = f"{percent}% of your time for '{goal}' has elapsed."
 
         # Append at END of context (immediate time awareness)
-        nudge_message = {"role": "user", "content": msg}
-        context.append(nudge_message)
+        # Use default role="system" for framework time nudges
+        self.append_message(context, msg)
 
     def _inject_custom_reminder(
         self,
@@ -166,5 +166,5 @@ class TimeBoxBehavior(AgentBehavior):
         msg = f"[Scheduled reminder at {percent}%]\n{message}"
 
         # Append at END of context (immediate reminder)
-        reminder_message = {"role": "user", "content": msg}
-        context.append(reminder_message)
+        # Use default role="system" for framework custom reminders
+        self.append_message(context, msg)

@@ -420,10 +420,8 @@ Guidelines:
 - When in doubt, make reasonable assumptions and call set_goal
 """
             # Append to messages (not inject after system)
-            context.append({
-                "role": "user",
-                "content": chat_instructions
-            })
+            # Use role="user" since this is actual chat mode instructions
+            self.append_message(context, chat_instructions, role="user")
             self.chat_instructions_injected = True
 
         return context
