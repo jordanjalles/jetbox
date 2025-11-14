@@ -46,6 +46,21 @@ class EventSystem:
         """
         self.agent = agent
 
+    def _sort_behaviors_by_sequence(self) -> list:
+        """
+        Sort behaviors by sequence number (lower first, higher last).
+
+        Behaviors without get_sequence_number() default to 0.
+        Same sequence numbers maintain config file order (stable sort).
+
+        Returns:
+            Sorted list of behaviors
+        """
+        return sorted(
+            self.agent._behaviors,
+            key=lambda b: b.get_sequence_number() if hasattr(b, 'get_sequence_number') else 0
+        )
+
     def trigger_goal_start(self, goal: str) -> None:
         """
         Trigger on_goal_start event on all behaviors.
@@ -131,20 +146,30 @@ class EventSystem:
             try:
                 # Try new API first
                 if hasattr(behavior, 'on_round_start') and callable(behavior.on_round_start):
-                    context = behavior.on_round_start(
+                    result = behavior.on_round_start(
                         agent=self.agent,
                         round_number=round_number,
                         context=context
                     )
+                    # Validate return type - behavior must return list
+                    if not isinstance(result, list):
+                        print(f"[{self.agent.name}] WARNING: {behavior.get_name()}.on_round_start() returned {type(result).__name__}, expected list. Skipping this result.")
+                        continue
+                    context = result
                 # Fall back to enhance_context if on_round_start doesn't exist
                 elif hasattr(behavior, 'enhance_context') and callable(behavior.enhance_context):
-                    context = behavior.enhance_context(
+                    result = behavior.enhance_context(
                         context,
                         agent=self.agent,
                         workspace=self.agent.workspace,
                         round_number=round_number,
                         workspace_manager=self.agent.workspace_manager,
                     )
+                    # Validate return type
+                    if not isinstance(result, list):
+                        print(f"[{self.agent.name}] WARNING: {behavior.get_name()}.enhance_context() returned {type(result).__name__}, expected list. Skipping this result.")
+                        continue
+                    context = result
             except Exception as e:
                 print(f"[{self.agent.name}] Behavior {behavior.get_name()} on_round_start error: {e}")
 
@@ -155,6 +180,7 @@ class EventSystem:
         Trigger on_llm_response event on all behaviors.
 
         Called after LLM responds but before tool dispatch.
+        Behaviors are processed in sequence number order (lower numbers first).
 
         Args:
             response: Full LLM response dict (contains 'message' with role/content/tool_calls)
@@ -162,10 +188,15 @@ class EventSystem:
         Returns:
             Modified response dict (behaviors can modify the response in chain)
         """
-        for behavior in self.agent._behaviors:
+        for behavior in self._sort_behaviors_by_sequence():
             try:
                 if hasattr(behavior, 'on_llm_response') and callable(behavior.on_llm_response):
-                    response = behavior.on_llm_response(agent=self.agent, response=response)
+                    result = behavior.on_llm_response(agent=self.agent, response=response)
+                    # Validate return type - behavior must return dict
+                    if not isinstance(result, dict):
+                        print(f"[{self.agent.name}] WARNING: {behavior.get_name()}.on_llm_response() returned {type(result).__name__}, expected dict. Skipping this result.")
+                        continue
+                    response = result
             except Exception as e:
                 print(f"[{self.agent.name}] Behavior {behavior.get_name()} on_llm_response error: {e}")
         return response
