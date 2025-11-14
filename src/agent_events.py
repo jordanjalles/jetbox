@@ -150,21 +150,25 @@ class EventSystem:
 
         return context
 
-    def trigger_llm_response(self, response: dict[str, Any]) -> None:
+    def trigger_llm_response(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Trigger on_llm_response event on all behaviors.
 
         Called after LLM responds but before tool dispatch.
 
         Args:
-            response: LLM response dict (contains 'message' with role/content/tool_calls)
+            response: Full LLM response dict (contains 'message' with role/content/tool_calls)
+
+        Returns:
+            Modified response dict (behaviors can modify the response in chain)
         """
         for behavior in self.agent._behaviors:
             try:
                 if hasattr(behavior, 'on_llm_response') and callable(behavior.on_llm_response):
-                    behavior.on_llm_response(agent=self.agent, response=response)
+                    response = behavior.on_llm_response(agent=self.agent, response=response)
             except Exception as e:
                 print(f"[{self.agent.name}] Behavior {behavior.get_name()} on_llm_response error: {e}")
+        return response
 
     def trigger_tool_call(self, tool_name: str, args: dict[str, Any], result: dict[str, Any]) -> None:
         """

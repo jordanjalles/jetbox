@@ -2,7 +2,7 @@
   "agent_name": "orchestrator",
   "round": 1,
   "phase": "pre_llm",
-  "timestamp": 1762999112.5034018,
+  "timestamp": 1763056321.4921653,
   "_note": "Context captured by ContextInspectorBehavior (sequence=999, runs last). This is the final context sent to LLM, including all nudges and modifications from other behaviors.",
   "context": [
     {
@@ -19,11 +19,15 @@
     },
     {
       "role": "user",
+      "content": "## Tool Calling Format\n\nWhen calling tools, respond with ONLY a JSON object (no explanatory text):\n\n```json\n{\n  \"name\": \"tool_name\",\n  \"arguments\": {\n    \"arg1\": \"value1\",\n    \"arg2\": \"value2\"\n  }\n}\n```\n\n**CRITICAL RULES:**\n1. NO text before the JSON\n2. NO text after the JSON\n3. ONLY the JSON object\n\nExamples:\n\n❌ WRONG: \"Let me call this tool: {\\\"name\\\": \\\"write_file\\\", ...}\"\n❌ WRONG: \"{\\\"name\\\": \\\"write_file\\\", ...} This will create the file\"\n❌ WRONG: <function=write_file><parameter=path>test.py</parameter></function>\n\n✅ CORRECT: {\"name\": \"write_file\", \"arguments\": {\"path\": \"test.py\", \"content\": \"print('hello')\"}}\n✅ CORRECT: {\"name\": \"mark_complete\", \"arguments\": {\"summary\": \"Task finished successfully\"}}\n"
+    },
+    {
+      "role": "user",
       "content": "## Available Agents for Delegation\n\n- **architect**: Architect specializes in software architecture design for complex projects.\n**Call the Architect if the goal will likely require multiple tasks or complex design**\n(e.g., full-stack apps, multi-file systems, projects with multiple components).\nIt creates architecture documents, module specifications, and task breakdowns.\nIt asks clarifying questions about requirements and constraints, proposes\narchitecture patterns, and justifies design trade-offs.\n\n- **task_executor**: TaskExecutor handles focused implementation work using hierarchical task\ndecomposition. It creates files, runs tests, executes commands, and completes\ncoding tasks autonomously. It breaks down complex tasks into subtasks and\nworks through them systematically. Best for implementation work, bug fixes,\nand focused feature development in any programming language or tech stack.\n"
     },
     {
       "role": "user",
-      "content": "GOAL: Create json_utils.py with: load_json(path), save_json(path, data), get_value(data, key)\n\nYou are working on a standalone task.\nWhen complete, call mark_complete(summary) with what you accomplished.\nIf you cannot complete it, call mark_failed(reason) explaining why."
+      "content": "GOAL: Create blog system: Post model, Comment model, BlogManager with CRUD operations, persistence to JSON\n\nYou are working on a standalone task.\nWhen complete, call mark_complete(summary) with what you accomplished.\nIf you cannot complete it, call mark_failed(reason) explaining why."
     },
     {
       "role": "user",
@@ -251,6 +255,7 @@
   ],
   "behaviors_loaded": [
     "delegation",
+    "tool_calling_syntax",
     "execution_mode",
     "chatbot",
     "compact_when_near_full",
@@ -262,11 +267,11 @@
     "rule_of_two_validator"
   ],
   "metrics": {
-    "total_messages": 6,
+    "total_messages": 7,
     "tool_count": 10,
     "system_prompt_length": 5102,
-    "total_context_length": 6599,
+    "total_context_length": 7328,
     "tool_definition_length": 4354,
-    "estimated_tokens": 2737
+    "estimated_tokens": 2920
   }
 }

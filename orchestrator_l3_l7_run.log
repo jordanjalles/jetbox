@@ -1,7 +1,7 @@
 ================================================================================
 ORCHESTRATOR L3-L7 EVALUATION
 ================================================================================
-Start time: 2025-11-13 01:22:15
+Start time: 2025-11-13 08:31:43
 Team: default (orchestrator → architect + task_executor)
 Stops at: 4 TRUE failures (timeouts/errors)
 ================================================================================
@@ -51,16 +51,16 @@ Running in non-interactive mode, proceeding automatically...
 ================================================================================
 Running: L3 - bubble_sort
 Description: Implement bubble sort
-Workspace: /tmp/orch_L3_bubble_sort_c9oa02r2
+Workspace: /tmp/orch_L3_bubble_sort_cvw_ffs1
 ================================================================================
 
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_bubble_sort_c9oa02r2 Create sorting.py with bubble_sort(lst) function that sorts a list in ascending order
+Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_bubble_sort_cvw_ffs1 Create sorting.py with bubble_sort(lst) function that sorts a list in ascending order
 Timeout: 8 minutes
-Starting at: 01:22:15
+Starting at: 08:31:43
 
 
 ❌ L3 - bubble_sort: FAILED
-   Duration: 19.1s
+   Duration: 336.2s
    Agent exit: ✓ (code 0)
    Files: ✗ (0/1)
    Validation: ✗ (0/1)
@@ -79,20 +79,25 @@ Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
 ================================================================================
 Running: L3 - binary_search
 Description: Implement binary search
-Workspace: /tmp/orch_L3_binary_search_13v9yexf
+Workspace: /tmp/orch_L3_binary_search_do13avnl
 ================================================================================
 
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_binary_search_13v9yexf Create search.py with binary_search(lst, target) that returns index of target or -1
+Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_binary_search_do13avnl Create search.py with binary_search(lst, target) that returns index of target or -1
 Timeout: 8 minutes
-Starting at: 01:22:35
+Starting at: 08:37:19
 
 
-✅ L3 - binary_search: SUCCESS
-   Duration: 115.8s
+❌ L3 - binary_search: FAILED
+   Duration: 349.2s
    Agent exit: ✓ (code 0)
-   Files: ✓ (1/1)
-   Validation: ✓ (1/1)
+   Files: ✗ (0/1)
+   Validation: ✗ (0/1)
+   Missing files: search.py
+   Failed validations:
+      - python -c from search import binary_search; assert binary_search([1,2,3,4,5], 3)==2; assert binary_search([1,2,3,4,5], 6)==-1
 Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
+
+⚠️  True failure count: 2/4 (agent didn't complete work)
 
 
 ################################################################################
@@ -102,16 +107,16 @@ Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
 ================================================================================
 Running: L3 - json_parser
 Description: JSON file reader/writer
-Workspace: /tmp/orch_L3_json_parser_ckqkhf39
+Workspace: /tmp/orch_L3_json_parser_fertqynd
 ================================================================================
 
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_json_parser_ckqkhf39 Create json_utils.py with: load_json(path), save_json(path, data), get_value(data, key)
+Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_json_parser_fertqynd Create json_utils.py with: load_json(path), save_json(path, data), get_value(data, key)
 Timeout: 8 minutes
-Starting at: 01:24:30
+Starting at: 08:43:08
 
 
 ❌ L3 - json_parser: FAILED
-   Duration: 21.3s
+   Duration: 459.7s
    Agent exit: ✓ (code 0)
    Files: ✗ (0/1)
    Validation: ✗ (0/1)
@@ -120,7 +125,7 @@ Starting at: 01:24:30
       - python -c from json_utils import save_json, load_json; save_json('test.json', {'name':'Alice'}); data=load_json('test.json'); assert data['name']=='Alice'
 Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
 
-⚠️  True failure count: 2/4 (agent didn't complete work)
+⚠️  True failure count: 3/4 (agent didn't complete work)
 
 
 ################################################################################
@@ -130,95 +135,22 @@ Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
 ================================================================================
 Running: L3 - csv_processor
 Description: CSV data processing
-Workspace: /tmp/orch_L3_csv_processor_26dcb67l
+Workspace: /tmp/orch_L3_csv_processor_m2y_li2u
 ================================================================================
 
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_csv_processor_26dcb67l Create csv_utils.py with: read_csv(path), write_csv(path, rows), filter_rows(rows, condition)
+Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_csv_processor_m2y_li2u Create csv_utils.py with: read_csv(path), write_csv(path, rows), filter_rows(rows, condition)
 Timeout: 8 minutes
-Starting at: 01:24:52
+Starting at: 08:50:48
 
 
 ❌ L3 - csv_processor: FAILED
-   Duration: 197.3s
-   Agent exit: ✓ (code 0)
-   Files: ✓ (1/1)
-   Validation: ✗ (0/1)
-   Failed validations:
-      - python -c from csv_utils import write_csv, read_csv; write_csv('test.csv', [['name','age'],['Alice','30']]); rows=read_csv('test.csv'); assert len(rows)==2
-Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
-
-
-################################################################################
-# Task 5/26
-################################################################################
-
-================================================================================
-Running: L3 - cache_decorator
-Description: Memoization decorator
-Workspace: /tmp/orch_L3_cache_decorator_io4kmylf
-================================================================================
-
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_cache_decorator_io4kmylf Create cache.py with @cache decorator that memoizes function results
-Timeout: 8 minutes
-Starting at: 01:28:09
-
-
-❌ L3 - cache_decorator: FAILED
-   Duration: 477.1s
-   Agent exit: ✓ (code 0)
-   Files: ✓ (1/1)
-   Validation: ✗ (0/1)
-   Failed validations:
-      - python -c from cache import cache; @cache
-def fib(n): return n if n<2 else fib(n-1)+fib(n-2)
-assert fib(10)==55
-Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
-
-
-################################################################################
-# Task 6/26
-################################################################################
-
-================================================================================
-Running: L3 - linked_list
-Description: Linked list data structure
-Workspace: /tmp/orch_L3_linked_list_srp4solm
-================================================================================
-
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L3_linked_list_srp4solm Create linked_list.py with LinkedList class: append(val), remove(val), contains(val), to_list()
-Timeout: 8 minutes
-Starting at: 01:36:06
-
-
-❌ L3 - linked_list: FAILED
-   Duration: 16.2s
+   Duration: 454.3s
    Agent exit: ✓ (code 0)
    Files: ✗ (0/1)
    Validation: ✗ (0/1)
-   Missing files: linked_list.py
+   Missing files: csv_utils.py
    Failed validations:
-      - python -c from linked_list import LinkedList; ll=LinkedList(); ll.append(1); ll.append(2); ll.append(3); assert ll.to_list()==[1,2,3]; assert ll.contains(2)
-Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
-
-⚠️  True failure count: 3/4 (agent didn't complete work)
-
-
-################################################################################
-# Task 7/26
-################################################################################
-
-================================================================================
-Running: L4 - rest_api_mock
-Description: Mock REST API with Flask
-Workspace: /tmp/orch_L4_rest_api_mock_70iogjz2
-================================================================================
-
-Command: /usr/local/bin/python3 /workspace/agent.py --team default --workspace /tmp/orch_L4_rest_api_mock_70iogjz2 Create api.py with Flask app having GET /users and POST /users endpoints with in-memory storage
-Timeout: 10 minutes
-Starting at: 01:36:22
-
-
-❌ L4 - rest_api_mock: TIMEOUT after 10 minutes
+      - python -c from csv_utils import write_csv, read_csv; write_csv('test.csv', [['name','age'],['Alice','30']]); rows=read_csv('test.csv'); assert len(rows)==2
 Results saved to: evaluation_results/orchestrator_l3_l7_incremental.json
 
 ⚠️  True failure count: 4/4 (agent didn't complete work)
@@ -232,25 +164,18 @@ ORCHESTRATOR L3-L7 EVALUATION SUMMARY
 ================================================================================
 
 Level 3:
-  Success: 1/6 (16.7%)
+  Success: 0/4 (0.0%)
   Tasks:
-    ❌ bubble_sort (19.1s)
-    ✅ binary_search (115.8s)
-    ❌ json_parser (21.3s)
-    ❌ csv_processor (197.3s)
-    ❌ cache_decorator (477.1s)
-    ❌ linked_list (16.2s)
-
-Level 4:
-  Success: 0/1 (0.0%)
-  Tasks:
-    ❌ rest_api_mock (600.0s)
+    ❌ bubble_sort (336.2s)
+    ❌ binary_search (349.2s)
+    ❌ json_parser (459.7s)
+    ❌ csv_processor (454.3s)
 
 ================================================================================
-OVERALL: 1/7 (14.3%) tasks successful
+OVERALL: 0/4 (0.0%) tasks successful
 ================================================================================
 
-Results saved to: evaluation_results/orchestrator_l5_l7_20251113_014622.json
+Results saved to: evaluation_results/orchestrator_l5_l7_20251113_085822.json
 
 Evaluation complete!
-Success rate: 14.3%
+Success rate: 0.0%

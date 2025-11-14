@@ -312,7 +312,7 @@ class AgentLifecycle:
 
         # Trigger LLM response event (after LLM responds, before tool dispatch)
         if "message" in response:
-            self.agent.event_system.trigger_llm_response(response["message"])
+            response = self.agent.event_system.trigger_llm_response(response)
 
         # Add assistant message to history
         had_tool_calls = False

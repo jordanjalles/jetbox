@@ -598,3 +598,4 @@ When working in this codebase:
 - read the JetboxArchitecture every time you start clean working in this repo or compact your context.
 - remember it's ALMOST NEVER a model issue - the models are smart - the problem is probably to do with their context or surrounding code .
 - remember to never blame the LLM for issues, it's always due to confusingly constructed context or bugs in jetbox architecture
+- remember AGAIN that it's NOT ONCE EVER been the LLM's capability issue in testing. The cause of EVERY BUG is faulty jetbox code or context building issues

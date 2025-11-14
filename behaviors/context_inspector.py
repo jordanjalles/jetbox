@@ -181,31 +181,28 @@ class ContextInspectorBehavior(AgentBehavior):
                 "agent_name": self.agent_name,
                 "round": round_number,
                 "phase": "post_llm",
-                "timestamp": time.time(),
+                "timestamp": time.time()
             }
 
             # Capture LLM response
             message = response.get("message", {})
-            content = message.get("content", "")
-            tool_calls = message.get("tool_calls")
+            content = message.get("content", "") if hasattr(message, 'get') else str(message.content if hasattr(message, 'content') else "")
+            tool_calls = message.get("tool_calls") if hasattr(message, 'get') else (message.tool_calls if hasattr(message, 'tool_calls') else None)
 
             snapshot["llm_response"] = {
                 "content": content,
                 "content_length": len(content),
                 "tool_calls": self._serialize_tool_calls(tool_calls) if tool_calls else None,
                 "tool_call_count": len(tool_calls) if tool_calls else 0,
-                "is_empty": not content and not tool_calls,
-                "raw_message_keys": list(message.keys())
+                "is_empty": not content and not tool_calls
             }
 
-            # Save to file
-            filename = f"{self.agent_name}_round_{round_number:03d}_post_llm.json"
+            # Save to file (immediate capture right after LLM)
+            filename = f"{self.agent_name}_round_{round_number:03d}_post_llm_immediate.json"
             filepath = self.output_dir / filename
 
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(snapshot, f, indent=2, ensure_ascii=False)
-
-            print(f"[context_inspector] Saved post-LLM snapshot: {filename}")
 
         except Exception as e:
             # Don't fail the agent if snapshot capture fails
@@ -267,14 +264,14 @@ class ContextInspectorBehavior(AgentBehavior):
             if tool_results:
                 snapshot["tool_results"] = list(reversed(tool_results))
 
-            # Save to file
-            filename = f"{self.agent_name}_round_{round_number:03d}_post_llm.json"
+            # Save to file (after tools execute)
+            filename = f"{self.agent_name}_round_{round_number:03d}_round_end.json"
             filepath = self.output_dir / filename
 
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(snapshot, f, indent=2, ensure_ascii=False)
 
-            print(f"[context_inspector] Saved post-LLM snapshot: {filename}")
+            print(f"[context_inspector] Saved round-end snapshot: {filename}")
 
         except Exception as e:
             # Don't fail the agent if snapshot capture fails
