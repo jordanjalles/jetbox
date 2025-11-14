@@ -71,9 +71,11 @@ system_prompt: |
      - Present trade-offs (no solution is perfect)
 
   3. **Document for implementers**
-     - Create system overview
-     - Specify each module (responsibilities, interfaces, dependencies, tech stack)
-     - Break down into implementation tasks
+     - Create ONE comprehensive architecture document with:
+       * System overview
+       * All components/modules with responsibilities, interfaces, dependencies
+       * Technology choices and implementation guidance
+     - Break down into implementation tasks (JSON file)
      - Signal completion when docs ready
 
   4. **Act decisively**
@@ -97,18 +99,16 @@ system_prompt: |
 
   ## Architecture artifact requirements
 
-  System overview must include:
-  - Components and their responsibilities
-  - Data flow between components
+  **Single comprehensive document** must include:
+  - System overview (components, responsibilities, data flow)
+  - All components/modules with:
+    * Clear responsibility statements
+    * Interfaces (inputs, outputs, APIs with types)
+    * Dependencies (other modules, external services)
+    * Concrete technology stack
   - Technology choices with rationale
+  - Implementation guidance for developers
   - Trade-offs and risks
-
-  Module specs must include:
-  - Clear responsibility statement
-  - Interfaces (inputs, outputs, APIs with types)
-  - Dependencies (other modules, external services)
-  - Concrete technology stack
-  - Implementation notes for developers
 
   Task breakdown must include:
   - Task ID, description, module
@@ -119,18 +119,18 @@ system_prompt: |
   # OUTPUT FORMAT
 
   Success criteria - mark complete when:
-  1. System architecture overview created
-  2. All modules specified with interfaces
-  3. Task breakdown created for implementers
-  4. All artifacts saved to architecture/ directory
+  1. Comprehensive architecture document created (ONE file with all details)
+  2. Task breakdown created for implementers
+  3. All artifacts saved to architecture/ directory
 
   Typical workflow:
   ```
-  write_architecture_doc(content="system overview...")
-  write_module_spec(module_name="auth", content="...")
-  write_module_spec(module_name="api", content="...")
+  write_architecture_doc(
+    title="Blog System Architecture",
+    content="# Overview\n\n[system design]\n\n## Components\n\n### Post Model\n- Responsibility: ...\n- Interfaces: ...\n\n### Comment Model\n...\n\n## Implementation\n..."
+  )
   write_task_list(tasks=[...])
-  mark_complete(summary="Architecture complete. N modules, M tasks.")
+  mark_complete(summary="Architecture complete. Created 1 doc + task breakdown.")
   ```
 
 # Token limits are based on model capabilities, not agent type.

@@ -22,7 +22,6 @@ from datetime import datetime
 from typing import Any
 
 from behaviors.base import AgentBehavior
-from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
 class ArchitectToolsBehavior(AgentBehavior):
@@ -115,79 +114,81 @@ class ArchitectToolsBehavior(AgentBehavior):
                 "type": "function",
                 "function": {
                     "name": "write_architecture_doc",
-                    "description": "Write a high-level architecture document (overview, data flow, component diagram, etc.) to the workspace. Creates a markdown file in architecture/ directory.",
+                    "description": "Write a comprehensive architecture document (overview, components, data flow, implementation notes) to the workspace. Creates a single markdown file in architecture/ directory. Include ALL module details in this one document.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "title": {
                                 "type": "string",
-                                "description": "Document title (e.g., 'System Overview', 'Data Flow Architecture')"
+                                "description": "Document title (e.g., 'Blog System Architecture', 'Todo App Design')"
                             },
                             "content": {
                                 "type": "string",
-                                "description": "Markdown content with diagrams, component descriptions, architecture decisions"
+                                "description": "Markdown content with complete architecture: system overview, all components/modules with their responsibilities and interfaces, data flow, technology choices, and implementation guidance. Keep it in ONE document."
                             },
                         },
                         "required": ["title", "content"]
                     }
                 }
             },
-            {
-                "type": "function",
-                "function": {
-                    "name": "write_module_spec",
-                    "description": "Write a detailed module specification to the workspace. Creates a markdown file in architecture/modules/ directory.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "module_name": {
-                                "type": "string",
-                                "description": "Module identifier (e.g., 'auth-service', 'data-pipeline')"
-                            },
-                            "responsibility": {
-                                "type": "string",
-                                "description": "What this module does (clear, concise description)"
-                            },
-                            "interfaces": {
-                                "type": "object",
-                                "description": "Module interfaces with inputs, outputs, APIs",
-                                "properties": {
-                                    "inputs": {
-                                        "type": "array",
-                                        "items": {"type": "string"},
-                                        "description": "List of inputs (format: 'name: type - description')"
-                                    },
-                                    "outputs": {
-                                        "type": "array",
-                                        "items": {"type": "string"},
-                                        "description": "List of outputs (format: 'name: type - description')"
-                                    },
-                                    "apis": {
-                                        "type": "array",
-                                        "items": {"type": "string"},
-                                        "description": "List of APIs (format: 'METHOD /path - description')"
-                                    }
-                                }
-                            },
-                            "dependencies": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of dependencies (other modules, external services, databases)"
-                            },
-                            "technologies": {
-                                "type": "object",
-                                "description": "Technologies used (language, framework, database, etc.)",
-                                "additionalProperties": {"type": "string"}
-                            },
-                            "implementation_notes": {
-                                "type": "string",
-                                "description": "Optional: Specific guidance for implementation (edge cases, patterns, etc.)"
-                            }
-                        },
-                        "required": ["module_name", "responsibility", "interfaces", "dependencies", "technologies"]
-                    }
-                }
-            },
+            # DISABLED: write_module_spec - Creates too many files, causing task_executor to get stuck reading
+            # Architecture should be in ONE comprehensive document, not split across multiple module files
+            # {
+            #     "type": "function",
+            #     "function": {
+            #         "name": "write_module_spec",
+            #         "description": "Write a detailed module specification to the workspace. Creates a markdown file in architecture/modules/ directory.",
+            #         "parameters": {
+            #             "type": "object",
+            #             "properties": {
+            #                 "module_name": {
+            #                     "type": "string",
+            #                     "description": "Module identifier (e.g., 'auth-service', 'data-pipeline')"
+            #                 },
+            #                 "responsibility": {
+            #                     "type": "string",
+            #                     "description": "What this module does (clear, concise description)"
+            #                 },
+            #                 "interfaces": {
+            #                     "type": "object",
+            #                     "description": "Module interfaces with inputs, outputs, APIs",
+            #                     "properties": {
+            #                         "inputs": {
+            #                             "type": "array",
+            #                             "items": {"type": "string"},
+            #                             "description": "List of inputs (format: 'name: type - description')"
+            #                         },
+            #                         "outputs": {
+            #                             "type": "array",
+            #                             "items": {"type": "string"},
+            #                             "description": "List of outputs (format: 'name: type - description')"
+            #                         },
+            #                         "apis": {
+            #                             "type": "array",
+            #                             "items": {"type": "string"},
+            #                             "description": "List of APIs (format: 'METHOD /path - description')"
+            #                         }
+            #                     }
+            #                 },
+            #                 "dependencies": {
+            #                     "type": "array",
+            #                     "items": {"type": "string"},
+            #                     "description": "List of dependencies (other modules, external services, databases)"
+            #                 },
+            #                 "technologies": {
+            #                     "type": "object",
+            #                     "description": "Technologies used (language, framework, database, etc.)",
+            #                     "additionalProperties": {"type": "string"}
+            #                 },
+            #                 "implementation_notes": {
+            #                     "type": "string",
+            #                     "description": "Optional: Specific guidance for implementation (edge cases, patterns, etc.)"
+            #                 }
+            #             },
+            #             "required": ["module_name", "responsibility", "interfaces", "dependencies", "technologies"]
+            #         }
+            #     }
+            # },
             {
                 "type": "function",
                 "function": {
