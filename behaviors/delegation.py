@@ -1227,7 +1227,7 @@ The delegated task did not complete. Consider:
             delegation_info.append(f"- **{target_agent}**: {blurb}")
 
         # Insert after system prompt (index 1)
-        self.inject_user_message_after_system(context, "\n".join(delegation_info))
+        context = self.inject_user_message_after_system(context, "\n".join(delegation_info))
 
         return context
 

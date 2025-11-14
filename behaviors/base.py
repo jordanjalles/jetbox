@@ -81,10 +81,10 @@ class AgentBehavior(ABC):
                 print(f"Starting goal: {goal}")
 
             def on_round_start(self, agent, round_number, context):
-                # Inject dynamic warnings based on state
+                # Append dynamic warnings at END (immediate feedback)
                 if self.should_warn:
                     warning = "⚠️ Consider a different approach"
-                    return self.inject_user_message_after_system(context, warning)
+                    context.append({"role": "user", "content": warning})
                 return context
 
             def get_tools(self) -> list[dict[str, Any]]:
@@ -297,10 +297,10 @@ class AgentBehavior(ABC):
         Example:
             ```python
             def on_round_start(self, agent, round_number, context):
-                # Inject warning if loops detected
+                # Append warning at END (immediate feedback about recent rounds)
                 if self.consecutive_empty_rounds > 2:
                     warning = "⚠️ Empty rounds detected - call a tool!"
-                    context = self.inject_user_message_after_system(context, warning)
+                    context.append({"role": "user", "content": warning})
 
                 self.round_start_time = time.time()
                 return context

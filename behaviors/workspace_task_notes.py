@@ -477,7 +477,7 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
                 f"{self.notes_content}\n\n"
                 "<End Reading Workspace Task Notes File>"
             )
-            self.inject_user_message_after_system(context, notes_with_delimiters)
+            context = self.inject_user_message_after_system(context, notes_with_delimiters)
 
         return context
 
