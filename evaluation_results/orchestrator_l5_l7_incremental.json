@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-14T07:41:22.356550",
+  "timestamp": "2025-11-14T08:15:28.951336",
   "total_tasks": 1,
   "successful_tasks": 0,
   "results": [
@@ -7,12 +7,12 @@
       "task": "blog_system",
       "level": 5,
       "success": false,
-      "duration": 720.034902,
+      "duration": 720.077267,
       "agent_success": false,
       "files_success": false,
       "validation_success": false,
       "timeout": true,
-      "workspace": "/tmp/orch_L5_blog_system_w1o5lb4t"
+      "workspace": "/tmp/orch_L5_blog_system_qsgf3ghy"
     }
   ]
 }

@@ -1,1 +1,0 @@
-Create a 'validators' package with email, phone, url, and password validation functions. Include tests for all.

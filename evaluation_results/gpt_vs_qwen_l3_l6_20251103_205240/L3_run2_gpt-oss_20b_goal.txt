@@ -1,1 +1,0 @@
-Create a 'string_utils' package with functions: reverse(s), capitalize_words(s), count_vowels(s), is_palindrome(s). Include tests.

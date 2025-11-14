@@ -1,1 +1,0 @@
-Create a 'logger_wrapper' package with multiple output formats (JSON, plain text) and log levels. Include tests.

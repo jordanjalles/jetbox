@@ -1,1 +1,0 @@
-Create a 'requests_wrapper' package that wraps HTTP requests with retry logic. Include tests.

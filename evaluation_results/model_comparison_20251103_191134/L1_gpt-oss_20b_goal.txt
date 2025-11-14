@@ -1,1 +1,0 @@
-Create a Python file called greet.py with a function greet(name) that returns 'Hello, {name}!'

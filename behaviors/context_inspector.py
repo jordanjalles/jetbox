@@ -116,18 +116,16 @@ class ContextInspectorBehavior(AgentBehavior):
         # Store agent name for snapshot filenames
         self.agent_name = agent.name if hasattr(agent, 'name') else "unknown"
 
-        # Use workspace-adjacent directory if agent has workspace
-        # Store snapshots OUTSIDE workspace to avoid polluting agent's file list
-        # Mirror workspace folder structure to keep snapshots from different tasks separate
+        # Store snapshots in /workspace for easy access
+        # This makes them visible in Claude Code for debugging
         if hasattr(agent, 'workspace') and agent.workspace:
             from pathlib import Path
+            from agent_config import PROJECT_ROOT
             workspace_path = Path(agent.workspace) if not isinstance(agent.workspace, Path) else agent.workspace
-            # Create .context_inspection/{workspace_name}/{agent_name}/
-            # This prevents overwriting when same agent type runs on different tasks
-            # Example: /tmp/orch_L5_blog_system_abc123 → /tmp/.context_inspection/orch_L5_blog_system_abc123/architect/
-            workspace_parent = workspace_path.parent
+            # Create /workspace/.context_inspection/{workspace_name}/{agent_name}/
+            # This allows inspection through Claude Code
             workspace_name = workspace_path.name
-            self.output_dir = workspace_parent / ".context_inspection" / workspace_name / self.agent_name
+            self.output_dir = PROJECT_ROOT / ".context_inspection" / workspace_name / self.agent_name
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Capture snapshot

@@ -1,1 +1,0 @@
-Create a Python package 'mathx' with add, subtract, multiply, divide functions in separate files, with tests for all functions
