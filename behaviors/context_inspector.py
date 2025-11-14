@@ -116,11 +116,14 @@ class ContextInspectorBehavior(AgentBehavior):
         # Store agent name for snapshot filenames
         self.agent_name = agent.name if hasattr(agent, 'name') else "unknown"
 
-        # Use workspace-relative directory if agent has workspace
+        # Use workspace-adjacent directory if agent has workspace
+        # Store snapshots OUTSIDE workspace to avoid polluting agent's file list
         if hasattr(agent, 'workspace') and agent.workspace:
             from pathlib import Path
             workspace_path = Path(agent.workspace) if not isinstance(agent.workspace, Path) else agent.workspace
-            self.output_dir = workspace_path / ".agent_context" / "context_snapshots"
+            # Create .context_inspection/{agent_name}/ as sibling to workspace
+            workspace_parent = workspace_path.parent
+            self.output_dir = workspace_parent / ".context_inspection" / self.agent_name
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Capture snapshot
