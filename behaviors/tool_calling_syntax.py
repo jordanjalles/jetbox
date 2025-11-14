@@ -179,12 +179,54 @@ Examples:
         Returns:
             List of tool call dicts, or None if no valid JSON found
         """
-        # Try to extract JSON from content
         import json
 
-        # Look for JSON object pattern
-        json_pattern = r'\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}[^{}]*\}'
+        # Strategy 1: Try parsing the full content as JSON (common case)
+        try:
+            content_stripped = content.strip()
+            parsed = json.loads(content_stripped)
+            if isinstance(parsed, dict) and "name" in parsed and "arguments" in parsed:
+                return [{
+                    "function": {
+                        "name": parsed["name"],
+                        "arguments": parsed["arguments"]
+                    }
+                }]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
 
+        # Strategy 2: Find JSON by brace counting (handles trailing garbage)
+        # LLM might output: {"name": "write_file", "arguments": {...}}\n</parameter>}
+        # We want to extract just the valid JSON part
+        content = content.strip()
+        if content.startswith('{'):
+            brace_count = 0
+            json_end = 0
+            for i, char in enumerate(content):
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        json_end = i + 1
+                        break
+
+            if json_end > 0:
+                json_str = content[:json_end]
+                try:
+                    parsed = json.loads(json_str)
+                    if isinstance(parsed, dict) and "name" in parsed and "arguments" in parsed:
+                        return [{
+                            "function": {
+                                "name": parsed["name"],
+                                "arguments": parsed["arguments"]
+                            }
+                        }]
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    pass
+
+        # Strategy 3: Regex fallback (for JSON embedded in text)
+        json_pattern = r'\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}[^{}]*\}'
         matches = re.findall(json_pattern, content, re.DOTALL)
         if not matches:
             return None
