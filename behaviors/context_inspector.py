@@ -118,12 +118,16 @@ class ContextInspectorBehavior(AgentBehavior):
 
         # Use workspace-adjacent directory if agent has workspace
         # Store snapshots OUTSIDE workspace to avoid polluting agent's file list
+        # Mirror workspace folder structure to keep snapshots from different tasks separate
         if hasattr(agent, 'workspace') and agent.workspace:
             from pathlib import Path
             workspace_path = Path(agent.workspace) if not isinstance(agent.workspace, Path) else agent.workspace
-            # Create .context_inspection/{agent_name}/ as sibling to workspace
+            # Create .context_inspection/{workspace_name}/{agent_name}/
+            # This prevents overwriting when same agent type runs on different tasks
+            # Example: /tmp/orch_L5_blog_system_abc123 → /tmp/.context_inspection/orch_L5_blog_system_abc123/architect/
             workspace_parent = workspace_path.parent
-            self.output_dir = workspace_parent / ".context_inspection" / self.agent_name
+            workspace_name = workspace_path.name
+            self.output_dir = workspace_parent / ".context_inspection" / workspace_name / self.agent_name
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Capture snapshot
