@@ -239,8 +239,11 @@ class LoopDetectionBehavior(AgentBehavior):
         loop_warnings = self._build_loop_warnings()
         if loop_warnings:
             warning_text = "\n".join(loop_warnings)
-            # Insert after system prompt (index 1) and capture modified context
-            context = self.inject_user_message_after_system(context, warning_text)
+            # Append warning at END of context (near where looping is happening)
+            context.append({
+                "role": "user",
+                "content": warning_text
+            })
 
         return context
 
