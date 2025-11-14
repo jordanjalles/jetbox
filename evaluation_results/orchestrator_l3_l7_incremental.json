@@ -1,24 +1,36 @@
 {
-  "timestamp": "2025-11-14T01:38:06.629210",
-  "total_tasks": 2,
-  "successful_tasks": 1,
+  "timestamp": "2025-11-14T02:15:36.428322",
+  "total_tasks": 6,
+  "successful_tasks": 5,
   "results": [
     {
       "task": "bubble_sort",
       "level": 3,
-      "success": false,
-      "duration": 480.007386,
-      "agent_success": false,
-      "files_success": false,
-      "validation_success": false,
-      "timeout": true,
-      "workspace": "/tmp/orch_L3_bubble_sort_ulzx1_b4"
+      "success": true,
+      "duration": 110.177966,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "sorting.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from sorting import bubble_sort; assert bubble_sort([3,1,4,1,5,9,2,6])==[1,1,2,3,4,5,6,9]",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L3_bubble_sort_1ozipjep",
+      "stdout_lines": 149,
+      "stderr_lines": 0
     },
     {
       "task": "binary_search",
       "level": 3,
       "success": true,
-      "duration": 95.709798,
+      "duration": 58.300232,
       "agent_success": true,
       "files_success": true,
       "validation_success": true,
@@ -33,8 +45,100 @@
           "output": ""
         }
       ],
-      "workspace": "/tmp/orch_L3_binary_search_nk37tbco",
-      "stdout_lines": 157,
+      "workspace": "/tmp/orch_L3_binary_search_q1fs1w3j",
+      "stdout_lines": 139,
+      "stderr_lines": 0
+    },
+    {
+      "task": "json_parser",
+      "level": 3,
+      "success": true,
+      "duration": 96.879231,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "json_utils.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from json_utils import save_json, load_json; save_json('test.json', {'name':'Alice'}); data=load_json('test.json'); assert data['name']=='Alice'",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L3_json_parser_ls4tmr_t",
+      "stdout_lines": 186,
+      "stderr_lines": 0
+    },
+    {
+      "task": "csv_processor",
+      "level": 3,
+      "success": true,
+      "duration": 111.171163,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "csv_utils.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from csv_utils import write_csv, read_csv; write_csv('test.csv', [['name','age'],['Alice','30']]); rows=read_csv('test.csv'); assert len(rows)==2",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L3_csv_processor_qoocrxnh",
+      "stdout_lines": 181,
+      "stderr_lines": 0
+    },
+    {
+      "task": "cache_decorator",
+      "level": 3,
+      "success": false,
+      "duration": 266.082893,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": false,
+      "files_created": [
+        "cache.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from cache import cache; @cache\ndef fib(n): return n if n<2 else fib(n-1)+fib(n-2)\nassert fib(10)==55",
+          "passed": false,
+          "output": "  File \"<string>\", line 1\n    from cache import cache; @cache\n                             ^\nSyntaxError: invalid syntax\n"
+        }
+      ],
+      "workspace": "/tmp/orch_L3_cache_decorator_bwxfaf8n",
+      "stdout_lines": 178,
+      "stderr_lines": 0
+    },
+    {
+      "task": "linked_list",
+      "level": 3,
+      "success": true,
+      "duration": 137.190096,
+      "agent_success": true,
+      "files_success": true,
+      "validation_success": true,
+      "files_created": [
+        "linked_list.py"
+      ],
+      "files_missing": [],
+      "validation_results": [
+        {
+          "command": "python -c from linked_list import LinkedList; ll=LinkedList(); ll.append(1); ll.append(2); ll.append(3); assert ll.to_list()==[1,2,3]; assert ll.contains(2)",
+          "passed": true,
+          "output": ""
+        }
+      ],
+      "workspace": "/tmp/orch_L3_linked_list_dd958fzy",
+      "stdout_lines": 185,
       "stderr_lines": 0
     }
   ]

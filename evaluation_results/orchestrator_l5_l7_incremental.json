@@ -1,30 +1,18 @@
 {
-  "timestamp": "2025-11-13T00:24:25.134496",
+  "timestamp": "2025-11-14T07:41:22.356550",
   "total_tasks": 1,
-  "successful_tasks": 1,
+  "successful_tasks": 0,
   "results": [
     {
-      "task": "bubble_sort",
-      "level": 3,
-      "success": true,
-      "duration": 248.398803,
-      "agent_success": true,
-      "files_success": true,
-      "validation_success": true,
-      "files_created": [
-        "sorting.py"
-      ],
-      "files_missing": [],
-      "validation_results": [
-        {
-          "command": "python -c from sorting import bubble_sort; assert bubble_sort([3,1,4,1,5,9,2,6])==[1,1,2,3,4,5,6,9]",
-          "passed": true,
-          "output": ""
-        }
-      ],
-      "workspace": "/tmp/orch_L3_bubble_sort_os11boca",
-      "stdout_lines": 180,
-      "stderr_lines": 0
+      "task": "blog_system",
+      "level": 5,
+      "success": false,
+      "duration": 720.034902,
+      "agent_success": false,
+      "files_success": false,
+      "validation_success": false,
+      "timeout": true,
+      "workspace": "/tmp/orch_L5_blog_system_w1o5lb4t"
     }
   ]
 }
