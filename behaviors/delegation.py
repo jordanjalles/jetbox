@@ -229,7 +229,8 @@ class DelegationBehavior(AgentBehavior):
 
         if tool_docs:
             tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            return self.inject_user_message_after_system(context, tool_message)
+            # Use default role="system" for framework tool documentation
+            return self.inject_message_after_system(context, tool_message)
 
         return context
 
@@ -1227,7 +1228,8 @@ The delegated task did not complete. Consider:
             delegation_info.append(f"- **{target_agent}**: {blurb}")
 
         # Insert after system prompt (index 1)
-        context = self.inject_user_message_after_system(context, "\n".join(delegation_info))
+        # Use role="user" since delegation options are presented to the delegating agent
+            context = self.inject_message_after_system(context, "\n".join(delegation_info), role="user")
 
         return context
 

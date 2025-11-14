@@ -211,7 +211,8 @@ EXECUTION MODE: You must call at least one tool every round to make progress.
 No text-only responses allowed when working on a task.
 """
 
-        return self.inject_user_message_after_system(context, mode_explanation)
+        # Use role="user" since execution mode activation is a directive to the agent
+        return self.inject_message_after_system(context, mode_explanation, role="user")
 
     # ============================================
     # Event Handlers

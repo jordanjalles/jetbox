@@ -257,7 +257,7 @@ class AgentBehavior(ABC):
             def on_initial_context(self, agent, context):
                 # Inject goal description
                 goal_msg = f"GOAL: {agent.goal}"
-                return self.inject_user_message_after_system(context, goal_msg)
+                return self.inject_message_after_system(context, goal_msg, role="user")
             ```
         """
         return context
@@ -546,38 +546,6 @@ class AgentBehavior(ABC):
     # =================================================================
     # CONTEXT HELPER METHODS
     # =================================================================
-
-    def inject_user_message_after_system(
-        self,
-        context: list[dict[str, Any]],
-        message: str
-    ) -> list[dict[str, Any]]:
-        """
-        Helper to inject a user message after the system prompt (index 1).
-
-        This is a common pattern used by many behaviors to inject context
-        (e.g., goal descriptions, task info, warnings, delegation options).
-
-        Args:
-            context: Current context (list of message dicts)
-            message: Message content to inject
-
-        Returns:
-            Modified context with message injected at index 1
-
-        Example:
-            ```python
-            def enhance_context(self, context, **kwargs):
-                goal_info = f"GOAL: {kwargs['goal']}"
-                return self.inject_user_message_after_system(context, goal_info)
-            ```
-        """
-        if len(context) > 0:
-            context.insert(1, {
-                "role": "user",
-                "content": message
-            })
-        return context
 
     def inject_message_after_system(
         self,

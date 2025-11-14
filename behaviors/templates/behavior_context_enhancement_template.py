@@ -44,7 +44,8 @@ class {BEHAVIOR_CLASS_NAME}Behavior(AgentBehavior):
         message = f"{CONTEXT_HEADER}: {goal}"
 
         # Use helper to inject after system prompt
-        return self.inject_user_message_after_system(context, message)
+        # Adjust role as needed: "system" for framework, "user" for context
+        return self.inject_message_after_system(context, message, role="user")
 
         # NOTE: If this behavior provides tools, inject tool documentation here.
         # See behavior_with_tools_template.py for the pattern.
@@ -71,6 +72,7 @@ class {BEHAVIOR_CLASS_NAME}Behavior(AgentBehavior):
         # Example: Inject dynamic warning based on state
         if self.state.get('should_warn'):
             warning = "⚠️ {DYNAMIC_WARNING}"
-            context = self.inject_user_message_after_system(context, warning)
+            # Adjust role as needed
+                context = self.inject_message_after_system(context, warning, role="user")
 
         return context

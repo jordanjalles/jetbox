@@ -59,15 +59,15 @@ def append_to_notes(content: str, section: str = "task", workspace_manager=None)
         # Timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Format based on section (matter-of-fact, not celebratory)
+        # Format based on section (neutral language)
         if section == "task":
-            entry = f"## Task marked done - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Task - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "goal_success":
-            entry = f"## Goal marked done - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Goal - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "goal_failure":
-            entry = f"## Goal marked failed - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Goal (FAILED - retry needed) - {timestamp}\n\n{content}\n\n---\n\n"
         elif section == "timeout":
-            entry = f"## Agent timeout - {timestamp}\n\n{content}\n\n---\n\n"
+            entry = f"## Goal (TIMEOUT - retry needed) - {timestamp}\n\n{content}\n\n---\n\n"
         else:
             entry = f"## Note - {timestamp}\n\n{content}\n\n---\n\n"
 
@@ -477,7 +477,9 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
                 f"{self.notes_content}\n\n"
                 "<End Reading Workspace Task Notes File>"
             )
-            context = self.inject_user_message_after_system(context, notes_with_delimiters)
+            # Use role="user" since workspace notes are contextual information about the workspace,
+            # not framework instructions. This matches how the goal is injected.
+            context = self.inject_message_after_system(context, notes_with_delimiters, role="user")
 
         return context
 
@@ -700,16 +702,19 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
             if any(doc_marker in lower_path for doc_marker in ['readme', 'doc', 'guide', '.md']):
                 doc_files.append(path)
 
-        # Build changelog-style summary
+        # Build changelog-style summary (neutral language)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        status = "marked done" if success else "marked failed"
 
         summary_lines = [
             f"Timestamp: {timestamp}",
             f"Goal: {goal_description}",
-            f"Status: {status}",
             ""
         ]
+
+        # Only add status for failures (leave blank for success to avoid confusion)
+        if not success:
+            summary_lines.insert(2, "Status: FAILED - retry needed")
+            summary_lines.insert(3, "")
 
         # File changes section
         has_changes = any(changes.values())
@@ -764,12 +769,12 @@ class WorkspaceTaskNotesBehavior(AgentBehavior):
         if success:
             self._save_snapshot(final_files, workspace_manager)
 
-        # Print summary for console (matter-of-fact)
+        # Print summary for console (neutral language)
         print("\n" + "="*70)
         if success:
-            print("Goal marked done")
+            print("Goal completed")
         else:
-            print("Goal marked failed")
+            print("Goal failed - retry needed")
         print("="*70)
         print(summary)
         print("="*70 + "\n")

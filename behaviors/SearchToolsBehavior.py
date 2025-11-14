@@ -176,6 +176,7 @@ class SearchToolsBehavior(AgentBehavior):
 
         if tool_docs:
             tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            return self.inject_user_message_after_system(context, tool_message)
+            # Use default role="system" for framework tool documentation
+            return self.inject_message_after_system(context, tool_message)
 
         return context

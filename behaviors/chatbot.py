@@ -344,7 +344,8 @@ CHAT MODE: Answer questions conversationally. Tools optional.
 To start working on a task, call set_goal(goal, requirements).
 """
 
-        return self.inject_user_message_after_system(context, mode_explanation)
+        # Use role="user" since chatbot mode explanation is for the user
+        return self.inject_message_after_system(context, mode_explanation, role="user")
 
     # ============================================
     # Event Handlers
