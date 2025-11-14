@@ -73,6 +73,7 @@ class ContextInspectorBehavior(AgentBehavior):
         self.capture_metrics = capture_metrics
         self.round_count = 0
         self.agent_name = "unknown"
+        self.current_round = 0  # Track current round for on_llm_response
 
         # Create output directory if it doesn't exist
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -145,11 +146,75 @@ class ContextInspectorBehavior(AgentBehavior):
         Returns:
             Context unchanged (pure observer)
         """
+        # Store round number for use in on_llm_response
+        self.current_round = round_number
+
         # Capture snapshot
         self._capture_snapshot(agent, context, round_number=round_number, phase="pre_llm")
 
         # Return context unchanged (pure observer)
         return context
+
+    def on_llm_response(
+        self,
+        agent: Any,
+        response: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Capture LLM response immediately after it returns.
+
+        This runs right after the LLM responds, before tool dispatch.
+
+        Args:
+            agent: Agent instance
+            response: LLM response dict
+
+        Returns:
+            Response unchanged (pure observer)
+        """
+        try:
+            # Get current round number (stored from on_round_start)
+            round_number = getattr(self, 'current_round', 0)
+
+            # Build post-LLM snapshot
+            snapshot = {
+                "agent_name": self.agent_name,
+                "round": round_number,
+                "phase": "post_llm",
+                "timestamp": time.time(),
+            }
+
+            # Capture LLM response
+            message = response.get("message", {})
+            content = message.get("content", "")
+            tool_calls = message.get("tool_calls")
+
+            snapshot["llm_response"] = {
+                "content": content,
+                "content_length": len(content),
+                "tool_calls": self._serialize_tool_calls(tool_calls) if tool_calls else None,
+                "tool_call_count": len(tool_calls) if tool_calls else 0,
+                "is_empty": not content and not tool_calls,
+                "raw_message_keys": list(message.keys())
+            }
+
+            # Save to file
+            filename = f"{self.agent_name}_round_{round_number:03d}_post_llm.json"
+            filepath = self.output_dir / filename
+
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(snapshot, f, indent=2, ensure_ascii=False)
+
+            print(f"[context_inspector] Saved post-LLM snapshot: {filename}")
+
+        except Exception as e:
+            # Don't fail the agent if snapshot capture fails
+            import traceback
+            print(f"[context_inspector] Error capturing post-LLM snapshot: {e}")
+            traceback.print_exc()
+
+        # Return response unchanged (pure observer)
+        return response
 
     def on_round_end(self, agent: Any, round_number: int) -> None:
         """
