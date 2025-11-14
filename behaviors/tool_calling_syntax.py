@@ -186,12 +186,16 @@ Examples:
             content_stripped = content.strip()
             parsed = json.loads(content_stripped)
             if isinstance(parsed, dict) and "name" in parsed and "arguments" in parsed:
-                return [{
-                    "function": {
-                        "name": parsed["name"],
-                        "arguments": parsed["arguments"]
-                    }
-                }]
+                # Validate arguments is a dict, not a string
+                if not isinstance(parsed.get("arguments"), dict):
+                    pass  # Skip to next strategy
+                else:
+                    return [{
+                        "function": {
+                            "name": parsed["name"],
+                            "arguments": parsed["arguments"]
+                        }
+                    }]
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
 
@@ -216,12 +220,16 @@ Examples:
                 try:
                     parsed = json.loads(json_str)
                     if isinstance(parsed, dict) and "name" in parsed and "arguments" in parsed:
-                        return [{
-                            "function": {
-                                "name": parsed["name"],
-                                "arguments": parsed["arguments"]
-                            }
-                        }]
+                        # Validate arguments is a dict, not a string
+                        if not isinstance(parsed.get("arguments"), dict):
+                            pass  # Skip to next strategy
+                        else:
+                            return [{
+                                "function": {
+                                    "name": parsed["name"],
+                                    "arguments": parsed["arguments"]
+                                }
+                            }]
                 except (json.JSONDecodeError, KeyError, TypeError):
                     pass
 
@@ -235,6 +243,9 @@ Examples:
         for match in matches:
             try:
                 parsed = json.loads(match)
+                # Validate arguments is a dict, not a string
+                if not isinstance(parsed.get("arguments"), dict):
+                    continue  # Skip this match
                 tool_calls.append({
                     "function": {
                         "name": parsed["name"],
