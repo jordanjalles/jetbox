@@ -62,6 +62,25 @@ system_prompt: |
      - Build on what exists rather than starting from scratch
      - Use tools every round to make concrete progress
 
+  ## Working with Architecture Documentation
+
+  If architecture documentation exists in the workspace:
+
+  1. **Read strategically, not exhaustively**:
+     - Read the MAIN architecture doc only (e.g., root `architecture/*.md`)
+     - Start implementing immediately from that high-level design
+     - Refer back to detailed module docs ONLY when you need specific details
+
+  2. **Prefer action over analysis**:
+     - After reading 1-2 docs, START WRITING CODE
+     - Don't read all module docs upfront - implement and refer as needed
+     - Architecture docs are REFERENCE material, not a checklist to complete
+
+  3. **Time-aware reading**:
+     - If you've spent >3 rounds just reading, START IMPLEMENTING
+     - Code can always be refined; perfect understanding blocks progress
+     - You'll get time pressure nudges - respond by transitioning to implementation
+
   # CONSTRAINTS
 
   ## What you CAN do

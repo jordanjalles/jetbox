@@ -142,6 +142,42 @@ class LoopDetectionBehavior(AgentBehavior):
                 self.loop_warnings.append(warning)
 
 
+    def _detect_reading_loop(self) -> str | None:
+        """
+        Detect when agent is stuck reading files instead of implementing.
+
+        Checks recent tool history for pattern of excessive reading without
+        any writing/implementation actions.
+
+        Returns:
+            Warning message if reading loop detected, None otherwise
+        """
+        # Need at least 5 actions to detect pattern
+        if len(self.action_history) < 5:
+            return None
+
+        # Check last 6 actions
+        recent = self.action_history[-6:]
+
+        # Categorize tools
+        read_tools = {'read_file', 'list_dir'}
+        write_tools = {'write_file', 'run_bash', 'mark_subtask_complete', 'mark_complete'}
+
+        # Count read vs write actions
+        read_count = sum(1 for a in recent if a["tool_name"] in read_tools)
+        write_count = sum(1 for a in recent if a["tool_name"] in write_tools)
+
+        # Detect reading loop: 4+ reads, 0 writes in last 6 actions
+        if read_count >= 4 and write_count == 0:
+            return (
+                "⚠️  READING LOOP DETECTED\n"
+                f"You've spent {read_count} recent actions reading files without writing any code.\n"
+                "Architecture docs are for reference - you don't need to read them all.\n"
+                "START IMPLEMENTING NOW. You can refer back to docs as needed."
+            )
+
+        return None
+
     def _build_loop_warnings(self) -> list[str] | None:
         """
         Build loop detection warning message.
@@ -149,6 +185,12 @@ class LoopDetectionBehavior(AgentBehavior):
         Returns:
             List of message lines, or None if no warnings
         """
+        # Check for reading loop first
+        reading_loop_warning = self._detect_reading_loop()
+        if reading_loop_warning:
+            return [reading_loop_warning]
+
+        # Check for action loops
         if not self.loop_warnings:
             return None
 
