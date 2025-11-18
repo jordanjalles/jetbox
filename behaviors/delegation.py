@@ -25,7 +25,7 @@ This behavior does NOT handle being delegated to - that's core BaseAgent functio
 
 from typing import Any
 from behaviors.base import AgentBehavior
-from behaviors.rule_of_two_types import RuleOfTwoProperty
+from src.security.agent_security_analyzer import AgentSecurityAnalyzer
 
 
 class DelegationBehavior(AgentBehavior):
@@ -90,149 +90,20 @@ class DelegationBehavior(AgentBehavior):
             Set of Rule of Two properties (union of all sub-agents)
         """
         aggregated_props = set()
+        analyzer = AgentSecurityAnalyzer()
 
         # For each agent we can delegate to
         for target_agent_name in self.agent_relationships.get("can_delegate_to", []):
             agent_info = self.agent_relationships.get(target_agent_name, {})
             behaviors_config = agent_info.get("behaviors", [])
 
-            # Compute aggregate properties for this target agent
-            target_props = self._compute_agent_aggregate_properties(
+            # Compute aggregate properties for this target agent using analyzer
+            target_props = analyzer.compute_aggregate_properties(
                 target_agent_name, behaviors_config, security_context
             )
             aggregated_props.update(target_props)
 
         return aggregated_props
-
-    def _compute_agent_aggregate_properties(
-        self, agent_name: str, behaviors_config: list[dict], security_context
-    ) -> set:
-        """
-        Compute aggregate security properties for a target agent.
-
-        Creates behavior instances and calls their dynamic get_rule_of_two_properties()
-        method to compute context-aware properties.
-
-        Args:
-            agent_name: Name of target agent
-            behaviors_config: List of behavior specs from agent config
-            security_context: SecurityContext to pass to sub-behaviors
-
-        Returns:
-            Set of aggregated Rule of Two properties
-        """
-        import importlib
-        from behaviors.security_context import SecurityContext
-
-        props = set()
-
-        # Use provided context, or create default for Jetbox environment if None
-        # (no untrusted files, no sensitive files, no network access)
-        if security_context is None:
-            security_context = SecurityContext(
-                workspace_has_untrusted_files=False,
-                workspace_has_sensitive_files=False,
-                workspace_has_network_access=False
-            )
-
-        for behavior_spec in behaviors_config:
-            behavior_type = behavior_spec.get("type")
-            if not behavior_type:
-                continue
-
-            try:
-                # Import behavior class
-                module_name = self._behavior_type_to_module(behavior_type)
-                module = importlib.import_module(module_name)
-                behavior_class = getattr(module, behavior_type)
-
-                # Instantiate behavior with params if provided
-                params = behavior_spec.get("params", {})
-                try:
-                    behavior_instance = behavior_class(**params)
-                except TypeError:
-                    # Some behaviors don't accept params, try without
-                    behavior_instance = behavior_class()
-
-                # Call dynamic method to get properties
-                if hasattr(behavior_instance, "get_rule_of_two_properties"):
-                    behavior_props = behavior_instance.get_rule_of_two_properties(None, security_context)
-                    if isinstance(behavior_props, set):
-                        props.update(behavior_props)
-
-            except (ImportError, AttributeError, TypeError) as e:
-                # Behavior class not found or instantiation failed
-                # Silently skip (this is expected for some behaviors)
-                pass
-
-        return props
-
-    def _behavior_type_to_module(self, behavior_type: str) -> str:
-        """
-        Convert behavior type to module path.
-
-        Examples:
-            ReadFileToolsBehavior → behaviors.read_file_tools
-            DelegationBehavior → behaviors.delegation
-        """
-        # Remove "Behavior" suffix
-        name = behavior_type.replace("Behavior", "")
-
-        # Convert CamelCase to snake_case
-        import re
-        snake = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
-
-        return f"behaviors.{snake}"
-
-    def on_initial_context(
-        self,
-        agent: Any,
-        context: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """
-        Inject tool documentation for delegation tools.
-
-        Called once during agent initialization to document available tools.
-
-        Args:
-            agent: Agent instance
-            context: Initial context (system prompt only)
-
-        Returns:
-            Context with tool documentation injected
-        """
-        tools = self.get_tools()
-        if not tools:
-            return context
-
-        # Build tool documentation
-        tool_docs = []
-        for tool in tools:
-            func = tool.get("function", {})
-            name = func.get("name", "unknown")
-            desc = func.get("description", "")
-            params = func.get("parameters", {}).get("properties", {})
-            required = func.get("parameters", {}).get("required", [])
-
-            # Build parameter signature
-            param_strs = []
-            for param_name, param_spec in params.items():
-                param_type = param_spec.get("type", "any")
-                is_required = param_name in required
-                if is_required:
-                    param_strs.append(f"{param_name}: {param_type}")
-                else:
-                    param_strs.append(f"{param_name}?: {param_type}")
-
-            param_sig = ", ".join(param_strs) if param_strs else ""
-            tool_docs.append(f"  - {name}({param_sig}): {desc}")
-
-        if tool_docs:
-            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            # Use default role="system" for framework tool documentation
-            return self.inject_message_after_system(context, tool_message)
-
-        return context
 
     def _build_delegation_tools(self) -> None:
         """
@@ -464,7 +335,6 @@ class DelegationBehavior(AgentBehavior):
         Returns:
             Delegation result dict
         """
-        from pathlib import Path
         from agent_config import PROJECT_ROOT
 
         # Get agent config from registry
@@ -570,7 +440,6 @@ class DelegationBehavior(AgentBehavior):
         Raises:
             ValueError: If workspace_mode="existing" but no workspace available
         """
-        from pathlib import Path
 
         workspace_mode = args.get("workspace_mode", "")
         workspace_path = args.get("workspace_path", "")
