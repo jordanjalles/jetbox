@@ -45,132 +45,67 @@ class TaskManagementBehavior(AgentBehavior):
 
         return self.workspace_manager.workspace_dir / "architecture" / "task-breakdown.json"
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Return task management tool definitions.
+    @tool
+    def read_task_breakdown(self) -> dict[str, Any]:
+        """Read the complete task breakdown with status counts. Returns all tasks with their current status (pending/in_progress/completed/failed).
 
         Returns:
-            List of tool definitions for LLM
+            Dict with tasks list and status counts
         """
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "read_task_breakdown",
-                    "description": "Read the complete task breakdown with status counts. Returns all tasks with their current status (pending/in_progress/completed/failed).",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                        "required": []
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_next_task",
-                    "description": "Get the next pending task to work on. Respects task dependencies by default (only returns tasks whose dependencies are completed). Returns None if no tasks are ready.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "skip_dependencies": {
-                                "type": "boolean",
-                                "description": "If true, return any pending task regardless of dependencies. Default: false"
-                            }
-                        },
-                        "required": []
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "mark_task_status",
-                    "description": "Mark a task's status (pending, in_progress, completed, failed). Automatically manages timestamps: sets started_at on in_progress, completed_at on completion. Use this to track progress through the task breakdown.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "task_id": {
-                                "type": "string",
-                                "description": "Task ID (e.g., 'T1', 'T2')"
-                            },
-                            "status": {
-                                "type": "string",
-                                "description": "New status: 'pending', 'in_progress', 'completed', or 'failed'",
-                                "enum": ["pending", "in_progress", "completed", "failed"]
-                            },
-                            "notes": {
-                                "type": "string",
-                                "description": "Optional notes about the status change"
-                            },
-                            "result": {
-                                "type": "string",
-                                "description": "Optional result summary when marking completed or failed (e.g., 'Created auth module with JWT support', 'Failed: missing database connection')"
-                            }
-                        },
-                        "required": ["task_id", "status"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "update_task",
-                    "description": "Update task properties like description, priority, complexity, or dependencies.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "task_id": {
-                                "type": "string",
-                                "description": "Task ID to update"
-                            },
-                            "updates": {
-                                "type": "object",
-                                "description": "Fields to update (e.g., {'priority': 1, 'estimated_complexity': 'high'})"
-                            }
-                        },
-                        "required": ["task_id", "updates"]
-                    }
-                }
-            }
-        ]
+        return self._read_task_breakdown()
 
-    def dispatch_tool(
+    @tool
+    def get_next_task(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
-    ) -> Any:
-        """
-        Dispatch task management tool calls.
+        skip_dependencies: bool = False
+    ) -> dict[str, Any]:
+        """Get the next pending task to work on. Respects task dependencies by default (only returns tasks whose dependencies are completed). Returns None if no tasks are ready.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool name (read_task_breakdown, get_next_task, etc.)
-            args: Tool arguments
+            skip_dependencies: If true, return any pending task regardless of dependencies. Default: false
 
         Returns:
-            Tool execution result
+            Dict with next task or None
         """
-        if tool_name == "read_task_breakdown":
-            return self._read_task_breakdown()
-        elif tool_name == "get_next_task":
-            skip_dependencies = args.get("skip_dependencies", False)
-            return self._get_next_task(skip_dependencies)
-        elif tool_name == "mark_task_status":
-            return self._mark_task_status(
-                task_id=args["task_id"],
-                status=args["status"],
-                notes=args.get("notes", ""),
-                result=args.get("result", "")
-            )
-        elif tool_name == "update_task":
-            return self._update_task(
-                task_id=args["task_id"],
-                updates=args["updates"]
-            )
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
+        return self._get_next_task(skip_dependencies)
+
+    @tool
+    def mark_task_status(
+        self,
+        task_id: str,
+        status: str,
+        notes: str = "",
+        result: str = ""
+    ) -> dict[str, Any]:
+        """Mark a task's status (pending, in_progress, completed, failed). Automatically manages timestamps: sets started_at on in_progress, completed_at on completion. Use this to track progress through the task breakdown.
+
+        Args:
+            task_id: Task ID (e.g., 'T1', 'T2')
+            status: New status: 'pending', 'in_progress', 'completed', or 'failed'
+            notes: Optional notes about the status change
+            result: Optional result summary when marking completed or failed (e.g., 'Created auth module with JWT support', 'Failed: missing database connection')
+
+        Returns:
+            Dict with task ID and new status
+        """
+        return self._mark_task_status(task_id, status, notes, result)
+
+    @tool
+    def update_task(
+        self,
+        task_id: str,
+        updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update task properties like description, priority, complexity, or dependencies.
+
+        Args:
+            task_id: Task ID to update
+            updates: Fields to update (e.g., {'priority': 1, 'estimated_complexity': 'high'})
+
+        Returns:
+            Dict with task ID and updated fields
+        """
+        return self._update_task(task_id, updates)
 
     def _read_task_breakdown(self) -> dict[str, Any]:
         """
