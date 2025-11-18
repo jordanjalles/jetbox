@@ -149,143 +149,17 @@ class HomeAssistantBehavior(AgentBehavior):
             logger.error(f"Home Assistant request failed: {e}")
             return {"error": str(e)}
 
-    def get_tools(self) -> list[dict]:
-        """Get Home Assistant control tools."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "ha_list_devices",
-                    "description": "List all devices/entities from Home Assistant. Returns device names, states, and types.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "domain": {
-                                "type": "string",
-                                "description": "Optional domain filter (e.g., 'light', 'switch', 'climate', 'sensor')",
-                            },
-                            "area": {
-                                "type": "string",
-                                "description": "Optional area/room filter",
-                            },
-                        },
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "ha_get_state",
-                    "description": "Get the current state of a specific device/entity",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "entity_id": {
-                                "type": "string",
-                                "description": "Entity ID (e.g., 'light.living_room', 'climate.thermostat')",
-                            }
-                        },
-                        "required": ["entity_id"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "ha_call_service",
-                    "description": "Call a Home Assistant service to control devices (turn on/off, set values, etc.)",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "domain": {
-                                "type": "string",
-                                "description": "Service domain (e.g., 'light', 'switch', 'climate')",
-                            },
-                            "service": {
-                                "type": "string",
-                                "description": "Service name (e.g., 'turn_on', 'turn_off', 'set_temperature')",
-                            },
-                            "entity_id": {
-                                "type": "string",
-                                "description": "Target entity ID (e.g., 'light.living_room')",
-                            },
-                            "data": {
-                                "type": "object",
-                                "description": "Optional service data (e.g., {'brightness': 255, 'color_temp': 300})",
-                            },
-                        },
-                        "required": ["domain", "service", "entity_id"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "ha_list_automations",
-                    "description": "List all configured Home Assistant automations",
-                    "parameters": {"type": "object", "properties": {}},
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "ha_trigger_automation",
-                    "description": "Manually trigger a Home Assistant automation",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "entity_id": {
-                                "type": "string",
-                                "description": "Automation entity ID (e.g., 'automation.morning_routine')",
-                            }
-                        },
-                        "required": ["entity_id"],
-                    },
-                },
-            },
-        ]
+    # Tool implementations (using @tool decorator)
 
-    def dispatch_tool(
-        self, agent, tool_name: str, args: dict[str, Any]
-    ) -> dict:
-        """Dispatch Home Assistant tool calls.
-
-        Args:
-            agent: Agent instance
-            tool_name: Name of the tool
-            args: Tool arguments
-
-        Returns:
-            Tool result
-        """
-        if tool_name == "ha_list_devices":
-            return self._list_devices(
-                domain=args.get("domain"), area=args.get("area")
-            )
-        elif tool_name == "ha_get_state":
-            return self._get_state(entity_id=args["entity_id"])
-        elif tool_name == "ha_call_service":
-            return self._call_service(
-                domain=args["domain"],
-                service=args["service"],
-                entity_id=args["entity_id"],
-                data=args.get("data"),
-            )
-        elif tool_name == "ha_list_automations":
-            return self._list_automations()
-        elif tool_name == "ha_trigger_automation":
-            return self._trigger_automation(entity_id=args["entity_id"])
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
-
-    def _list_devices(
+    @tool
+    def ha_list_devices(
         self, domain: Optional[str] = None, area: Optional[str] = None
     ) -> dict:
-        """List all devices/entities.
+        """List all devices/entities from Home Assistant. Returns device names, states, and types.
 
         Args:
-            domain: Optional domain filter
-            area: Optional area filter
+            domain: Optional domain filter (e.g., 'light', 'switch', 'climate', 'sensor')
+            area: Optional area/room filter
 
         Returns:
             List of devices
@@ -327,11 +201,12 @@ class HomeAssistantBehavior(AgentBehavior):
 
         return {"devices": devices, "count": len(devices)}
 
-    def _get_state(self, entity_id: str) -> dict:
-        """Get state of a specific entity.
+    @tool
+    def ha_get_state(self, entity_id: str) -> dict:
+        """Get the current state of a specific device/entity.
 
         Args:
-            entity_id: Entity ID
+            entity_id: Entity ID (e.g., 'light.living_room', 'climate.thermostat')
 
         Returns:
             Entity state
@@ -350,20 +225,21 @@ class HomeAssistantBehavior(AgentBehavior):
             "last_updated": state.get("last_updated"),
         }
 
-    def _call_service(
+    @tool
+    def ha_call_service(
         self,
         domain: str,
         service: str,
         entity_id: str,
         data: Optional[dict] = None,
     ) -> dict:
-        """Call a Home Assistant service.
+        """Call a Home Assistant service to control devices (turn on/off, set values, etc.).
 
         Args:
-            domain: Service domain
-            service: Service name
-            entity_id: Target entity
-            data: Optional service data
+            domain: Service domain (e.g., 'light', 'switch', 'climate')
+            service: Service name (e.g., 'turn_on', 'turn_off', 'set_temperature')
+            entity_id: Target entity ID (e.g., 'light.living_room')
+            data: Optional service data (e.g., {'brightness': 255, 'color_temp': 300})
 
         Returns:
             Service call result
@@ -392,8 +268,9 @@ class HomeAssistantBehavior(AgentBehavior):
             "result": result,
         }
 
-    def _list_automations(self) -> dict:
-        """List all automations.
+    @tool
+    def ha_list_automations(self) -> dict:
+        """List all configured Home Assistant automations.
 
         Returns:
             List of automations
@@ -424,11 +301,12 @@ class HomeAssistantBehavior(AgentBehavior):
 
         return {"automations": automation_list, "count": len(automation_list)}
 
-    def _trigger_automation(self, entity_id: str) -> dict:
-        """Trigger an automation.
+    @tool
+    def ha_trigger_automation(self, entity_id: str) -> dict:
+        """Manually trigger a Home Assistant automation.
 
         Args:
-            entity_id: Automation entity ID
+            entity_id: Automation entity ID (e.g., 'automation.morning_routine')
 
         Returns:
             Trigger result
