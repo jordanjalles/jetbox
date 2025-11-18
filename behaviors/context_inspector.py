@@ -26,6 +26,7 @@ import json
 import time
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from src.message_serialization import serialize_message, serialize_tool_call
 
 
 class ContextInspectorBehavior(AgentBehavior):
@@ -295,33 +296,7 @@ class ContextInspectorBehavior(AgentBehavior):
         if not tool_calls:
             return []
 
-        serialized = []
-        for tc in tool_calls:
-            if hasattr(tc, "model_dump"):
-                # Pydantic model
-                serialized.append(tc.model_dump())
-            elif hasattr(tc, "to_dict"):
-                # Has to_dict method
-                serialized.append(tc.to_dict())
-            elif isinstance(tc, dict):
-                # Already a dict
-                serialized.append(tc)
-            else:
-                # Manual extraction
-                try:
-                    serialized.append({
-                        "id": getattr(tc, "id", None),
-                        "type": getattr(tc, "type", "function"),
-                        "function": {
-                            "name": getattr(tc.function, "name", "") if hasattr(tc, "function") else "",
-                            "arguments": getattr(tc.function, "arguments", {}) if hasattr(tc, "function") else {}
-                        }
-                    })
-                except Exception:
-                    # Fallback: convert to string representation
-                    serialized.append({"_error": "Could not serialize ToolCall", "_repr": str(tc)})
-
-        return serialized
+        return [serialize_tool_call(tc) for tc in tool_calls]
 
     def _capture_snapshot(
         self,
@@ -419,39 +394,7 @@ class ContextInspectorBehavior(AgentBehavior):
         Returns:
             JSON-serializable message dict
         """
-        serialized = {}
-        for key, value in message.items():
-            if key == "tool_calls" and value is not None:
-                # Convert ToolCall objects to dicts
-                serialized_calls = []
-                for tc in value:
-                    if hasattr(tc, "model_dump"):
-                        # Pydantic model
-                        serialized_calls.append(tc.model_dump())
-                    elif hasattr(tc, "to_dict"):
-                        # Has to_dict method
-                        serialized_calls.append(tc.to_dict())
-                    elif isinstance(tc, dict):
-                        # Already a dict
-                        serialized_calls.append(tc)
-                    else:
-                        # Manual extraction
-                        try:
-                            serialized_calls.append({
-                                "id": getattr(tc, "id", None),
-                                "type": getattr(tc, "type", "function"),
-                                "function": {
-                                    "name": getattr(tc.function, "name", "") if hasattr(tc, "function") else "",
-                                    "arguments": getattr(tc.function, "arguments", {}) if hasattr(tc, "function") else {}
-                                }
-                            })
-                        except Exception:
-                            # Fallback: convert to string representation
-                            serialized_calls.append({"_error": "Could not serialize ToolCall", "_repr": str(tc)})
-                serialized[key] = serialized_calls
-            else:
-                serialized[key] = value
-        return serialized
+        return serialize_message(message)
 
     def _get_tools(self, agent: Any) -> list[dict[str, Any]]:
         """

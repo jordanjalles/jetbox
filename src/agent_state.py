@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 from pathlib import Path
 import json
+from src.message_serialization import serialize_message
 
 
 @dataclass
@@ -20,42 +21,12 @@ class AgentState:
     start_time: float
     total_rounds: int
 
-    def _serialize_message(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Convert message to JSON-serializable format."""
-        serialized = {}
-        for key, value in message.items():
-            if key == "tool_calls" and value is not None:
-                # Convert ToolCall objects to dicts
-                serialized_calls = []
-                for tc in value:
-                    if hasattr(tc, "model_dump"):
-                        # Pydantic model
-                        serialized_calls.append(tc.model_dump())
-                    elif hasattr(tc, "to_dict"):
-                        serialized_calls.append(tc.to_dict())
-                    elif isinstance(tc, dict):
-                        serialized_calls.append(tc)
-                    else:
-                        # Try to extract attributes manually
-                        serialized_calls.append({
-                            "id": getattr(tc, "id", None),
-                            "type": getattr(tc, "type", "function"),
-                            "function": {
-                                "name": getattr(tc.function, "name", ""),
-                                "arguments": getattr(tc.function, "arguments", {})
-                            } if hasattr(tc, "function") else {}
-                        })
-                serialized[key] = serialized_calls
-            else:
-                serialized[key] = value
-        return serialized
-
     def to_dict(self) -> dict[str, Any]:
         """Serialize state to dictionary."""
         return {
             "name": self.name,
             "role": self.role,
-            "messages": [self._serialize_message(msg) for msg in self.messages],
+            "messages": [serialize_message(msg) for msg in self.messages],
             "start_time": self.start_time,
             "total_rounds": self.total_rounds,
         }
