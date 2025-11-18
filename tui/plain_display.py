@@ -31,7 +31,7 @@ class PlainDisplay(DisplayInterface):
         self.log_row = 1  # Start logs at row 1 (status will be at bottom)
         self.original_stdout = None  # Store original stdout for restoration
         self.terminal_height = 24  # Default terminal height (will be detected)
-        self.status_bar_lines = 4  # Number of lines reserved for status bar
+        self.status_bar_lines = 7  # Number of lines reserved for status bar (1 round + 1 context + 4 latency + 1 status)
 
     def start(self) -> None:
         """Enter alternate screen buffer and redirect stdout for TUI mode."""
@@ -115,41 +115,68 @@ class PlainDisplay(DisplayInterface):
             """Delegate other attributes to original stdout."""
             return getattr(self.display.original_stdout, name)
 
-    def _format_latency_histogram(self, latency_history: list[float], width: int = 20) -> str:
+    def _format_latency_histogram(self, latency_history: list[float], width: int = 20, height: int = 4) -> list[str]:
         """
-        Format latency history as a mini histogram.
+        Format latency history as a multi-line vertical histogram.
 
         Args:
             latency_history: List of recent round latencies in seconds
-            width: Width of histogram in characters
+            width: Width of histogram in characters (number of bars)
+            height: Height of histogram in lines
 
         Returns:
-            Histogram string using block characters
+            List of strings representing each line of the histogram (top to bottom)
         """
         if not latency_history:
-            return "░" * width
+            return ["░" * width] * height
 
         # Take last N entries to fit width
         recent = latency_history[-width:]
 
-        # Normalize to 0-1 range
+        # Normalize to 0-height range
         min_lat = min(recent)
         max_lat = max(recent)
         range_lat = max_lat - min_lat if max_lat > min_lat else 1.0
 
-        # Map to block characters (8 levels, all visible)
-        blocks = "▁▂▃▄▅▆▇█"
-        histogram = ""
+        # Calculate bar heights (0 to height)
+        bar_heights = []
         for lat in recent:
             normalized = (lat - min_lat) / range_lat
-            # Map to 0-7 range (8 levels)
-            block_idx = min(int(normalized * len(blocks)), len(blocks) - 1)
-            histogram += blocks[block_idx]
+            # Map to 0-height range
+            bar_height = normalized * height
+            bar_heights.append(bar_height)
 
-        # Pad if shorter than width
-        histogram += "░" * (width - len(histogram))
+        # Build histogram lines from top to bottom
+        lines = []
+        for row in range(height):
+            line = ""
+            # Row threshold: top row (row=0) needs height >= 4.0, bottom row (row=3) needs height >= 1.0
+            threshold = height - row
 
-        return histogram
+            for bar_height in bar_heights:
+                if bar_height >= threshold:
+                    # Full block for this row
+                    line += "█"
+                elif bar_height >= threshold - 1:
+                    # Partial block - use fractional blocks
+                    fraction = bar_height - (threshold - 1)
+                    if fraction >= 0.75:
+                        line += "▇"
+                    elif fraction >= 0.5:
+                        line += "▆"
+                    elif fraction >= 0.25:
+                        line += "▃"
+                    else:
+                        line += "▁"
+                else:
+                    # Empty space
+                    line += " "
+
+            # Pad if shorter than width
+            line += " " * (width - len(line))
+            lines.append(line)
+
+        return lines
 
     def _format_size(self, chars: int) -> str:
         """Format character count as human-readable size (e.g., 12K, 1.5M)."""
@@ -186,7 +213,7 @@ class PlainDisplay(DisplayInterface):
             status_line = f"[{progress:3d}%] Round {current_round}/{max_rounds} - {status}"
             lines = [status_line]
         else:
-            # Verbose mode: 4-line status display
+            # Verbose mode: 7-line status display
 
             # Line 1: Round allowance progress bar
             bar_width = 20
@@ -211,18 +238,29 @@ class PlainDisplay(DisplayInterface):
             else:
                 line2 = "[Context]  (no data)"
 
-            # Line 3: Latency histogram
+            # Lines 3-6: Latency histogram (4 lines tall)
+            lines = [line1, line2]
+
             if latency_history:
-                histogram = self._format_latency_histogram(latency_history, width=20)
+                histogram_lines = self._format_latency_histogram(latency_history, width=20, height=4)
                 avg = sum(latency_history) / len(latency_history)
                 last = latency_history[-1] if latency_history else 0
                 min_lat = min(latency_history)
                 max_lat = max(latency_history)
-                line3 = f"[Latency]  [{histogram}] Avg:{avg:.1f}s Last:{last:.1f}s Min:{min_lat:.1f}s Max:{max_lat:.1f}s"
-            else:
-                line3 = "[Latency]  (no data)"
 
-            # Line 4: Granular status
+                # Add histogram with label on first line
+                lines.append(f"[Latency]  {histogram_lines[0]}")
+                for hist_line in histogram_lines[1:]:
+                    lines.append(f"           {hist_line}")
+
+                # Add statistics line after histogram
+                stats_line = f"           Avg:{avg:.1f}s Last:{last:.1f}s Min:{min_lat:.1f}s Max:{max_lat:.1f}s"
+                lines.append(stats_line)
+            else:
+                lines.append("[Latency]  (no data)")
+                lines.extend([""] * 3)  # Placeholder lines
+
+            # Line 7: Granular status
             status_emoji = {
                 "starting": "🚀",
                 "building_context": "🔧",
@@ -238,9 +276,8 @@ class PlainDisplay(DisplayInterface):
             emoji = status_emoji.get(detailed_status or "", "▶️")
             # Format status: replace underscores with spaces and capitalize
             status_text = (detailed_status or status).replace("_", " ").capitalize()
-            line4 = f"[Status]  {emoji} {status_text}"
-
-            lines = [line1, line2, line3, line4]
+            status_line = f"[Status]  {emoji} {status_text}"
+            lines.append(status_line)
 
         # Update status at bottom rows using absolute positioning
         if self.using_alt_screen and self.original_stdout:
