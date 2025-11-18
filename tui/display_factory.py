@@ -43,7 +43,16 @@ class DisplayFactory:
         if mode == "plain":
             return PlainDisplay(verbose=verbose)
         elif mode == "textual":
-            return DisplayFactory._create_textual()
+            # Warn user that TextualDisplay has issues
+            print("\n[DisplayFactory] WARNING: TextualDisplay has async integration issues")
+            print("[DisplayFactory] May crash with 'No screens on stack' error")
+            print("[DisplayFactory] Recommended: Use --no-tui for stable output\n")
+            try:
+                return DisplayFactory._create_textual()
+            except Exception as e:
+                print(f"[DisplayFactory] TextualDisplay creation failed: {e}")
+                print("[DisplayFactory] Falling back to PlainDisplay\n")
+                return PlainDisplay(verbose=verbose)
         elif mode == "auto":
             return DisplayFactory._auto_detect(verbose)
         else:
@@ -55,7 +64,9 @@ class DisplayFactory:
         """
         Auto-detect the best display mode.
 
-        Detection logic:
+        TEMPORARY: Always returns PlainDisplay until TextualDisplay async integration is complete.
+
+        Original detection logic (disabled):
         1. Not a TTY? → Plain
         2. Terminal too small? → Plain
         3. TERM=dumb? → Plain
@@ -63,32 +74,38 @@ class DisplayFactory:
         5. Otherwise → Textual
         """
 
-        # Check if TTY
-        if not sys.stdout.isatty():
-            return PlainDisplay(verbose=verbose)
+        # TEMPORARY: Force PlainDisplay until TextualDisplay async is fixed
+        # TextualDisplay has async integration issues causing "No screens on stack" errors
+        # when called from synchronous agent lifecycle
+        return PlainDisplay(verbose=verbose)
 
-        # Check terminal size
-        try:
-            size = os.get_terminal_size()
-            if size.columns < 80 or size.lines < 20:
-                # Too small for TUI
-                return PlainDisplay(verbose=verbose)
-        except OSError:
-            # Can't get size - probably not a real terminal
-            return PlainDisplay(verbose=verbose)
-
-        # Check TERM variable
-        term = os.environ.get("TERM", "dumb")
-        if term in ["dumb", "unknown"]:
-            return PlainDisplay(verbose=verbose)
-
-        # Check if Textual is available
-        try:
-            import textual
-            return DisplayFactory._create_textual()
-        except ImportError:
-            # Textual not installed - fallback to plain
-            return PlainDisplay(verbose=verbose)
+        # TODO: Re-enable auto-detection once TextualDisplay async is fixed
+        # # Check if TTY
+        # if not sys.stdout.isatty():
+        #     return PlainDisplay(verbose=verbose)
+        #
+        # # Check terminal size
+        # try:
+        #     size = os.get_terminal_size()
+        #     if size.columns < 80 or size.lines < 20:
+        #         # Too small for TUI
+        #         return PlainDisplay(verbose=verbose)
+        # except OSError:
+        #     # Can't get size - probably not a real terminal
+        #     return PlainDisplay(verbose=verbose)
+        #
+        # # Check TERM variable
+        # term = os.environ.get("TERM", "dumb")
+        # if term in ["dumb", "unknown"]:
+        #     return PlainDisplay(verbose=verbose)
+        #
+        # # Check if Textual is available
+        # try:
+        #     import textual
+        #     return DisplayFactory._create_textual()
+        # except ImportError:
+        #     # Textual not installed - fallback to plain
+        #     return PlainDisplay(verbose=verbose)
 
     @staticmethod
     def _create_textual() -> TextualDisplay:
