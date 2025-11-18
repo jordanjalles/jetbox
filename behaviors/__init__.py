@@ -40,6 +40,7 @@ from behaviors.context_inspector import ContextInspectorBehavior
 from behaviors.execution_mode import ExecutionModeBehavior
 from behaviors.scheduled_mode import ScheduledModeBehavior
 from behaviors.home_assistant import HomeAssistantBehavior
+from behaviors.tui_display_behavior import TUIDisplayBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -59,4 +60,5 @@ __all__ = [
     "ExecutionModeBehavior",
     "ScheduledModeBehavior",
     "HomeAssistantBehavior",
+    "TUIDisplayBehavior",
 ]

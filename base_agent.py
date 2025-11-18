@@ -143,6 +143,11 @@ class BaseAgent:
         print(f"[{name}] Security context: workspace_trust={workspace_trust} (IS_SANDBOX={is_sandbox}), "
               f"untrusted={has_untrusted}, sensitive={has_sensitive}, network={has_network}")
 
+        # Initialize TUI display (applies to all agents)
+        from tui import DisplayFactory
+        display_mode = os.environ.get("JETBOX_TUI_MODE", "auto")
+        self.display = DisplayFactory.create(force_mode=display_mode)
+
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
         self.workspace_manager = None  # For workspace isolation
         self.perf_stats = None  # For performance tracking
@@ -981,6 +986,15 @@ class BaseAgent:
                 print("Error: --timeout requires a timeout value in seconds")
                 sys.exit(1)
 
+        # Check for TUI display mode flags
+        display_mode = "auto"  # Default: auto-detect
+        if "--tui" in args:
+            display_mode = "textual"
+            args.remove("--tui")
+        elif "--no-tui" in args:
+            display_mode = "plain"
+            args.remove("--no-tui")
+
         # Check for --clean-workspaces flag (workspace cleanup utility)
         clean_workspaces = False
         clean_older_than = None
@@ -1018,6 +1032,7 @@ class BaseAgent:
             "clean_workspaces": clean_workspaces,
             "clean_older_than": clean_older_than,
             "clean_dry_run": clean_dry_run,
+            "display_mode": display_mode,
         }
 
     @classmethod
@@ -1363,6 +1378,10 @@ class BaseAgent:
 
         # Parse CLI arguments
         args = cls.parse_cli_args()
+
+        # Set display mode in environment for TUIDisplayBehavior
+        if "display_mode" in args and args["display_mode"]:
+            os.environ["JETBOX_TUI_MODE"] = args["display_mode"]
 
         # Handle workspace cleanup mode (exits after cleanup)
         if args.get("clean_workspaces"):

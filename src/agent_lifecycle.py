@@ -71,10 +71,16 @@ class AgentLifecycle:
             for round_no in range(1, max_rounds + 1):
                 result = self._execute_round(round_no, max_rounds, model, temperature)
                 if result:
+                    # Stop display and return result
+                    self._display_completion(result)
+                    self.agent.display.stop()
                     return result
 
             # Max rounds reached without completion
-            return self._handle_max_rounds(max_rounds)
+            result = self._handle_max_rounds(max_rounds)
+            self._display_completion(result)
+            self.agent.display.stop()
+            return result
 
         except RuntimeError as e:
             # Handle auto-fail from loop detection
@@ -82,30 +88,36 @@ class AgentLifecycle:
             if "Auto-fail" in error_msg or "consecutive empty rounds" in error_msg:
                 print(f"[{self.agent.name}] Auto-fail triggered by loop detection: {e}")
                 # Return as failure (not error) - this is expected behavior
-                return {
+                result = {
                     "status": "failure",
                     "reason": f"Auto-failed due to stuck state: {error_msg}",
                     "workspace": str(self.agent.workspace) if self.agent.workspace else None,
                 }
+                self.agent.display.stop()
+                return result
             else:
                 # Other RuntimeErrors - treat as errors
                 print(f"[{self.agent.name}] RuntimeError during run: {e}")
                 import traceback
                 traceback.print_exc()
-                return {
+                result = {
                     "status": "error",
                     "reason": str(e),
                     "workspace": str(self.agent.workspace) if self.agent.workspace else None,
                 }
+                self.agent.display.stop()
+                return result
         except Exception as e:
             print(f"[{self.agent.name}] Exception during run: {e}")
             import traceback
             traceback.print_exc()
-            return {
+            result = {
                 "status": "error",
                 "reason": str(e),
                 "workspace": str(self.agent.workspace) if self.agent.workspace else None,
             }
+            self.agent.display.stop()
+            return result
 
     def run_single_llm_round(self, user_message: str) -> None:
         """
@@ -245,6 +257,9 @@ class AgentLifecycle:
         # Trigger on_initial_context ONCE for first-round setup
         self.agent.event_system.inject_initial_context()
 
+        # Start display
+        self.agent.display.start()
+
         print(f"[{self.agent.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
         return max_rounds, model, temperature
 
@@ -289,6 +304,9 @@ class AgentLifecycle:
 
         # Trigger round start event (called every round before LLM)
         context = self.agent.event_system.trigger_round_start(round_no, context)
+
+        # Update display status
+        self._update_display_status(round_no, max_rounds, model)
 
         # Call LLM with modified context
         print(f"\n[{self.agent.name}] Round {round_no}/{max_rounds}")
@@ -501,3 +519,57 @@ class AgentLifecycle:
             "goal": goal_desc,
             "workspace": str(self.agent.workspace) if self.agent.workspace else None,
         }
+
+    # ===========================
+    # Display helpers
+    # ===========================
+
+    def _update_display_status(self, round_no: int, max_rounds: int, model: str) -> None:
+        """
+        Update TUI display with current agent status.
+
+        Args:
+            round_no: Current round number
+            max_rounds: Maximum rounds
+            model: Model name
+        """
+        from tui import AgentEvent, EventType
+        elapsed_time = time.time() - self.agent.goal_start_time if self.agent.goal_start_time else 0
+
+        self.agent.display.update_status(
+            goal=self.agent.goal or "No goal set",
+            agent_name=self.agent.name,
+            model=model,
+            current_round=round_no,
+            max_rounds=max_rounds,
+            elapsed_time=elapsed_time,
+            status="Running",
+            tokens_used=None,  # TODO: track tokens if needed
+            tokens_max=None,
+        )
+
+    def _display_completion(self, result: dict[str, Any]) -> None:
+        """
+        Show completion summary on display.
+
+        Args:
+            result: Completion result dict
+        """
+        success = result.get("status") == "success"
+        summary = result.get("summary") or result.get("reason") or result.get("message") or "Unknown"
+        elapsed_time = time.time() - self.agent.goal_start_time if self.agent.goal_start_time else 0
+
+        # Get list of created files if available
+        files_created = []
+        if hasattr(self.agent, 'workspace_manager') and self.agent.workspace_manager:
+            try:
+                files_created = list(self.agent.workspace_manager.get_created_files())
+            except Exception:
+                pass
+
+        self.agent.display.show_completion(
+            success=success,
+            summary=summary,
+            duration=elapsed_time,
+            files_created=files_created,
+        )

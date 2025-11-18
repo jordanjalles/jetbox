@@ -156,6 +156,9 @@ behaviors:
       output_dir: ".context_inspection"
       save_full_context: true
 
+  # NOTE: TUI display is now integrated directly into BaseAgent (not a behavior)
+  # Use --tui or --no-tui CLI flags to control display mode
+
   # NOTE: DelegationBehavior is automatically added based on agents.yaml relationships.
   # The orchestrator can delegate to: architect, task_executor (defined in agents.yaml)
   # This creates tools: consult_architect, delegate_to_executor
@@ -164,5 +167,4 @@ behaviors:
   # - ClarificationBehavior (provides user interaction tools)
   # - WorkspaceToolsBehavior (provides workspace management)
   # - WorkspaceTaskNotesBehavior (provides persistent context summaries)
-  # - StatusDisplayBehavior (renders progress and performance stats)
   # - TaskManagementBehavior (provides task breakdown and tracking)

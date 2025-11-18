@@ -196,5 +196,5 @@ behaviors:
       output_dir: ".context_inspection"
       save_full_context: true
 
-  # NOTE: StatusDisplayBehavior is DEPRECATED and has been removed.
-  # Status display is being redesigned for the behavior system.
+  # NOTE: TUI display is now integrated directly into BaseAgent (not a behavior)
+  # Use --tui or --no-tui CLI flags to control display mode

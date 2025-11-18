@@ -1,0 +1,48 @@
+# Example: Agent configuration with TUIDisplayBehavior
+#
+# This shows how to configure an agent to use the TUI display system.
+#
+# Usage:
+#   python agent.py --config example_tui_config.yaml "Create calculator"
+
+agent_type: task_executor
+
+behaviors:
+  # TUI Display - Real-time progress visualization
+  # Replaces StatusDisplayBehavior (deprecated)
+  - type: TUIDisplayBehavior
+    params:
+      display_mode: "auto"  # Options: "auto" (default), "plain", "textual"
+      # auto: Detects TTY and chooses best mode
+      # plain: Force plain text output (CI/pipes)
+      # textual: Force interactive TUI (manual override)
+
+  # File tools
+  - type: ReadFileToolsBehavior
+    params: {}
+  - type: WriteFileToolsBehavior
+    params: {}
+  - type: DirectoryToolsBehavior
+    params: {}
+
+  # Command tools
+  - type: CommandToolsBehavior
+    params:
+      whitelist: ["python", "pytest", "ruff", "pip", "git"]
+
+  # Context management
+  - type: CompactWhenNearFullBehavior
+    params:
+      max_tokens: 128000
+
+  # Utilities
+  - type: LoopDetectionBehavior
+    params:
+      max_repeats: 5
+  - type: WorkspaceTaskNotesBehavior
+    params: {}
+
+# Agent settings
+max_rounds: 50
+model: "qwen3-coder:30b"
+temperature: 0.2
