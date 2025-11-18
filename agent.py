@@ -288,7 +288,11 @@ def main():
 
             # Get extra behaviors from environment (set by parse_extra_behaviors in main)
             extra_behaviors_env = os.environ.get('JETBOX_EXTRA_BEHAVIORS', '')
-            extra_behaviors = [b.strip() for b in extra_behaviors_env.split(',') if b.strip()] if extra_behaviors_env else None
+            extra_behaviors = [b.strip() for b in extra_behaviors_env.split(',') if b.strip()] if extra_behaviors_env else []
+
+            # If --chat flag is set, add ChatbotBehavior
+            if force_chat_mode and 'ChatbotBehavior' not in extra_behaviors:
+                extra_behaviors.append('ChatbotBehavior')
 
             # Create agent with custom config file and agent name from team
             # NOTE: TaskExecutorAgent.__init__ has name="task_executor" hardcoded,
@@ -300,7 +304,7 @@ def main():
                 config_file=config_file,
                 timeout_seconds=timeout_seconds,
                 exclude_behaviors=exclude_behaviors,
-                extra_behaviors=extra_behaviors,
+                extra_behaviors=extra_behaviors if extra_behaviors else None,
             )
 
         # Temporarily replace the method

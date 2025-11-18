@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Ollama service for LLM inference
+  ollama:
+    image: ollama/ollama:latest
+    container_name: jetbox-ollama
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - jetbox-network
+
+  # Jetbox agent manager service
+  jetbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jetbox-manager
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+    volumes:
+      # Mount config directory for easy agent configuration
+      - ./config:/workspace/config
+      # Persistent storage for agent state and logs
+      - jetbox_state:/home/agent/.jetbox
+      # Persistent storage for agent workspaces
+      - jetbox_workspaces:/workspace/.agent_workspaces
+    command: ["start", "--foreground"]
+    restart: unless-stopped
+    networks:
+      - jetbox-network
+
+  # Optional: Home Assistant instance for testing
+  # Uncomment to run a local Home Assistant for development
+  # homeassistant:
+  #   image: homeassistant/home-assistant:latest
+  #   container_name: jetbox-homeassistant
+  #   volumes:
+  #     - homeassistant_config:/config
+  #   environment:
+  #     - TZ=America/Los_Angeles
+  #   ports:
+  #     - "8123:8123"
+  #   restart: unless-stopped
+  #   networks:
+  #     - jetbox-network
+
+volumes:
+  ollama_models:
+    driver: local
+  jetbox_state:
+    driver: local
+  jetbox_workspaces:
+    driver: local
+  # homeassistant_config:
+  #   driver: local
+
+networks:
+  jetbox-network:
+    driver: bridge

@@ -1173,12 +1173,17 @@ class BaseAgent:
             exit_after_initial: Whether to exit after first task
         """
         # Determine mode: chat-only or task-execution
-        # Chat-only if agent has no file/command tools
+        # Chat-only if agent has no file/command tools AND no other tool-providing behaviors
         has_file_tools = any(
             behavior.get_name() in ['read_file_tools', 'write_file_tools', 'directory_tools', 'command_tools']
             for behavior in agent.behaviors
         )
-        chat_only_mode = not has_file_tools
+        # Also check for other tool-providing behaviors (like home_assistant)
+        has_other_tools = any(
+            len(behavior.get_tools()) > 0 and behavior.get_name() not in ['chatbot', 'execution_mode', 'task_management']
+            for behavior in agent.behaviors
+        )
+        chat_only_mode = not (has_file_tools or has_other_tools)
 
         # Define task execution callback
         def execute_task(user_message: str) -> None:

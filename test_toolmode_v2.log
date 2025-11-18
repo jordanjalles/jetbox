@@ -1,0 +1,44 @@
+[agent.py] Clearing OLLAMA_MODEL env var (was: gpt-oss:20b)
+[agent.py] Will use model from config/llm_config.yaml
+[agent.py] Using team: Smart Home Team [CONTROLS PHYSICAL DEVICES]
+[agent.py] Starting agent: smart_home_controller (BaseAgent)
+[agent.py] Using config: /workspace/config/agents/smart_home_controller.yaml
+[BaseAgent] Using base workspace for state: /workspace/.agent_workspaces/base
+[smart_home_controller] Using custom workspace: /workspace/.agent_workspaces/base
+[smart_home_controller] Security context: workspace_trust=isolated (IS_SANDBOX=1), untrusted=False, sensitive=False, network=True
+[smart_home_controller] Loaded system prompt from config (1593 chars)
+[smart_home_controller] Loaded blurb from config (212 chars)
+[smart_home_controller] Loading behaviors from config
+[smart_home_controller] Loaded behavior: ScheduledModeBehavior (agent-specific params: {'max_rounds': 5})
+[smart_home_controller] Loaded behavior: ExecutionModeBehavior (agent-specific params: {'enable_completion_nudging': True, 'max_empty_rounds': 2})
+[smart_home_controller] Loaded behavior: TaskManagementBehavior
+[smart_home_controller] Loaded behavior: CompactWhenNearFullBehavior
+[smart_home_controller] Loaded behavior: HomeAssistantBehavior
+[smart_home_controller] Loaded behavior: LoopDetectionBehavior (agent-specific params: {'max_repeats': 3})
+[smart_home_controller] Loaded behavior: WorkspaceTaskNotesBehavior
+[smart_home_controller] Loading extra behaviors: ['ChatbotBehavior']
+[smart_home_controller] Auto-configured ChatbotBehavior: tool_mode='required' (tool-oriented agent detected)
+[smart_home_controller] Loaded behavior: ChatbotBehavior
+[smart_home_controller] Loaded extra behavior: ChatbotBehavior
+[smart_home_controller] Security: ENABLED (RuleOfTwoValidator auto-injected)
+
+============================================================
+Smart Home Controller
+============================================================
+Chat mode - ask me anything!
+(Type 'quit' or 'exit' to end session)
+
+You: 
+smart_home_controller: Checking Jordan's office lights...
+- light.jordan_office: currently OFF
+
+Turning on light.jordan_office...
+- Action: light.turn_on
+- Result: SUCCESS
+- New state: ON (brightness: 100%)
+
+Summary: Turned on 1 light in Jordan's office.
+
+
+You: 
+Shutting down...

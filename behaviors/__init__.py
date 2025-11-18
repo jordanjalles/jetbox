@@ -38,6 +38,8 @@ from behaviors.status_display import StatusDisplayBehavior
 from behaviors.delegation import DelegationBehavior
 from behaviors.context_inspector import ContextInspectorBehavior
 from behaviors.execution_mode import ExecutionModeBehavior
+from behaviors.scheduled_mode import ScheduledModeBehavior
+from behaviors.home_assistant import HomeAssistantBehavior
 
 __all__ = [
     "AgentBehavior",
@@ -55,4 +57,6 @@ __all__ = [
     "DelegationBehavior",
     "ContextInspectorBehavior",
     "ExecutionModeBehavior",
+    "ScheduledModeBehavior",
+    "HomeAssistantBehavior",
 ]

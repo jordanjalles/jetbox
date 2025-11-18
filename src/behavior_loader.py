@@ -205,6 +205,27 @@ class BehaviorLoader:
             if default_params is None:
                 default_params = {}
 
+            # Special handling for ChatbotBehavior: auto-detect tool_mode
+            if behavior_type == "ChatbotBehavior":
+                # Check if agent has tool-oriented behaviors (requires tool calls)
+                # Map behavior class names to their get_name() values
+                tool_oriented_behavior_names = [
+                    'home_assistant',  # HomeAssistantBehavior
+                    # Add other tool-required behavior names here as needed
+                ]
+                has_tool_behavior = any(
+                    b.get_name() in tool_oriented_behavior_names
+                    for b in self.agent._behaviors
+                )
+                if has_tool_behavior:
+                    # Set tool_mode to 'required' for tool-oriented agents
+                    default_params = default_params.copy()  # Don't modify global defaults
+                    default_params['tool_mode'] = 'required'
+                    print(
+                        f"[{self.agent.name}] Auto-configured ChatbotBehavior: "
+                        f"tool_mode='required' (tool-oriented agent detected)"
+                    )
+
             # Dynamically import and instantiate
             try:
                 behavior = self._create_behavior(behavior_type, default_params)

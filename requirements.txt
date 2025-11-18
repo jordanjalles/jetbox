@@ -3,3 +3,4 @@ Flask
 Flask-SQLAlchemy
 Flask-HTTPAuth
 requests
+schedule

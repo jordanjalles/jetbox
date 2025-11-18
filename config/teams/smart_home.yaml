@@ -1,0 +1,8 @@
+name: "Smart Home Team [CONTROLS PHYSICAL DEVICES]"
+description: "⚠️  Controls real smart home devices via Home Assistant. Use for home automation tasks only."
+
+agents:
+  smart_home_controller:
+    class: BaseAgent
+    config: smart_home_controller
+    can_delegate_to: []

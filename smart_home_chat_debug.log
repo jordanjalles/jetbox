@@ -1,0 +1,63 @@
+[agent.py] Clearing OLLAMA_MODEL env var (was: gpt-oss:20b)
+[agent.py] Will use model from config/llm_config.yaml
+[agent.py] Using team: Smart Home Team [CONTROLS PHYSICAL DEVICES]
+[agent.py] Starting agent: smart_home_controller (BaseAgent)
+[agent.py] Using config: /workspace/config/agents/smart_home_controller.yaml
+[BaseAgent] Using base workspace for state: /workspace/.agent_workspaces/base
+[smart_home_controller] Using custom workspace: /workspace/.agent_workspaces/base
+[smart_home_controller] Security context: workspace_trust=isolated (IS_SANDBOX=1), untrusted=False, sensitive=False, network=True
+[smart_home_controller] Loaded system prompt from config (1593 chars)
+[smart_home_controller] Loaded blurb from config (212 chars)
+[smart_home_controller] Loading behaviors from config
+[smart_home_controller] Loaded behavior: ScheduledModeBehavior (agent-specific params: {'max_rounds': 5})
+[smart_home_controller] Loaded behavior: ExecutionModeBehavior (agent-specific params: {'enable_completion_nudging': True, 'max_empty_rounds': 2})
+[smart_home_controller] Loaded behavior: TaskManagementBehavior
+[smart_home_controller] Loaded behavior: CompactWhenNearFullBehavior
+[smart_home_controller] Loaded behavior: HomeAssistantBehavior
+[smart_home_controller] Loaded behavior: LoopDetectionBehavior (agent-specific params: {'max_repeats': 3})
+[smart_home_controller] Loaded behavior: WorkspaceTaskNotesBehavior
+[smart_home_controller] Loading extra behaviors: ['ChatbotBehavior']
+[smart_home_controller] Loaded behavior: ChatbotBehavior
+[smart_home_controller] Loaded extra behavior: ChatbotBehavior
+[smart_home_controller] Security: ENABLED (RuleOfTwoValidator auto-injected)
+User: turn on jordan's office lights
+
+[smart_home_controller] Reusing workspace: /workspace/.agent_workspaces/base
+[smart_home_controller] Updated agent.workspace to: /workspace/.agent_workspaces/base
+[smart_home_controller] Goal set: turn on jordan's office lights
+[workspace_task_notes] Saved initial snapshot: 0 files
+[smart_home_controller] Rule of Two validation: [BC]
+[smart_home_controller]   ✓ Compliant (≤2 properties)
+[smart_home_controller] Starting run loop (max_rounds=50, model=qwen3:14b)
+
+[smart_home_controller] Round 1/50
+[smart_home_controller] Executing 1 tool call(s)
+[smart_home_controller] -> ha_list_devices(area=office, domain=light)
+
+[smart_home_controller] Round 2/50
+[smart_home_controller] Executing 1 tool call(s)
+[smart_home_controller] -> ha_call_service(data={'brightness': 255}, domain=light, entity_id=light.jordan_s_office, service=turn_on)
+
+[smart_home_controller] Round 3/50
+[smart_home_controller] Executing 1 tool call(s)
+[smart_home_controller] -> mark_complete(summary=Successfully turned on Jordan'...)
+[smart_home_controller] Goal marked complete
+[workspace_task_notes] Appended goal_success summary to workspace_task_notes.md
+[workspace_task_notes] Saved initial snapshot: 1 files
+
+======================================================================
+Goal completed
+======================================================================
+Timestamp: 2025-11-18 03:40:08
+Goal: None
+
+File Changes:
+  Created:
+    - .agent_context/wtn_file_snapshot.json
+
+Workspace Files: 1 total
+======================================================================
+
+
+Task completed successfully!
+Summary: Successfully turned on Jordan's office lights (entity: light.jordan_s_office) with maximum brightness (255%). The lights were already on, but the command was executed as requested.

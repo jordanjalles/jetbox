@@ -76,10 +76,20 @@ class ChatbotBehavior(AgentBehavior):
     # Rule of Two: Empty (utility behavior for chat mode management)
     rule_of_two_properties = set()
 
-    def __init__(self, params: dict[str, Any] | None = None):
-        """Initialize chatbot behavior."""
+    def __init__(self, tool_mode: str = 'optional'):
+        """Initialize chatbot behavior.
+
+        Args:
+            tool_mode: 'optional' (default) or 'required'
+                - 'optional': Text-only responses are fine (general chatbot)
+                - 'required': Must use tools to complete requests (smart home, APIs, etc.)
+        """
         super().__init__()
-        self.params = params or {}
+
+        # Tool mode: controls whether tools are optional or required
+        # 'optional' - text-only responses allowed (general chatbot)
+        # 'required' - must use tools to fulfill requests (smart home, APIs, etc.)
+        self.tool_mode = tool_mode
 
         # Mode state (owned by behavior) - starts active by default
         self.is_active = True
@@ -117,8 +127,23 @@ class ChatbotBehavior(AgentBehavior):
 
         self.is_active = True
 
-        # Append mode activation message
-        activation_message = """
+        # Append mode activation message (vary based on tool_mode)
+        if self.tool_mode == 'required':
+            activation_message = """
+╔════════════════════════════════════════════════════════╗
+║  💬 CHAT MODE ACTIVATED (Tool-Calling Mode)           ║
+╚════════════════════════════════════════════════════════╝
+
+CHAT MODE GUIDELINES:
+- Respond conversationally and be helpful
+- **IMPORTANT**: You MUST use available tools to fulfill requests
+- Do NOT hallucinate tool responses - actually call the tools
+- Always verify results by checking actual tool outputs
+
+How can I help you?
+"""
+        else:  # tool_mode == 'optional'
+            activation_message = """
 ╔════════════════════════════════════════════════════════╗
 ║  💬 CHAT MODE ACTIVATED                                ║
 ╚════════════════════════════════════════════════════════╝
@@ -126,10 +151,7 @@ class ChatbotBehavior(AgentBehavior):
 CHAT MODE GUIDELINES:
 - Respond conversationally (text-only responses are fine)
 - Be helpful and friendly
-- Ask clarifying questions if needed
-- Tools are available but completely optional
-
-To start working on a task: call set_goal(goal, requirements)
+- Tools are available but optional
 
 How can I help you?
 """
@@ -339,9 +361,13 @@ How can I help you?
         Returns:
             Modified context with chat mode explanation
         """
-        mode_explanation = """
+        if self.tool_mode == 'required':
+            mode_explanation = """
+CHAT MODE (Tool-Calling): Answer questions using available tools. You MUST call tools to fulfill requests - do NOT hallucinate responses.
+"""
+        else:  # tool_mode == 'optional'
+            mode_explanation = """
 CHAT MODE: Answer questions conversationally. Tools optional.
-To start working on a task, call set_goal(goal, requirements).
 """
 
         # Use role="user" since chatbot mode explanation is for the user
@@ -400,25 +426,32 @@ To start working on a task, call set_goal(goal, requirements).
         """
         # Inject chat instructions ONCE when chat mode first becomes active
         if self.is_active and not self.chat_instructions_injected:
-            chat_instructions = """CHAT MODE ACTIVE:
+            if self.tool_mode == 'required':
+                chat_instructions = """CHAT MODE ACTIVE (Tool-Calling):
+
+**How to respond:**
+- You MUST use available tools to fulfill user requests
+- Do NOT generate fake tool responses - actually call the tools
+- Always check actual tool outputs before responding
+- If unclear what user wants, ask for clarification
+
+Guidelines:
+- Every user request should result in actual tool calls
+- Verify results by reading tool outputs
+- Report what you actually did, not what you think happened
+"""
+            else:  # tool_mode == 'optional'
+                chat_instructions = """CHAT MODE ACTIVE:
 
 No goal has been provided yet. You can have a normal conversation with the user.
 
 **How to respond:**
 - If user is just chatting or asking general questions → Respond naturally (no tools needed)
-- If user wants to build/create something → Ask 1-2 clarifying questions MAX, then call set_goal
-- If user says "do it", "build it", "go", "start", etc. → IMMEDIATELY call set_goal
-- If user repeats their request or gets impatient → Stop asking questions and call set_goal NOW
-
-**Available tools:**
-- set_goal: Call this when you're ready to start working on a task (be decisive!)
-- clarify_with_user: Rarely needed - only for critical ambiguity
+- Tools are available but completely optional
 
 Guidelines:
-- Be decisive - don't over-clarify or ask too many questions
-- If you can build something reasonable with current info, DO IT
-- User confirmation ("build it", "do it") means START IMMEDIATELY
-- When in doubt, make reasonable assumptions and call set_goal
+- Respond conversationally and helpfully
+- Use tools when appropriate but not required
 """
             # Append to messages (not inject after system)
             # Use role="user" since this is actual chat mode instructions

@@ -53,6 +53,11 @@ status.txt
 !README.md
 !pyproject.toml
 
+# Agent manager runtime files
+.agent_workspaces/
+.agent_context/
+.jetbox/
+
 # Docker
 Dockerfile
 docker-compose.yml
