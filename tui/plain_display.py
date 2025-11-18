@@ -55,6 +55,11 @@ class PlainDisplay(DisplayInterface):
             sys.stdout.write(f'\033[1;{self.terminal_height - 1}r')
             sys.stdout.flush()
 
+            # Position cursor at line above status bar so logs appear attached to progress line
+            # This prevents the large empty space between top and bottom
+            sys.stdout.write(f'\033[{self.terminal_height - 1};1H')
+            sys.stdout.flush()
+
             # Save original stdout and replace with our wrapper
             self.original_stdout = sys.stdout
             sys.stdout = self._TUIStdout(self)
