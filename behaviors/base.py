@@ -632,9 +632,28 @@ class AgentBehavior(ABC):
             - function: {name, description, parameters}
 
         Default Implementation:
-            Returns empty list (no tools).
+            Auto-collects tools from @tool decorated methods.
+            Subclasses can override to provide manual tools.
 
-        Example:
+        Decorator Approach (Recommended):
+            ```python
+            from behaviors.tool_decorator import tool
+
+            @tool(description="Read contents of a file")
+            def read_file(self, path: str) -> str:
+                '''
+                Read file contents.
+
+                Args:
+                    path: Path to file to read
+
+                Returns:
+                    File contents as string
+                '''
+                # implementation
+            ```
+
+        Manual Approach (Still Supported):
             ```python
             def get_tools(self) -> list[dict[str, Any]]:
                 return [{
@@ -656,7 +675,23 @@ class AgentBehavior(ABC):
                 }]
             ```
         """
-        return []
+        # Auto-collect tools from @tool decorated methods
+        tools = []
+
+        # Scan all methods on this class
+        for attr_name in dir(self):
+            # Skip private/magic methods
+            if attr_name.startswith('_'):
+                continue
+
+            # Get attribute
+            attr = getattr(self, attr_name)
+
+            # Check if it's a decorated tool
+            if callable(attr) and hasattr(attr, '_is_tool') and hasattr(attr, '_tool_definition'):
+                tools.append(attr._tool_definition)
+
+        return tools
 
     def dispatch_tool(
         self,
@@ -682,11 +717,14 @@ class AgentBehavior(ABC):
             - Error: {"error": "error message"}
             - Data: {"data": {...}, "success": True}
 
-        Raises:
-            NotImplementedError: If this behavior doesn't handle the tool.
-            This is the default implementation.
+        Default Implementation:
+            Auto-dispatches to @tool decorated methods by name.
+            Subclasses can override for manual dispatch.
 
-        Example:
+        Decorator Approach (Recommended):
+            Just use @tool decorator - dispatch happens automatically!
+
+        Manual Approach (Still Supported):
             ```python
             def dispatch_tool(self, agent, tool_name, args):
                 if tool_name == "read_file":
@@ -703,7 +741,18 @@ class AgentBehavior(ABC):
                 # Fall through to parent for unknown tools
                 return super().dispatch_tool(agent, tool_name, args)
             ```
+
+        Raises:
+            NotImplementedError: If this behavior doesn't handle the tool.
         """
+        # Auto-dispatch to @tool decorated method if it exists
+        if hasattr(self, tool_name):
+            method = getattr(self, tool_name)
+            if callable(method) and hasattr(method, '_is_tool'):
+                # Call the decorated method (wrapper injects agent automatically)
+                return method(agent, **args)
+
+        # No decorated method found
         raise NotImplementedError(
             f"Behavior {self.get_name()} does not handle tool: {tool_name}"
         )
