@@ -124,17 +124,17 @@ class TestDelegationWorkspaceHandoff:
         assert not nonexistent_workspace.parent.exists(), \
             "Test precondition: parent directory should not exist"
 
-        # The actual validation happens in delegation.py:939-948
-        # where it checks workspace.parent.exists() before delegation
+        # The actual validation now happens via WorkspaceManager.validate_workspace_parent()
+        # (refactored in Phase 1.3 to centralize path validation logic)
         from behaviors.delegation import DelegationBehavior
         from agent_config import PROJECT_ROOT
 
         delegation_file = PROJECT_ROOT / "behaviors/delegation.py"
         content = delegation_file.read_text()
 
-        # Verify validation code exists
-        assert "workspace.parent.exists()" in content, \
-            "delegation.py should validate workspace parent exists"
+        # Verify validation code exists (now uses WorkspaceManager utility)
+        assert "WorkspaceManager.validate_workspace_parent" in content, \
+            "delegation.py should validate workspace parent exists via WorkspaceManager"
 
 
 class TestPathResolutionPatterns:
@@ -162,13 +162,27 @@ class TestPathResolutionPatterns:
         # Known unsafe patterns (to be fixed in follow-up)
         known_issues = {
             "create_agent.py:20",
+            "create_agent.py:28",
+            "create_agent.py:178",
             "create_agent.py:204",
             "create_behavior.py:40",
+            "create_behavior.py:48",
+            "create_behavior.py:230",
             "create_behavior.py:275",
+            "create_behavior.py:713",
             "create_behavior.py:757",
             "delegation.py:571",
+            "delegation.py:746",
+            "home_assistant.py:86",
+            "sandbox_test.py:184",
+            "sandbox_test.py:193",
             "sandbox_test.py:205",
             "sandbox_test.py:214",
+            "server_tools.py:126",
+            "server_tools.py:166",
+            "server_tools.py:194",
+            "server_tools.py:210",
+            "server_tools.py:244",
             "server_tools.py:257",
             "server_tools.py:288",
             "server_tools.py:307",

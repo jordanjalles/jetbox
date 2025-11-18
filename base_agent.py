@@ -59,14 +59,12 @@ class BaseAgent:
         import yaml
         from agent_config import config as global_config
 
+        from src.workspace_manager import WorkspaceManager
+
         self.name = name
 
-        # Workspace validation and normalization
-        workspace_path = Path(workspace)
-        if not workspace_path.is_absolute():
-            workspace_path = workspace_path.resolve()
-
-        self.workspace = workspace_path
+        # Workspace validation and normalization (use WorkspaceManager utility)
+        self.workspace = WorkspaceManager.normalize_workspace_path(workspace)
         print(f"[{name}] Using custom workspace: {self.workspace}")
 
         self.config = global_config  # Global config for behavior defaults

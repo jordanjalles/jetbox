@@ -65,6 +65,60 @@ class WorkspaceManager:
 
         self.created_files: list[str] = []
 
+    @staticmethod
+    def normalize_workspace_path(path: Path | str) -> Path:
+        """
+        Normalize workspace path to absolute path.
+
+        Converts relative paths to absolute paths using resolve().
+        Absolute paths are returned as-is.
+
+        This is the single source of truth for workspace path normalization
+        across all components (BaseAgent, DelegationBehavior, etc.).
+
+        Args:
+            path: Path to normalize (relative or absolute)
+
+        Returns:
+            Absolute path
+
+        Examples:
+            normalize_workspace_path("myproject") -> /workspace/myproject
+            normalize_workspace_path("/tmp/foo") -> /tmp/foo
+        """
+        path = Path(path)
+        if not path.is_absolute():
+            path = path.resolve()
+        return path
+
+    @staticmethod
+    def validate_workspace_parent(path: Path) -> tuple[bool, str | None]:
+        """
+        Validate that workspace parent directory exists.
+
+        Ensures the parent directory exists before attempting to create
+        a workspace. This prevents errors during workspace creation.
+
+        This is the single source of truth for workspace parent validation
+        across all components (BaseAgent, DelegationBehavior, etc.).
+
+        Args:
+            path: Workspace path to validate (must be absolute)
+
+        Returns:
+            Tuple of (is_valid, error_message)
+            - (True, None) if valid
+            - (False, error_message) if invalid
+
+        Examples:
+            validate_workspace_parent(Path("/tmp/project"))
+            -> (True, None) if /tmp exists
+            -> (False, "Parent directory does not exist: /tmp") if /tmp missing
+        """
+        if not path.parent.exists():
+            return False, f"Parent directory does not exist: {path.parent}"
+        return True, None
+
     def resolve_path(self, path: str | Path) -> Path:
         """
         Resolve a relative path within the workspace, with validation.
