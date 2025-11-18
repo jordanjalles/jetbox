@@ -35,10 +35,12 @@ Usage:
        - ExecutionModeBehavior fires 'mode_activated' event
        - ChatbotBehavior hears event and deactivates
     5. Mode transition complete (chat → execution)
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 
 
 class ChatbotBehavior(AgentBehavior):

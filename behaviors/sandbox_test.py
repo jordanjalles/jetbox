@@ -11,7 +11,8 @@ Sandbox characteristics:
 - Subprocess isolation
 - Timeout enforcement (30s default)
 - Resource monitoring (basic)
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 
 from typing import Any
 import subprocess
@@ -20,6 +21,7 @@ import shutil
 import sys
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 

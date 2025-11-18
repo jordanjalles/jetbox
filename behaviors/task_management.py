@@ -3,13 +3,15 @@ TaskManagementBehavior - Provides CRUD operations for managing structured task b
 
 Used by Orchestrator agents to manage architecture/task-breakdown.json files created
 by the Architect. Enables tracking task status, dependencies, and progress.
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 from __future__ import annotations
 from typing import Any
 from pathlib import Path
 import json
 from datetime import datetime
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 

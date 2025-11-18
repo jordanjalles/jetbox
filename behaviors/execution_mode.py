@@ -20,10 +20,12 @@ Configuration:
 - enable_completion_nudging: Enable completion signal detection (default: True)
 - min_rounds_before_nudge: Minimum rounds before completion nudging (default: 3)
 - max_empty_rounds: Max consecutive empty rounds before violation warning (default: 3)
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 
 
 class ExecutionModeBehavior(AgentBehavior):

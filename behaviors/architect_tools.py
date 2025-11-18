@@ -13,7 +13,8 @@ Features:
 - Workspace-aware file operations
 - Metadata injection (timestamps)
 - Consistent formatting
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ from datetime import datetime
 from typing import Any
 
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 
 
 class ArchitectToolsBehavior(AgentBehavior):

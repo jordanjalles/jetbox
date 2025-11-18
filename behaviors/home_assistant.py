@@ -1,4 +1,5 @@
-"""Home Assistant behavior for smart home control."""
+"""Home Assistant behavior for smart home control.
+Now uses @tool decorator for automatic tool registration!"""
 
 import json
 import logging
@@ -8,6 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 logger = logging.getLogger(__name__)

@@ -8,11 +8,13 @@ Tools:
 - validate_agent_dag: Check agent delegation graph for cycles
 
 This behavior enables agents to validate generated code before installation.
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 
 from typing import Any
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 # Import validation utilities

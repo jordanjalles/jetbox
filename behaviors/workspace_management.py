@@ -7,11 +7,13 @@ This behavior is ONLY for orchestrator-level agents that need to:
 3. Provide guidance on workspace selection
 
 Other agents (TaskExecutor, Architect) work WITHIN workspaces but don't manage them.
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from pathlib import Path
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 if TYPE_CHECKING:

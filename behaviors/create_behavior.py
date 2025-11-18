@@ -8,12 +8,14 @@ This behavior provides tools for generating new AgentBehavior classes with:
 - Code quality validation
 - Sandbox testing
 - Safety modes (dryrun/review/auto/strict)
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 
 from typing import Any
 from pathlib import Path
 import json
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 from behaviors.rule_of_two_types import RuleOfTwoProperty
 
 
@@ -328,6 +330,7 @@ BEHAVIOR SPECIFICATION:
 CRITICAL INSTRUCTIONS:
 1. Use EXACTLY this class name: {class_name}
 2. The import MUST be: from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 3. get_name() MUST return: "{behavior_name}"
 4. Implement ALL tools from the specification
 5. Each tool in dispatch_tool() must have proper error handling
