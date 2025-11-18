@@ -27,6 +27,7 @@ class PlainDisplay(DisplayInterface):
         """
         self.verbose = verbose
         self.last_status_line = ""  # Track last status for inline updates
+        self.status_line_printed = False  # Track if we've printed status yet
 
     def start(self) -> None:
         """No initialization needed for plain display."""
@@ -48,7 +49,9 @@ class PlainDisplay(DisplayInterface):
         tokens_used: int | None = None,
         tokens_max: int | None = None,
     ) -> None:
-        """Update status line IN PLACE (overwrites previous status)."""
+        """Update status line using ANSI codes for true in-place updates."""
+        import sys
+
         # Calculate progress percentage
         progress = int((current_round / max_rounds) * 100)
         mins = int(elapsed_time // 60)
@@ -70,10 +73,23 @@ class PlainDisplay(DisplayInterface):
                 pct = int((tokens_used / tokens_max) * 100)
                 status_line += f" | 🧠 {tokens_used}/{tokens_max} ({pct}%)"
 
-        # Clear previous line and print new status (IN PLACE update)
-        # Use \r to return to start of line, then overwrite with spaces to clear old content
-        clear_line = "\r" + " " * len(self.last_status_line) + "\r"
-        print(clear_line + status_line, end="", flush=True)
+        # Use ANSI codes for proper in-place update
+        if sys.stdout.isatty():
+            if self.status_line_printed:
+                # Save cursor, move to start of previous status line, clear it, write new status, restore cursor
+                # \0337 = save cursor position
+                # \033[F = move to beginning of previous line
+                # \033[K = clear from cursor to end of line
+                # \0338 = restore cursor position
+                print(f"\0337\033[F\033[K{status_line}\0338", end="", flush=True)
+            else:
+                # First status line - just print it with newline so logs can continue below
+                print(status_line, flush=True)
+                self.status_line_printed = True
+        else:
+            # Not a TTY - just print normally
+            print(status_line, flush=True)
+
         self.last_status_line = status_line
 
     def log_event(self, event: AgentEvent) -> None:
