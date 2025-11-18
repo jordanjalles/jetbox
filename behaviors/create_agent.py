@@ -32,81 +32,47 @@ class CreateAgentBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "create_agent"
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Return tool definitions."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "create_agent",
-                    "description": "Generate a new agent configuration YAML file",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "agent_name": {
-                                "type": "string",
-                                "description": "Agent name in kebab-case (e.g., 'doc-generator')"
-                            },
-                            "role": {
-                                "type": "string",
-                                "description": "Agent's role description"
-                            },
-                            "description": {
-                                "type": "string",
-                                "description": "Detailed description of agent's purpose"
-                            },
-                            "behaviors": {
-                                "type": "array",
-                                "description": "List of behavior types to include",
-                                "items": {"type": "string"}
-                            },
-                            "system_prompt_guidelines": {
-                                "type": "array",
-                                "description": "Optional additional guidelines for system prompt",
-                                "items": {"type": "string"}
-                            },
-                            "delegation_tool_params": {
-                                "type": "object",
-                                "description": "Optional custom delegation tool parameters"
-                            },
-                            "add_to_team": {
-                                "type": "string",
-                                "description": "Optional team name to add agent to"
-                            },
-                            "can_delegate_to": {
-                                "type": "array",
-                                "description": "Optional list of agent names this agent can delegate to",
-                                "items": {"type": "string"}
-                            },
-                            "safety_mode": {
-                                "type": "string",
-                                "description": "Safety mode: 'dryrun', 'review', 'auto', 'strict'"
-                            }
-                        },
-                        "required": ["agent_name", "role", "description", "behaviors"]
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
+    @tool
+    def create_agent(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
+        agent_name: str,
+        role: str,
+        description: str,
+        behaviors: list[str],
+        system_prompt_guidelines: list[str] = None,
+        delegation_tool_params: dict[str, Any] = None,
+        add_to_team: str = "",
+        can_delegate_to: list[str] = None,
+        safety_mode: str = "review"
     ) -> dict[str, Any]:
-        """Handle tool execution."""
-        if tool_name == "create_agent":
-            return self._execute_create_agent(agent, args)
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
+        """Generate a new agent configuration YAML file.
 
-    def _execute_create_agent(
-        self,
-        agent: Any,
-        args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Execute create_agent tool."""
+        Args:
+            agent_name: Agent name in kebab-case (e.g., 'doc-generator')
+            role: Agent's role description
+            description: Detailed description of agent's purpose
+            behaviors: List of behavior types to include
+            system_prompt_guidelines: Optional additional guidelines for system prompt
+            delegation_tool_params: Optional custom delegation tool parameters
+            add_to_team: Optional team name to add agent to
+            can_delegate_to: Optional list of agent names this agent can delegate to
+            safety_mode: Safety mode: 'dryrun', 'review', 'auto', 'strict'
+
+        Returns:
+            Dict with success status, config file path, and validation results
+        """
+        # Build args dict for existing implementation
+        args = {
+            "agent_name": agent_name,
+            "role": role,
+            "description": description,
+            "behaviors": behaviors,
+            "system_prompt_guidelines": system_prompt_guidelines or [],
+            "delegation_tool_params": delegation_tool_params or {},
+            "add_to_team": add_to_team,
+            "can_delegate_to": can_delegate_to or [],
+            "safety_mode": safety_mode
+        }
         try:
             # Validate and extract parameters
             validation_result = self._validate_and_extract_params(args)
