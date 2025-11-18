@@ -12,16 +12,20 @@ Features:
 - Server state tracking
 - Log tailing
 - Request/response mechanism via files
+
+Now uses @tool decorator for automatic tool registration!
 """
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any
 
 from behaviors.base import AgentBehavior
 from behaviors.rule_of_two_types import RuleOfTwoProperty
+from behaviors.tool_decorator import tool
 
 
 class ServerToolsBehavior(AgentBehavior):
@@ -86,197 +90,27 @@ class ServerToolsBehavior(AgentBehavior):
 
         return props
 
-    def on_initial_context(
-        self,
-        agent: Any,
-        context: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """
-        Inject tool documentation for server tools.
+    # Tool implementations (using @tool decorator)
 
-        Called once during agent initialization to document available tools.
-
-        Args:
-            agent: Agent instance
-            context: Initial context (system prompt only)
-
-        Returns:
-            Context with tool documentation injected
-        """
-        tools = self.get_tools()
-        if not tools:
-            return context
-
-        # Build tool documentation
-        tool_docs = []
-        for tool in tools:
-            func = tool.get("function", {})
-            name = func.get("name", "unknown")
-            desc = func.get("description", "")
-            params = func.get("parameters", {}).get("properties", {})
-            required = func.get("parameters", {}).get("required", [])
-
-            # Build parameter signature
-            param_strs = []
-            for param_name, param_spec in params.items():
-                param_type = param_spec.get("type", "any")
-                is_required = param_name in required
-                if is_required:
-                    param_strs.append(f"{param_name}: {param_type}")
-                else:
-                    param_strs.append(f"{param_name}?: {param_type}")
-
-            param_sig = ", ".join(param_strs) if param_strs else ""
-            tool_docs.append(f"  - {name}({param_sig}): {desc}")
-
-        if tool_docs:
-            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            # Use default role="system" for framework tool documentation
-            return self.inject_message_after_system(context, tool_message)
-
-        return context
-
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Return server management tool definitions."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "start_server",
-                    "description": "Start a background server process (e.g., web server). Returns server info.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "cmd": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "Command to run (e.g., ['python', '-m', 'http.server', '8000'])"
-                            },
-                            "name": {
-                                "type": "string",
-                                "description": "Optional server name (auto-generated if omitted)"
-                            }
-                        },
-                        "required": ["cmd"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "stop_server",
-                    "description": "Stop a running background server.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "server_id": {
-                                "type": "string",
-                                "description": "Server identifier (from start_server or list_servers)"
-                            }
-                        },
-                        "required": ["server_id"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "check_server",
-                    "description": "Check server status and get recent logs.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "server_id": {
-                                "type": "string",
-                                "description": "Server identifier"
-                            },
-                            "tail_lines": {
-                                "type": "integer",
-                                "description": "Number of recent log lines (default 20)"
-                            }
-                        },
-                        "required": ["server_id"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "list_servers",
-                    "description": "List all running background servers.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {}
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
-        self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Dispatch server management tool calls.
-
-        Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
-
-        Returns:
-            Server operation result dict
-        """
-        # Get workspace_manager and ledger_file from agent
-        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
-        ledger_file = getattr(agent, 'ledger_file', self.ledger_file)
-
-        if tool_name == "start_server":
-            return self._start_server(
-                args.get("cmd"),
-                name=args.get("name"),
-                workspace_manager=workspace_manager,
-                ledger_file=ledger_file
-            )
-        elif tool_name == "stop_server":
-            return self._stop_server(
-                args.get("server_id"),
-                ledger_file=ledger_file
-            )
-        elif tool_name == "check_server":
-            return self._check_server(
-                args.get("server_id"),
-                tail_lines=args.get("tail_lines", 20)
-            )
-        elif tool_name == "list_servers":
-            return self._list_servers()
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
-
-    def _ledger_append(self, kind: str, detail: str, ledger_file: Path | None) -> None:
-        """Append action to ledger file for audit trail."""
-        if not ledger_file:
-            return
-        line = f"{kind}\t{detail.replace(chr(10), ' ')[:400]}\n"
-        if ledger_file.exists():
-            ledger_file.write_text(
-                ledger_file.read_text(encoding="utf-8") + line,
-                encoding="utf-8"
-            )
-        else:
-            ledger_file.write_text(line, encoding="utf-8")
-
-    def _start_server(
+    @tool(description="Start a background server process (e.g., web server). Returns server info.")
+    def start_server(
         self,
         cmd: list[str],
-        name: str | None = None,
-        workspace_manager=None,
-        ledger_file: Path | None = None
+        name: str | None = None
     ) -> dict[str, Any]:
-        """Request orchestrator to start a server in the background."""
-        import os
+        """
+        Start a background server process.
+
+        Args:
+            cmd: Command to run (e.g., ['python', '-m', 'http.server', '8000'])
+            name: Optional server name (auto-generated if omitted)
+
+        Returns:
+            Server info dict with server_id and status
+        """
+        # Access agent via self.agent (injected by decorator)
+        workspace_manager = getattr(self.agent, 'workspace_manager', self.workspace_manager)
+        ledger_file = getattr(self.agent, 'ledger_file', self.ledger_file)
 
         # Validate command
         if not cmd:
@@ -313,12 +147,22 @@ class ServerToolsBehavior(AgentBehavior):
         else:
             return {"error": "Timeout waiting for orchestrator to start server"}
 
-    def _stop_server(
+    @tool(description="Stop a running background server.")
+    def stop_server(
         self,
-        server_id: str,
-        ledger_file: Path | None = None
+        server_id: str
     ) -> dict[str, Any]:
-        """Request orchestrator to stop a server."""
+        """
+        Stop a running background server.
+
+        Args:
+            server_id: Server identifier (from start_server or list_servers)
+
+        Returns:
+            Status dict with success flag
+        """
+        # Access agent via self.agent (injected by decorator)
+        ledger_file = getattr(self.agent, 'ledger_file', self.ledger_file)
         request = {"action": "stop", "server_id": server_id}
 
         request_file = Path(".agent_context/server_requests.jsonl")
@@ -332,12 +176,22 @@ class ServerToolsBehavior(AgentBehavior):
 
         return response or {"error": "Timeout waiting for response"}
 
-    def _check_server(
+    @tool(description="Check server status and get recent logs.")
+    def check_server(
         self,
         server_id: str,
         tail_lines: int = 20
     ) -> dict[str, Any]:
-        """Check server status and get recent logs."""
+        """
+        Check server status and get recent logs.
+
+        Args:
+            server_id: Server identifier
+            tail_lines: Number of recent log lines (default 20)
+
+        Returns:
+            Dict with server status and log output
+        """
         request = {"action": "check", "server_id": server_id, "tail_lines": tail_lines}
 
         request_file = Path(".agent_context/server_requests.jsonl")
@@ -347,8 +201,14 @@ class ServerToolsBehavior(AgentBehavior):
         response = self._wait_for_server_response(timeout=5.0)
         return response or {"error": "Timeout waiting for response"}
 
-    def _list_servers(self) -> dict[str, Any]:
-        """List all running servers."""
+    @tool(description="List all running background servers.")
+    def list_servers(self) -> dict[str, Any]:
+        """
+        List all running background servers.
+
+        Returns:
+            Dict with list of server info dicts
+        """
         request = {"action": "list"}
 
         request_file = Path(".agent_context/server_requests.jsonl")
@@ -357,6 +217,21 @@ class ServerToolsBehavior(AgentBehavior):
 
         response = self._wait_for_server_response(timeout=5.0)
         return response or {"error": "Timeout waiting for response"}
+
+    # Helper methods
+
+    def _ledger_append(self, kind: str, detail: str, ledger_file: Path | None) -> None:
+        """Append action to ledger file for audit trail."""
+        if not ledger_file:
+            return
+        line = f"{kind}\t{detail.replace(chr(10), ' ')[:400]}\n"
+        if ledger_file.exists():
+            ledger_file.write_text(
+                ledger_file.read_text(encoding="utf-8") + line,
+                encoding="utf-8"
+            )
+        else:
+            ledger_file.write_text(line, encoding="utf-8")
 
     def _wait_for_server_response(self, timeout: float = 5.0) -> dict[str, Any] | None:
         """

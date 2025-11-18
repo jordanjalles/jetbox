@@ -10,6 +10,8 @@ Features:
 - Output capture with size limits
 - Timeout support
 - Ledger logging for audit trail
+
+Now uses @tool decorator for automatic tool registration!
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ from typing import Any
 
 from behaviors.base import AgentBehavior
 from behaviors.rule_of_two_types import RuleOfTwoProperty
+from behaviors.tool_decorator import tool
 
 
 class CommandToolsBehavior(AgentBehavior):
@@ -172,132 +175,13 @@ class CommandToolsBehavior(AgentBehavior):
 
         return props
 
-    def on_initial_context(
-        self,
-        agent: Any,
-        context: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """
-        Inject tool documentation for command tools.
+    # Tool implementation (using @tool decorator)
 
-        Called once during agent initialization to document available tools.
-
-        Args:
-            agent: Agent instance
-            context: Initial context (system prompt only)
-
-        Returns:
-            Context with tool documentation injected
-        """
-        tools = self.get_tools()
-        if not tools:
-            return context
-
-        # Build tool documentation
-        tool_docs = []
-        for tool in tools:
-            func = tool.get("function", {})
-            name = func.get("name", "unknown")
-            desc = func.get("description", "")
-            params = func.get("parameters", {}).get("properties", {})
-            required = func.get("parameters", {}).get("required", [])
-
-            # Build parameter signature
-            param_strs = []
-            for param_name, param_spec in params.items():
-                param_type = param_spec.get("type", "any")
-                is_required = param_name in required
-                if is_required:
-                    param_strs.append(f"{param_name}: {param_type}")
-                else:
-                    param_strs.append(f"{param_name}?: {param_type}")
-
-            param_sig = ", ".join(param_strs) if param_strs else ""
-            tool_docs.append(f"  - {name}({param_sig}): {desc}")
-
-        if tool_docs:
-            tool_message = f"\n{self.get_name()} tools:\n" + "\n".join(tool_docs)
-            # Use default role="system" for framework tool documentation
-            return self.inject_message_after_system(context, tool_message)
-
-        return context
-
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Return bash command tool definition."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "run_bash",
-                    "description": "Run any bash command with full shell features. Use for testing, linting, complex file operations, searching, etc.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "command": {
-                                "type": "string",
-                                "description": "Full bash command string (e.g., 'pytest tests/ -v', 'grep -r pattern *.py')"
-                            },
-                            "timeout": {
-                                "type": "integer",
-                                "description": "Timeout in seconds (default 60). Use higher values for slow operations."
-                            }
-                        },
-                        "required": ["command"]
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
-        self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Dispatch bash command tool calls.
-
-        Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
-
-        Returns:
-            Dict with returncode, stdout, stderr
-        """
-        # Get workspace_manager and ledger_file from agent
-        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
-        ledger_file = getattr(agent, 'ledger_file', self.ledger_file)
-
-        if tool_name == "run_bash":
-            return self._run_bash(
-                args.get("command"),
-                timeout=args.get("timeout", 60),
-                workspace_manager=workspace_manager,
-                ledger_file=ledger_file
-            )
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
-
-    def _ledger_append(self, kind: str, detail: str, ledger_file: Path | None) -> None:
-        """Append action to ledger file for audit trail."""
-        if not ledger_file:
-            return
-        line = f"{kind}\t{detail.replace(chr(10), ' ')[:400]}\n"
-        if ledger_file.exists():
-            ledger_file.write_text(
-                ledger_file.read_text(encoding="utf-8") + line,
-                encoding="utf-8"
-            )
-        else:
-            ledger_file.write_text(line, encoding="utf-8")
-
-    def _run_bash(
+    @tool(description="Run any bash command with full shell features. Use for testing, linting, complex file operations, searching, etc.")
+    def run_bash(
         self,
         command: str,
-        timeout: int = 60,
-        workspace_manager=None,
-        ledger_file: Path | None = None
+        timeout: int = 60
     ) -> dict[str, Any]:
         """
         Run any bash command in the workspace.
@@ -306,10 +190,8 @@ class CommandToolsBehavior(AgentBehavior):
         Use this for flexible file operations, testing, linting, etc.
 
         Args:
-            command: Full bash command string (e.g., "grep -r 'pattern' *.py | wc -l")
-            timeout: Timeout in seconds (default 60)
-            workspace_manager: WorkspaceManager instance
-            ledger_file: Ledger file path
+            command: Full bash command string (e.g., 'pytest tests/ -v', 'grep -r pattern *.py')
+            timeout: Timeout in seconds (default 60). Use higher values for slow operations.
 
         Returns:
             Dict with returncode, stdout, stderr
@@ -321,6 +203,9 @@ class CommandToolsBehavior(AgentBehavior):
             run_bash("find . -name '*.py' | xargs wc -l")
             run_bash("cat file1.txt file2.txt > combined.txt")
         """
+        # Access agent via self.agent (injected by decorator)
+        workspace_manager = getattr(self.agent, 'workspace_manager', self.workspace_manager)
+        ledger_file = getattr(self.agent, 'ledger_file', self.ledger_file)
         # Check whitelist if configured
         if self.whitelist:
             # Extract first token (command name)
@@ -374,3 +259,18 @@ class CommandToolsBehavior(AgentBehavior):
             err_msg = str(e)
             self._ledger_append("ERROR", f"run_bash exception: {err_msg}", ledger_file)
             return {"error": err_msg, "returncode": -1, "stdout": "", "stderr": err_msg}
+
+    # Helper methods
+
+    def _ledger_append(self, kind: str, detail: str, ledger_file: Path | None) -> None:
+        """Append action to ledger file for audit trail."""
+        if not ledger_file:
+            return
+        line = f"{kind}\t{detail.replace(chr(10), ' ')[:400]}\n"
+        if ledger_file.exists():
+            ledger_file.write_text(
+                ledger_file.read_text(encoding="utf-8") + line,
+                encoding="utf-8"
+            )
+        else:
+            ledger_file.write_text(line, encoding="utf-8")
