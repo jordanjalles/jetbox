@@ -28,17 +28,32 @@ class PlainDisplay(DisplayInterface):
         self.verbose = verbose
         self.last_status_line = ""  # Track last status for inline updates
         self.using_alt_screen = False  # Track if we're using alternate screen
-        self.log_row = 3  # Start logs at row 3 (row 1 = status, row 2 = blank)
+        self.log_row = 1  # Start logs at row 1 (status will be at bottom)
         self.original_stdout = None  # Store original stdout for restoration
+        self.terminal_height = 24  # Default terminal height (will be detected)
 
     def start(self) -> None:
         """Enter alternate screen buffer and redirect stdout for TUI mode."""
         import sys
+        import os
         if sys.stdout.isatty():
+            # Get terminal height
+            try:
+                size = os.get_terminal_size()
+                self.terminal_height = size.lines
+            except OSError:
+                self.terminal_height = 24  # Fallback
+
             # Enter alternate screen buffer and clear it
             sys.stdout.write('\033[?1049h\033[2J')
             sys.stdout.flush()
             self.using_alt_screen = True
+
+            # Set scrolling region to prevent logs from overwriting status bar
+            # Format: \033[<top>;<bottom>r sets scroll region
+            # We want rows 1 to (height-1) to scroll, keeping last row for status
+            sys.stdout.write(f'\033[1;{self.terminal_height - 1}r')
+            sys.stdout.flush()
 
             # Save original stdout and replace with our wrapper
             self.original_stdout = sys.stdout
@@ -72,22 +87,20 @@ class PlainDisplay(DisplayInterface):
             # Add to buffer
             self._buffer += text
 
-            # If we have complete lines, print them positioned
+            # If we have complete lines, print them
             while '\n' in self._buffer:
                 line, self._buffer = self._buffer.split('\n', 1)
                 if line:  # Don't print empty lines
-                    # Position at current log row and print
-                    self.display.original_stdout.write(f'\033[{self.display.log_row};1H\033[K{line}\n')
+                    # Just write the line - scrolling region handles positioning
+                    # Logs scroll naturally, status bar stays pinned at bottom
+                    self.display.original_stdout.write(line + '\n')
                     self.display.original_stdout.flush()
-                    self.display.log_row += 1
 
         def flush(self):
             """Flush buffer."""
             if self._buffer:
-                self.display.original_stdout.write(f'\033[{self.display.log_row};1H\033[K{self._buffer}')
+                self.display.original_stdout.write(self._buffer)
                 self.display.original_stdout.flush()
-                if '\n' in self._buffer:
-                    self.display.log_row += self._buffer.count('\n')
                 self._buffer = ""
             self.display.original_stdout.flush()
 
@@ -107,7 +120,7 @@ class PlainDisplay(DisplayInterface):
         tokens_used: int | None = None,
         tokens_max: int | None = None,
     ) -> None:
-        """Update status line at fixed position (row 1)."""
+        """Update status line at fixed position (BOTTOM row)."""
         # Calculate progress percentage
         progress = int((current_round / max_rounds) * 100)
         mins = int(elapsed_time // 60)
@@ -129,11 +142,12 @@ class PlainDisplay(DisplayInterface):
                 pct = int((tokens_used / tokens_max) * 100)
                 status_line += f" | 🧠 {tokens_used}/{tokens_max} ({pct}%)"
 
-        # Update status at row 1 using absolute positioning
+        # Update status at BOTTOM row using absolute positioning
         # Write directly to original stdout (bypass wrapper)
         if self.using_alt_screen and self.original_stdout:
-            # Move to row 1, column 1, clear line, write status
-            self.original_stdout.write(f'\033[1;1H\033[K{status_line}')
+            # Save cursor position, move to bottom row, clear line, write status, restore cursor
+            # This way logs keep scrolling while status stays at bottom
+            self.original_stdout.write(f'\0337\033[{self.terminal_height};1H\033[K{status_line}\0338')
             self.original_stdout.flush()
         else:
             # Not in alt screen - just print normally to current stdout
