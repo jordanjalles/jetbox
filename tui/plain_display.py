@@ -27,15 +27,73 @@ class PlainDisplay(DisplayInterface):
         """
         self.verbose = verbose
         self.last_status_line = ""  # Track last status for inline updates
-        self.status_line_printed = False  # Track if we've printed status yet
+        self.using_alt_screen = False  # Track if we're using alternate screen
+        self.log_row = 3  # Start logs at row 3 (row 1 = status, row 2 = blank)
+        self.original_stdout = None  # Store original stdout for restoration
 
     def start(self) -> None:
-        """No initialization needed for plain display."""
-        pass
+        """Enter alternate screen buffer and redirect stdout for TUI mode."""
+        import sys
+        if sys.stdout.isatty():
+            # Enter alternate screen buffer and clear it
+            sys.stdout.write('\033[?1049h\033[2J')
+            sys.stdout.flush()
+            self.using_alt_screen = True
+
+            # Save original stdout and replace with our wrapper
+            self.original_stdout = sys.stdout
+            sys.stdout = self._TUIStdout(self)
 
     def stop(self) -> None:
-        """No cleanup needed for plain display."""
-        pass
+        """Restore stdout and exit alternate screen buffer."""
+        import sys
+        if self.using_alt_screen:
+            # Restore original stdout
+            if self.original_stdout:
+                sys.stdout = self.original_stdout
+                self.original_stdout = None
+
+            # Exit alternate screen buffer
+            sys.stdout.write('\033[?1049l')
+            sys.stdout.flush()
+            self.using_alt_screen = False
+
+    class _TUIStdout:
+        """Wrapper for stdout that positions output in TUI."""
+        def __init__(self, display):
+            self.display = display
+            self._buffer = ""
+
+        def write(self, text):
+            """Intercept writes and position them in TUI."""
+            if not text:
+                return
+
+            # Add to buffer
+            self._buffer += text
+
+            # If we have complete lines, print them positioned
+            while '\n' in self._buffer:
+                line, self._buffer = self._buffer.split('\n', 1)
+                if line:  # Don't print empty lines
+                    # Position at current log row and print
+                    self.display.original_stdout.write(f'\033[{self.display.log_row};1H\033[K{line}\n')
+                    self.display.original_stdout.flush()
+                    self.display.log_row += 1
+
+        def flush(self):
+            """Flush buffer."""
+            if self._buffer:
+                self.display.original_stdout.write(f'\033[{self.display.log_row};1H\033[K{self._buffer}')
+                self.display.original_stdout.flush()
+                if '\n' in self._buffer:
+                    self.display.log_row += self._buffer.count('\n')
+                self._buffer = ""
+            self.display.original_stdout.flush()
+
+        def __getattr__(self, name):
+            """Delegate other attributes to original stdout."""
+            return getattr(self.display.original_stdout, name)
 
     def update_status(
         self,
@@ -49,9 +107,7 @@ class PlainDisplay(DisplayInterface):
         tokens_used: int | None = None,
         tokens_max: int | None = None,
     ) -> None:
-        """Update status line using ANSI codes for true in-place updates."""
-        import sys
-
+        """Update status line at fixed position (row 1)."""
         # Calculate progress percentage
         progress = int((current_round / max_rounds) * 100)
         mins = int(elapsed_time // 60)
@@ -73,22 +129,17 @@ class PlainDisplay(DisplayInterface):
                 pct = int((tokens_used / tokens_max) * 100)
                 status_line += f" | 🧠 {tokens_used}/{tokens_max} ({pct}%)"
 
-        # Use ANSI codes for proper in-place update
-        if sys.stdout.isatty():
-            if self.status_line_printed:
-                # Save cursor, move to start of previous status line, clear it, write new status, restore cursor
-                # \0337 = save cursor position
-                # \033[F = move to beginning of previous line
-                # \033[K = clear from cursor to end of line
-                # \0338 = restore cursor position
-                print(f"\0337\033[F\033[K{status_line}\0338", end="", flush=True)
-            else:
-                # First status line - just print it with newline so logs can continue below
-                print(status_line, flush=True)
-                self.status_line_printed = True
+        # Update status at row 1 using absolute positioning
+        # Write directly to original stdout (bypass wrapper)
+        if self.using_alt_screen and self.original_stdout:
+            # Move to row 1, column 1, clear line, write status
+            self.original_stdout.write(f'\033[1;1H\033[K{status_line}')
+            self.original_stdout.flush()
         else:
-            # Not a TTY - just print normally
-            print(status_line, flush=True)
+            # Not in alt screen - just print normally to current stdout
+            import sys
+            sys.stdout.write(status_line + '\n')
+            sys.stdout.flush()
 
         self.last_status_line = status_line
 
