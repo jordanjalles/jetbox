@@ -12,13 +12,11 @@ Features:
 """
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, Log, Tree
-from textual.containers import Container, Vertical, Horizontal
+from textual.widgets import Header, Footer, Static, Log
 from textual.reactive import reactive
 from textual.binding import Binding
 import time
 from datetime import datetime
-from pathlib import Path
 
 from .display_interface import DisplayInterface, AgentEvent, EventType
 
@@ -208,8 +206,11 @@ class TextualDisplay(DisplayInterface):
         status: str,
         tokens_used: int | None = None,
         tokens_max: int | None = None,
+        context_breakdown: dict[str, int] | None = None,
+        latency_history: list[float] | None = None,
+        detailed_status: str | None = None,
     ) -> None:
-        """Update the status panel."""
+        """Update the status panel (extended parameters ignored for now)."""
         if not self.app:
             return
 

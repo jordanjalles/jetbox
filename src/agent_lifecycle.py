@@ -40,6 +40,9 @@ class AgentLifecycle:
             agent: The BaseAgent instance to manage
         """
         self.agent = agent
+        self.latency_history: list[float] = []  # Track round latencies
+        self.round_start_time: float | None = None  # Current round start time
+        self.detailed_status: str = "starting"  # Granular status tracking
 
     # ===========================
     # Main entry point
@@ -299,6 +302,10 @@ class AgentLifecycle:
         Returns:
             Completion dict if goal completed/failed, None to continue
         """
+        # Track round start time for latency measurement
+        self.round_start_time = time.time()
+        self.detailed_status = "thinking"
+
         # Build context for this round
         context = self.agent.build_context()
 
@@ -337,15 +344,22 @@ class AgentLifecycle:
             response = self.agent.event_system.trigger_llm_response(response)
 
         # Add assistant message to history
-        had_tool_calls = False
         if "message" in response:
             msg = response["message"]
             self.agent.add_message(msg)
 
             # Execute tool calls if present
             if "tool_calls" in msg and msg["tool_calls"]:
+                self.detailed_status = "executing"
+                self._update_display_status(round_no, max_rounds, model)  # Update status to show "executing"
                 completion = self._execute_tool_calls(msg["tool_calls"])
                 if completion:
+                    # Record latency before returning
+                    if self.round_start_time:
+                        round_latency = time.time() - self.round_start_time
+                        self.latency_history.append(round_latency)
+                        self.round_start_time = None
+                    self.detailed_status = "completing"
                     return completion
 
         # Check for completion signals and set nudge (core agent functionality)
@@ -354,6 +368,12 @@ class AgentLifecycle:
 
         # Trigger round end event
         self.agent.event_system.trigger_round_end(round_no)
+
+        # Record round latency
+        if self.round_start_time:
+            round_latency = time.time() - self.round_start_time
+            self.latency_history.append(round_latency)
+            self.round_start_time = None
 
         # Increment round counter
         self.agent.increment_round()
@@ -381,6 +401,18 @@ class AgentLifecycle:
         for tool_call in tool_calls:
             tool_name = tool_call["function"]["name"]
             args = tool_call["function"].get("arguments", {})
+
+            # Update detailed status based on tool type
+            if "write" in tool_name.lower() or "create" in tool_name.lower():
+                self.detailed_status = "writing"
+            elif "read" in tool_name.lower() or "list" in tool_name.lower():
+                self.detailed_status = "reading"
+            elif "test" in tool_name.lower() or "pytest" in tool_name.lower():
+                self.detailed_status = "testing"
+            elif "run" in tool_name.lower() or "execute" in tool_name.lower() or "bash" in tool_name.lower():
+                self.detailed_status = "executing"
+            else:
+                self.detailed_status = "executing"
 
             # Create preview of arguments
             preview = self._format_tool_call_preview(tool_name, args)
@@ -528,6 +560,43 @@ class AgentLifecycle:
     # Display helpers
     # ===========================
 
+    def _calculate_context_breakdown(self) -> dict[str, int]:
+        """
+        Calculate context composition breakdown from agent state messages.
+
+        Returns:
+            Dict mapping message role to character count
+        """
+        breakdown = {
+            "system": 0,
+            "user": 0,
+            "assistant": 0,
+            "tool": 0,
+        }
+
+        # Check agent.state.messages (the actual context being sent to LLM)
+        if not hasattr(self.agent, 'state') or not hasattr(self.agent.state, 'messages'):
+            return breakdown
+
+        # Also include system prompt length
+        if hasattr(self.agent, 'get_system_prompt'):
+            try:
+                system_prompt = self.agent.get_system_prompt()
+                if isinstance(system_prompt, str):
+                    breakdown["system"] += len(system_prompt)
+            except Exception:
+                pass
+
+        # Count message content
+        for msg in self.agent.state.messages:
+            role = msg.get('role', '')
+            content = msg.get('content', '')
+
+            if isinstance(content, str):
+                breakdown[role] = breakdown.get(role, 0) + len(content)
+
+        return breakdown
+
     def _update_display_status(self, round_no: int, max_rounds: int, model: str) -> None:
         """
         Update TUI display with current agent status.
@@ -537,8 +606,10 @@ class AgentLifecycle:
             max_rounds: Maximum rounds
             model: Model name
         """
-        from tui import AgentEvent, EventType
         elapsed_time = time.time() - self.agent.goal_start_time if self.agent.goal_start_time else 0
+
+        # Calculate context breakdown
+        context_breakdown = self._calculate_context_breakdown()
 
         self.agent.display.update_status(
             goal=self.agent.goal or "No goal set",
@@ -550,6 +621,9 @@ class AgentLifecycle:
             status="Running",
             tokens_used=None,  # TODO: track tokens if needed
             tokens_max=None,
+            context_breakdown=context_breakdown,
+            latency_history=self.latency_history,
+            detailed_status=self.detailed_status,
         )
 
     def _display_completion(self, result: dict[str, Any]) -> None:

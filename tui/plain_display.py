@@ -31,6 +31,7 @@ class PlainDisplay(DisplayInterface):
         self.log_row = 1  # Start logs at row 1 (status will be at bottom)
         self.original_stdout = None  # Store original stdout for restoration
         self.terminal_height = 24  # Default terminal height (will be detected)
+        self.status_bar_lines = 4  # Number of lines reserved for status bar
 
     def start(self) -> None:
         """Enter alternate screen buffer and redirect stdout for TUI mode."""
@@ -51,13 +52,14 @@ class PlainDisplay(DisplayInterface):
 
             # Set scrolling region to prevent logs from overwriting status bar
             # Format: \033[<top>;<bottom>r sets scroll region
-            # We want rows 1 to (height-1) to scroll, keeping last row for status
-            sys.stdout.write(f'\033[1;{self.terminal_height - 1}r')
+            # Reserve self.status_bar_lines at bottom for multi-line status
+            scroll_bottom = self.terminal_height - self.status_bar_lines
+            sys.stdout.write(f'\033[1;{scroll_bottom}r')
             sys.stdout.flush()
 
             # Position cursor at line above status bar so logs appear attached to progress line
             # This prevents the large empty space between top and bottom
-            sys.stdout.write(f'\033[{self.terminal_height - 1};1H')
+            sys.stdout.write(f'\033[{scroll_bottom};1H')
             sys.stdout.flush()
 
             # Save original stdout and replace with our wrapper
@@ -113,6 +115,50 @@ class PlainDisplay(DisplayInterface):
             """Delegate other attributes to original stdout."""
             return getattr(self.display.original_stdout, name)
 
+    def _format_latency_histogram(self, latency_history: list[float], width: int = 20) -> str:
+        """
+        Format latency history as a mini histogram.
+
+        Args:
+            latency_history: List of recent round latencies in seconds
+            width: Width of histogram in characters
+
+        Returns:
+            Histogram string using block characters
+        """
+        if not latency_history:
+            return "░" * width
+
+        # Take last N entries to fit width
+        recent = latency_history[-width:]
+
+        # Normalize to 0-1 range
+        min_lat = min(recent)
+        max_lat = max(recent)
+        range_lat = max_lat - min_lat if max_lat > min_lat else 1.0
+
+        # Map to block characters (8 levels)
+        blocks = " ▁▂▃▄▅▆▇█"
+        histogram = ""
+        for lat in recent:
+            normalized = (lat - min_lat) / range_lat
+            block_idx = min(int(normalized * 8), 8)
+            histogram += blocks[block_idx]
+
+        # Pad if shorter than width
+        histogram += "░" * (width - len(histogram))
+
+        return histogram
+
+    def _format_size(self, chars: int) -> str:
+        """Format character count as human-readable size (e.g., 12K, 1.5M)."""
+        if chars < 1000:
+            return f"{chars}B"
+        elif chars < 1000000:
+            return f"{chars // 1000}K"
+        else:
+            return f"{chars / 1000000:.1f}M"
+
     def update_status(
         self,
         goal: str,
@@ -124,43 +170,94 @@ class PlainDisplay(DisplayInterface):
         status: str,
         tokens_used: int | None = None,
         tokens_max: int | None = None,
+        context_breakdown: dict[str, int] | None = None,
+        latency_history: list[float] | None = None,
+        detailed_status: str | None = None,
     ) -> None:
-        """Update status line at fixed position (BOTTOM row)."""
+        """Update multi-line status display at bottom of screen."""
         # Calculate progress percentage
         progress = int((current_round / max_rounds) * 100)
         mins = int(elapsed_time // 60)
         secs = int(elapsed_time % 60)
 
         if not self.verbose:
-            # Minimal mode: just show progress
+            # Minimal mode: single line
             status_line = f"[{progress:3d}%] Round {current_round}/{max_rounds} - {status}"
+            lines = [status_line]
         else:
-            # Verbose mode: full status line with progress bar
-            # Create progress bar (20 chars wide)
+            # Verbose mode: 4-line status display
+
+            # Line 1: Round allowance progress bar
             bar_width = 20
             filled = int((progress / 100) * bar_width)
             bar = "█" * filled + "░" * (bar_width - filled)
+            line1 = f"[Round Allowance] [{bar}] {progress:3d}% ({current_round}/{max_rounds}) | ⏱️  {mins}m{secs:02d}s"
 
-            status_line = f"📊 [{bar}] {progress:3d}% | Round {current_round}/{max_rounds} | ⏱️  {mins}m{secs:02d}s | {status}"
+            # Line 2: Context composition breakdown
+            if context_breakdown:
+                sys_size = self._format_size(context_breakdown.get("system", 0))
+                user_size = self._format_size(context_breakdown.get("user", 0))
+                asst_size = self._format_size(context_breakdown.get("assistant", 0))
+                tool_size = self._format_size(context_breakdown.get("tool", 0))
+                total = sum(context_breakdown.values())
+                total_size = self._format_size(total)
 
-            if tokens_used and tokens_max:
-                pct = int((tokens_used / tokens_max) * 100)
-                status_line += f" | 🧠 {tokens_used}/{tokens_max} ({pct}%)"
+                # Estimate max context (128K tokens = ~512K chars)
+                max_context = 512000
+                ctx_pct = int((total / max_context) * 100) if max_context else 0
 
-        # Update status at BOTTOM row using absolute positioning
-        # Write directly to original stdout (bypass wrapper)
+                line2 = f"[Context]  Sys:{sys_size}  User:{user_size}  Asst:{asst_size}  Tool:{tool_size}  Total:{total_size} ({ctx_pct}%)"
+            else:
+                line2 = "[Context]  (no data)"
+
+            # Line 3: Latency histogram
+            if latency_history:
+                histogram = self._format_latency_histogram(latency_history, width=20)
+                avg = sum(latency_history) / len(latency_history)
+                last = latency_history[-1] if latency_history else 0
+                min_lat = min(latency_history)
+                max_lat = max(latency_history)
+                line3 = f"[Latency]  [{histogram}] Avg:{avg:.1f}s Last:{last:.1f}s Min:{min_lat:.1f}s Max:{max_lat:.1f}s"
+            else:
+                line3 = "[Latency]  (no data)"
+
+            # Line 4: Granular status
+            status_emoji = {
+                "starting": "🚀",
+                "thinking": "💭",
+                "writing": "✍️",
+                "reading": "📖",
+                "testing": "🧪",
+                "executing": "⚡",
+                "completing": "✅",
+                "error": "❌",
+            }
+            emoji = status_emoji.get(detailed_status or "", "▶️")
+            line4 = f"[Status]  {emoji} {(detailed_status or status).capitalize()}"
+
+            lines = [line1, line2, line3, line4]
+
+        # Update status at bottom rows using absolute positioning
         if self.using_alt_screen and self.original_stdout:
-            # Save cursor position, move to bottom row, clear line, write status, restore cursor
-            # This way logs keep scrolling while status stays at bottom
-            self.original_stdout.write(f'\0337\033[{self.terminal_height};1H\033[K{status_line}\0338')
+            # Save cursor, move to status area, clear and write lines, restore cursor
+            output = "\0337"  # Save cursor
+
+            for i, line in enumerate(lines):
+                row = self.terminal_height - (self.status_bar_lines - i - 1)
+                output += f"\033[{row};1H\033[K{line}"
+
+            output += "\0338"  # Restore cursor
+
+            self.original_stdout.write(output)
             self.original_stdout.flush()
         else:
-            # Not in alt screen - just print normally to current stdout
+            # Not in alt screen - just print normally
             import sys
-            sys.stdout.write(status_line + '\n')
+            for line in lines:
+                sys.stdout.write(line + '\n')
             sys.stdout.flush()
 
-        self.last_status_line = status_line
+        self.last_status_line = lines[0] if lines else ""
 
     def log_event(self, event: AgentEvent) -> None:
         """Print event to stdout."""

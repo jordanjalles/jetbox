@@ -74,6 +74,9 @@ class DisplayInterface(ABC):
         status: str,
         tokens_used: Optional[int] = None,
         tokens_max: Optional[int] = None,
+        context_breakdown: Optional[dict[str, int]] = None,
+        latency_history: Optional[list[float]] = None,
+        detailed_status: Optional[str] = None,
     ) -> None:
         """
         Update the main status display.
@@ -88,6 +91,11 @@ class DisplayInterface(ABC):
             status: Current status (e.g., "Running", "Paused", "Completed")
             tokens_used: Tokens used so far (optional)
             tokens_max: Maximum tokens allowed (optional)
+            context_breakdown: Dict with message type counts/sizes (optional)
+                e.g., {"system": 12000, "user": 8000, "assistant": 15000, "tool": 5000}
+            latency_history: List of recent round latencies in seconds (optional)
+            detailed_status: Single-word granular status (optional)
+                e.g., "starting", "thinking", "writing", "testing", "completing"
         """
         pass
 
