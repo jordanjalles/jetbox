@@ -5,11 +5,13 @@ Provides:
 - Automatic factual time nudges at configurable percentages
 - Tool for agents to schedule custom reminders to themselves
 - Wall-clock or round-based time tracking
-"""
+
+Now uses @tool decorator for automatic tool registration!"""
 from __future__ import annotations
 import time
 from typing import Any
 from behaviors.base import AgentBehavior
+from behaviors.tool_decorator import tool
 
 
 class TimeBoxBehavior(AgentBehavior):
@@ -55,54 +57,32 @@ class TimeBoxBehavior(AgentBehavior):
         self.triggered.clear()
         self.custom_reminders.clear()
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Provide schedule_reminder tool."""
-        return [{
-            "type": "function",
-            "function": {
-                "name": "schedule_reminder",
-                "description": """Schedule a message to yourself at a future time percentage. Use this to plan phase transitions, strategic checkpoints, scope adjustments, or remind yourself of tradeoffs as time progresses. You receive automatic time nudges at 25%, 50%, 75%.""",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "at_percent": {
-                            "type": "number",
-                            "description": "Percentage (0-100) when this reminder should trigger",
-                            "minimum": 0,
-                            "maximum": 100
-                        },
-                        "message": {
-                            "type": "string",
-                            "description": "The reminder message to show yourself at that time"
-                        }
-                    },
-                    "required": ["at_percent", "message"]
-                }
-            }
-        }]
+    # Tool implementation (using @tool decorator)
 
-    def dispatch_tool(
+    @tool(description="Schedule a message to yourself at a future time percentage. Use this to plan phase transitions, strategic checkpoints, scope adjustments, or remind yourself of tradeoffs as time progresses. You receive automatic time nudges at 25%, 50%, 75%.")
+    def schedule_reminder(
         self,
-        tool_name: str,
-        args: dict[str, Any],
-        agent=None,
-        **kwargs
+        at_percent: float,
+        message: str
     ) -> dict[str, Any]:
-        """Handle schedule_reminder tool calls."""
-        if tool_name == "schedule_reminder":
-            percent = args["at_percent"]
-            message = args["message"]
+        """
+        Schedule a reminder at a future time percentage.
 
-            # Store reminder
-            self.custom_reminders.append((percent, message))
+        Args:
+            at_percent: Percentage (0-100) when this reminder should trigger
+            message: The reminder message to show yourself at that time
 
-            return {
-                "success": True,
-                "scheduled_at": f"{percent}%",
-                "message_preview": message[:60] + ("..." if len(message) > 60 else "")
-            }
+        Returns:
+            Dict with success status and scheduled time
+        """
+        # Store reminder
+        self.custom_reminders.append((at_percent, message))
 
-        return super().dispatch_tool(tool_name, args, agent=agent, **kwargs)
+        return {
+            "success": True,
+            "scheduled_at": f"{at_percent}%",
+            "message_preview": message[:60] + ("..." if len(message) > 60 else "")
+        }
 
     def on_round_start(
         self,
