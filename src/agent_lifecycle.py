@@ -43,6 +43,8 @@ class AgentLifecycle:
         self.latency_history: list[float] = []  # Track round latencies
         self.round_start_time: float | None = None  # Current round start time
         self.detailed_status: str = "starting"  # Granular status tracking
+        self.last_status_update_time: float = 0.0  # Track when status last updated
+        self.min_status_display_time: float = 0.15  # Minimum seconds to show each status
 
     # ===========================
     # Main entry point
@@ -266,7 +268,7 @@ class AgentLifecycle:
         print(f"[{self.agent.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
 
         # Show initial "starting" status
-        self.detailed_status = "starting"
+        self._set_detailed_status("starting")
         self._update_display_status(1, max_rounds, model)
 
         return max_rounds, model, temperature
@@ -311,7 +313,7 @@ class AgentLifecycle:
         self.round_start_time = time.time()
 
         # Build context for this round
-        self.detailed_status = "building_context"
+        self._set_detailed_status("building_context")
         self._update_display_status(round_no, max_rounds, model)
         context = self.agent.build_context()
 
@@ -322,13 +324,13 @@ class AgentLifecycle:
         print(f"\n[{self.agent.name}] Round {round_no}/{max_rounds}")
 
         # Update display status to show we're waiting for LLM
-        self.detailed_status = "calling_llm"
+        self._set_detailed_status("calling_llm")
         self._update_display_status(round_no, max_rounds, model)
 
         response = self.agent._call_llm_with_context(context, model=model, temperature=temperature)
 
         # Processing response
-        self.detailed_status = "processing_response"
+        self._set_detailed_status("processing_response")
         self._update_display_status(round_no, max_rounds, model)
 
         # After LLM call, print newline to move past status bar for next logs
@@ -361,7 +363,7 @@ class AgentLifecycle:
 
             # Execute tool calls if present
             if "tool_calls" in msg and msg["tool_calls"]:
-                self.detailed_status = "executing"
+                self._set_detailed_status("executing")
                 self._update_display_status(round_no, max_rounds, model)  # Update status to show "executing"
                 completion = self._execute_tool_calls(msg["tool_calls"])
                 if completion:
@@ -370,7 +372,7 @@ class AgentLifecycle:
                         round_latency = time.time() - self.round_start_time
                         self.latency_history.append(round_latency)
                         self.round_start_time = None
-                    self.detailed_status = "completing"
+                    self._set_detailed_status("completing")
                     return completion
 
         # Check for completion signals and set nudge (core agent functionality)
@@ -415,15 +417,15 @@ class AgentLifecycle:
 
             # Update detailed status based on tool type
             if "write" in tool_name.lower() or "create" in tool_name.lower():
-                self.detailed_status = "writing"
+                self._set_detailed_status("writing")
             elif "read" in tool_name.lower() or "list" in tool_name.lower():
-                self.detailed_status = "reading"
+                self._set_detailed_status("reading")
             elif "test" in tool_name.lower() or "pytest" in tool_name.lower():
-                self.detailed_status = "testing"
+                self._set_detailed_status("testing")
             elif "run" in tool_name.lower() or "execute" in tool_name.lower() or "bash" in tool_name.lower():
-                self.detailed_status = "executing"
+                self._set_detailed_status("executing")
             else:
-                self.detailed_status = "executing"
+                self._set_detailed_status("executing")
 
             # Create preview of arguments
             preview = self._format_tool_call_preview(tool_name, args)
@@ -570,6 +572,29 @@ class AgentLifecycle:
     # ===========================
     # Display helpers
     # ===========================
+
+    def _set_detailed_status(self, new_status: str) -> None:
+        """
+        Update detailed status with minimum display time enforcement.
+
+        Ensures each status is visible for at least min_status_display_time seconds
+        before updating to the next status.
+
+        Args:
+            new_status: New status string
+        """
+        import time
+
+        # Calculate how long current status has been displayed
+        elapsed_since_last_update = time.time() - self.last_status_update_time
+
+        # If not enough time has passed, sleep to ensure minimum display time
+        if elapsed_since_last_update < self.min_status_display_time:
+            time.sleep(self.min_status_display_time - elapsed_since_last_update)
+
+        # Update status and record time
+        self.detailed_status = new_status
+        self.last_status_update_time = time.time()
 
     def _calculate_context_breakdown(self) -> dict[str, int]:
         """
