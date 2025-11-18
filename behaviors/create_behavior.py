@@ -52,88 +52,35 @@ class CreateBehaviorBehavior(AgentBehavior):
         """Return behavior identifier."""
         return "create_behavior"
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Return tool definitions.
-
-        Returns:
-            List with create_behavior tool definition
-        """
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "create_behavior",
-                    "description": "Generate a new AgentBehavior class with specified tools and lifecycle hooks",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "behavior_name": {
-                                "type": "string",
-                                "description": "Name of the behavior (e.g., 'HttpRequestBehavior')"
-                            },
-                            "description": {
-                                "type": "string",
-                                "description": "Description of what the behavior does"
-                            },
-                            "tool_specs": {
-                                "type": "array",
-                                "description": "List of tool specifications with name, description, and parameters",
-                                "items": {"type": "object"}
-                            },
-                            "lifecycle_hooks": {
-                                "type": "array",
-                                "description": "Optional list of lifecycle hooks to implement (e.g., on_initial_context, on_round_start)",
-                                "items": {"type": "string"}
-                            },
-                            "safety_mode": {
-                                "type": "string",
-                                "description": "Safety mode: 'dryrun' (staging only), 'review' (staging + return for approval), 'auto' (install if valid), 'strict' (extra checks + review). Default: 'review'"
-                            }
-                        },
-                        "required": ["behavior_name", "description", "tool_specs"]
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
+    @tool
+    def create_behavior(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
+        behavior_name: str,
+        description: str,
+        tool_specs: list[dict],
+        lifecycle_hooks: list[str] = None,
+        safety_mode: str = "review"
     ) -> dict[str, Any]:
-        """
-        Handle tool execution.
+        """Generate a new AgentBehavior class with specified tools and lifecycle hooks.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
-
-        Returns:
-            Tool result dict
-        """
-        if tool_name == "create_behavior":
-            return self._execute_create_behavior(agent, args)
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
-
-    def _execute_create_behavior(
-        self,
-        agent: Any,
-        args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Execute create_behavior tool.
-
-        Args:
-            agent: Agent instance
-            args: Tool arguments
+            behavior_name: Name of the behavior (e.g., 'HttpRequestBehavior')
+            description: Description of what the behavior does
+            tool_specs: List of tool specifications with name, description, and parameters
+            lifecycle_hooks: Optional list of lifecycle hooks to implement (e.g., on_initial_context, on_round_start)
+            safety_mode: Safety mode: 'dryrun' (staging only), 'review' (staging + return for approval), 'auto' (install if valid), 'strict' (extra checks + review). Default: 'review'
 
         Returns:
             Result dict with behavior file, tests, and validation results
         """
+        # Build args dict for existing implementation
+        args = {
+            "behavior_name": behavior_name,
+            "description": description,
+            "tool_specs": tool_specs,
+            "lifecycle_hooks": lifecycle_hooks or [],
+            "safety_mode": safety_mode
+        }
         try:
             # Extract and validate parameters
             behavior_name = args.get("behavior_name", "")
