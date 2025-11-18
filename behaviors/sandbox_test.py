@@ -96,80 +96,50 @@ class SandboxTestBehavior(AgentBehavior):
 
         return context
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Return sandbox testing tool definitions."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "run_behavior_tests",
-                    "description": "Run behavior tests in isolated sandbox with timeout",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "behavior_file": {
-                                "type": "string",
-                                "description": "Path to behavior Python file (relative to workspace)"
-                            },
-                            "test_file": {
-                                "type": "string",
-                                "description": "Path to test file (relative to workspace)"
-                            },
-                            "timeout": {
-                                "type": "number",
-                                "description": "Timeout in seconds (default: 30)"
-                            }
-                        },
-                        "required": ["behavior_file", "test_file"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "run_agent_sanity_check",
-                    "description": "Verify agent configuration can load and instantiate",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "config_file": {
-                                "type": "string",
-                                "description": "Path to agent config YAML (relative to workspace)"
-                            },
-                            "agent_class": {
-                                "type": "string",
-                                "description": "Agent class name to instantiate (e.g., 'TaskExecutorAgent')"
-                            }
-                        },
-                        "required": ["config_file", "agent_class"]
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
+    @tool
+    def run_behavior_tests(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
+        behavior_file: str,
+        test_file: str,
+        timeout: int = 30
     ) -> dict[str, Any]:
-        """
-        Handle sandbox test tool execution.
+        """Run behavior tests in isolated sandbox with timeout.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
+            behavior_file: Path to behavior Python file (relative to workspace)
+            test_file: Path to test file (relative to workspace)
+            timeout: Timeout in seconds (default: 30)
 
         Returns:
             Test result dict with "success", "stdout", "stderr"
         """
-        if tool_name == "run_behavior_tests":
-            return self._run_behavior_tests(agent, args)
-        elif tool_name == "run_agent_sanity_check":
-            return self._run_agent_sanity_check(agent, args)
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
+        args = {
+            "behavior_file": behavior_file,
+            "test_file": test_file,
+            "timeout": timeout
+        }
+        return self._run_behavior_tests(self.agent, args)
+
+    @tool
+    def run_agent_sanity_check(
+        self,
+        config_file: str,
+        agent_class: str
+    ) -> dict[str, Any]:
+        """Verify agent configuration can load and instantiate.
+
+        Args:
+            config_file: Path to agent config YAML (relative to workspace)
+            agent_class: Agent class name to instantiate (e.g., 'TaskExecutorAgent')
+
+        Returns:
+            Sanity check result dict with "success", "stdout", "stderr"
+        """
+        args = {
+            "config_file": config_file,
+            "agent_class": agent_class
+        }
+        return self._run_agent_sanity_check(self.agent, args)
 
     def _run_behavior_tests(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
         """
