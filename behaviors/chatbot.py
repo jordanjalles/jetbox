@@ -206,140 +206,76 @@ How can I help you?
     # Tools
     # ============================================
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Provide goal extraction tool for chat mode.
-
-        Only provides set_goal tool if agent doesn't already have a goal.
-        This prevents confusion when agent is invoked with a goal parameter.
-
-        Returns:
-            Tool definitions for set_goal (used to transition from chat to execution)
-        """
-        # Check if agent already has a goal set
-        # If yes, don't provide set_goal tool (agent is in execution mode, not chat mode)
-        if hasattr(self, 'agent') and self.agent:
-            # Check if agent.goal is set (core agent functionality)
-            if hasattr(self.agent, 'goal') and self.agent.goal:
-                # Goal set - don't provide chatbot tools
-                return []
-
-        # No goal set - provide chat mode tools
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "set_goal",
-                    "description": "Start working on a task. This activates execution mode. Call this when user wants to build something and you have basic requirements. Be decisive - don't wait for perfect clarity. If user says 'do it', 'build it', 'go ahead', call this IMMEDIATELY.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "goal": {
-                                "type": "string",
-                                "description": "Clear goal statement describing what to build (e.g., 'Build a colorful Mandelbrot fractal renderer using HTML5 and WebGPU')"
-                            },
-                            "requirements": {
-                                "type": "string",
-                                "description": "Requirements details (optional - can be brief or left empty if minimal info available)"
-                            }
-                        },
-                        "required": ["goal"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "clarify_with_user",
-                    "description": "Ask user for clarification. Ensures chat mode is active for conversational interaction.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "question": {
-                                "type": "string",
-                                "description": "Question to ask user"
-                            }
-                        },
-                        "required": ["question"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "activate_chat_mode",
-                    "description": "Explicitly activate chat mode. Usually not needed as chat mode is default, but can be used to return to conversational mode.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {}
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
+    @tool
+    def set_goal(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
+        goal: str,
+        requirements: str = ""
     ) -> dict[str, Any]:
-        """
-        Handle tool calls for this behavior.
+        """Start working on a task. This activates execution mode. Call this when user wants to build something and you have basic requirements. Be decisive - don't wait for perfect clarity. If user says 'do it', 'build it', 'go ahead', call this IMMEDIATELY.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
+            goal: Clear goal statement describing what to build (e.g., 'Build a colorful Mandelbrot fractal renderer using HTML5 and WebGPU')
+            requirements: Requirements details (optional - can be brief or left empty if minimal info available)
 
         Returns:
-            Tool result dict
+            Dict with success status, goal, and mode transition info
         """
-
-        if tool_name == "set_goal":
-            goal = args.get('goal', '')
-            requirements = args.get('requirements', '')
-
-            if not goal:
-                return {
-                    "success": False,
-                    "error": "Goal cannot be empty"
-                }
-
-            # Build full goal
-            full_goal = goal
-            if requirements:
-                full_goal += f"\n\nRequirements:\n{requirements}"
-
-            # Set goal on agent (core functionality)
-            # Note: agent.set_goal() automatically activates ExecutionModeBehavior
-            agent.set_goal(full_goal)
-
+        if not goal:
             return {
-                "success": True,
-                "result": f"Goal set: {goal}",
-                "goal": goal,
-                "requirements": requirements,
-                "mode_transition": "chat → execution"
+                "success": False,
+                "error": "Goal cannot be empty"
             }
 
-        elif tool_name == "clarify_with_user":
-            question = args.get('question', '')
+        # Build full goal
+        full_goal = goal
+        if requirements:
+            full_goal += f"\n\nRequirements:\n{requirements}"
 
-            # Ensure chat mode is active
-            if not self.is_active:
-                self.activate(agent)
+        # Set goal on agent (core functionality)
+        # Note: agent.set_goal() automatically activates ExecutionModeBehavior
+        self.agent.set_goal(full_goal)
 
-            return {
-                "success": True,
-                "result": f"Question for user: {question}",
-                "question": question,
-                "mode": "chat"
-            }
+        return {
+            "success": True,
+            "result": f"Goal set: {goal}",
+            "goal": goal,
+            "requirements": requirements,
+            "mode_transition": "chat → execution"
+        }
 
-        elif tool_name == "activate_chat_mode":
-            return self.activate(agent)
+    @tool
+    def clarify_with_user(
+        self,
+        question: str
+    ) -> dict[str, Any]:
+        """Ask user for clarification. Ensures chat mode is active for conversational interaction.
 
-        return super().dispatch_tool(agent, tool_name, args)
+        Args:
+            question: Question to ask user
+
+        Returns:
+            Dict with question and mode status
+        """
+        # Ensure chat mode is active
+        if not self.is_active:
+            self.activate(self.agent)
+
+        return {
+            "success": True,
+            "result": f"Question for user: {question}",
+            "question": question,
+            "mode": "chat"
+        }
+
+    @tool
+    def activate_chat_mode(self) -> dict[str, Any]:
+        """Explicitly activate chat mode. Usually not needed as chat mode is default, but can be used to return to conversational mode.
+
+        Returns:
+            Activation result dict
+        """
+        return self.activate(self.agent)
 
     # ============================================
     # Initial Context (Static, KV Cached)
