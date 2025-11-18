@@ -104,217 +104,35 @@ class ValidationBehavior(AgentBehavior):
 
         return context
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Return validation tool definitions."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_python_syntax",
-                    "description": "Validate Python code syntax using AST parser",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "code": {
-                                "type": "string",
-                                "description": "Python code to validate"
-                            }
-                        },
-                        "required": ["code"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_behavior_independence",
-                    "description": "Check that a behavior file has no cross-behavior dependencies",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {
-                                "type": "string",
-                                "description": "Path to behavior Python file (relative to workspace)"
-                            }
-                        },
-                        "required": ["file_path"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_tool_schema",
-                    "description": "Validate that a tool follows OpenAI function calling specification",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "tool": {
-                                "type": "object",
-                                "description": "Tool schema dictionary to validate"
-                            }
-                        },
-                        "required": ["tool"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_behavior_class",
-                    "description": "Validate that code contains a proper behavior class",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "code": {
-                                "type": "string",
-                                "description": "Python code containing behavior class"
-                            },
-                            "expected_name": {
-                                "type": "string",
-                                "description": "Expected behavior class name (e.g., 'MyBehavior')"
-                            }
-                        },
-                        "required": ["code", "expected_name"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_no_super_in_dispatch",
-                    "description": "Validate that dispatch_tool does not call super().dispatch_tool() (causes double-dispatch bug)",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "code": {
-                                "type": "string",
-                                "description": "Python code to validate"
-                            }
-                        },
-                        "required": ["code"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_yaml_syntax",
-                    "description": "Validate YAML syntax",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "yaml_str": {
-                                "type": "string",
-                                "description": "YAML string to validate"
-                            }
-                        },
-                        "required": ["yaml_str"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_agent_dag",
-                    "description": "Validate agent delegation graph has no cycles (DAG check)",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "agents_config": {
-                                "type": "object",
-                                "description": "Agents configuration dictionary with 'agents' key"
-                            }
-                        },
-                        "required": ["agents_config"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "validate_agent_config",
-                    "description": "Validate complete agent configuration structure",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "config": {
-                                "type": "object",
-                                "description": "Agent config dictionary to validate (use this OR config_yaml OR config_file)"
-                            },
-                            "config_yaml": {
-                                "type": "string",
-                                "description": "Agent config YAML string to validate (use this OR config OR config_file)"
-                            },
-                            "config_file": {
-                                "type": "string",
-                                "description": "Path to agent config YAML file (use this OR config OR config_yaml)"
-                            },
-                            "behaviors_dir": {
-                                "type": "string",
-                                "description": "Optional path to behaviors directory for checking behavior existence"
-                            }
-                        },
-                        "required": []
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
-        self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Handle validation tool execution.
+    @tool
+    def validate_python_syntax(self, code: str) -> dict[str, Any]:
+        """Validate Python code syntax using AST parser.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
+            code: Python code to validate
 
         Returns:
-            Validation result dict with "valid" and optional "error"/"issues"
+            Dict with "result" containing validation result
         """
-        if tool_name == "validate_python_syntax":
-            return self._validate_python_syntax(agent, args)
-        elif tool_name == "validate_behavior_independence":
-            return self._validate_behavior_independence(agent, args)
-        elif tool_name == "validate_tool_schema":
-            return self._validate_tool_schema(agent, args)
-        elif tool_name == "validate_behavior_class":
-            return self._validate_behavior_class(agent, args)
-        elif tool_name == "validate_no_super_in_dispatch":
-            return self._validate_no_super_in_dispatch(agent, args)
-        elif tool_name == "validate_yaml_syntax":
-            return self._validate_yaml_syntax(agent, args)
-        elif tool_name == "validate_agent_dag":
-            return self._validate_agent_dag(agent, args)
-        elif tool_name == "validate_agent_config":
-            return self._validate_agent_config(agent, args)
-        else:
-            # Unknown tool - return error
-            # IMPORTANT: Do NOT call super().dispatch_tool() as it causes double-dispatch
-            return {"error": f"Unknown tool: {tool_name}"}
-
-    def _validate_python_syntax(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate Python code syntax."""
         try:
-            code = args.get("code", "")
             result = validate_python_syntax(code)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_behavior_independence(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Check behavior file for cross-dependencies."""
-        try:
-            file_path = args.get("file_path", "")
+    @tool
+    def validate_behavior_independence(self, file_path: str) -> dict[str, Any]:
+        """Check that a behavior file has no cross-behavior dependencies.
 
+        Args:
+            file_path: Path to behavior Python file (relative to workspace)
+
+        Returns:
+            Dict with "result" containing validation result
+        """
+        try:
             # Resolve path relative to workspace
-            workspace = agent.workspace if hasattr(agent, 'workspace') else Path.cwd()
+            workspace = self.agent.workspace if hasattr(self.agent, 'workspace') else Path.cwd()
             resolved_path = workspace / file_path
 
             if not resolved_path.exists():
@@ -325,62 +143,110 @@ class ValidationBehavior(AgentBehavior):
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_tool_schema(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate OpenAI function call schema."""
+    @tool
+    def validate_tool_schema(self, tool: dict) -> dict[str, Any]:
+        """Validate that a tool follows OpenAI function calling specification.
+
+        Args:
+            tool: Tool schema dictionary to validate
+
+        Returns:
+            Dict with "result" containing validation result
+        """
         try:
-            tool = args.get("tool", {})
             result = validate_tool_schema(tool)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_behavior_class(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate behavior class structure."""
+    @tool
+    def validate_behavior_class(self, code: str, expected_name: str) -> dict[str, Any]:
+        """Validate that code contains a proper behavior class.
+
+        Args:
+            code: Python code containing behavior class
+            expected_name: Expected behavior class name (e.g., 'MyBehavior')
+
+        Returns:
+            Dict with "result" containing validation result
+        """
         try:
-            code = args.get("code", "")
-            expected_name = args.get("expected_name", "")
             result = validate_behavior_class(code, expected_name)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_no_super_in_dispatch(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate no super() calls in dispatch_tool."""
+    @tool
+    def validate_no_super_in_dispatch(self, code: str) -> dict[str, Any]:
+        """Validate that dispatch_tool does not call super().dispatch_tool() (causes double-dispatch bug).
+
+        Args:
+            code: Python code to validate
+
+        Returns:
+            Dict with "result" containing validation result
+        """
         try:
-            code = args.get("code", "")
             result = validate_no_super_in_dispatch(code)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_yaml_syntax(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate YAML syntax."""
+    @tool
+    def validate_yaml_syntax(self, yaml_str: str) -> dict[str, Any]:
+        """Validate YAML syntax.
+
+        Args:
+            yaml_str: YAML string to validate
+
+        Returns:
+            Dict with "result" containing validation result
+        """
         try:
-            yaml_str = args.get("yaml_str", "")
             result = validate_yaml_syntax(yaml_str)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_agent_dag(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate agent delegation graph for cycles."""
+    @tool
+    def validate_agent_dag(self, agents_config: dict) -> dict[str, Any]:
+        """Validate agent delegation graph has no cycles (DAG check).
+
+        Args:
+            agents_config: Agents configuration dictionary with 'agents' key
+
+        Returns:
+            Dict with "result" containing validation result
+        """
         try:
-            agents_config = args.get("agents_config", {})
             result = validate_agent_dag(agents_config)
             return {"result": result}
         except Exception as e:
             return {"error": f"Validation error: {str(e)}"}
 
-    def _validate_agent_config(self, agent: Any, args: dict[str, Any]) -> dict[str, Any]:
-        """Validate complete agent configuration."""
+    @tool
+    def validate_agent_config(
+        self,
+        config: dict = None,
+        config_yaml: str = None,
+        config_file: str = None,
+        behaviors_dir: str = None
+    ) -> dict[str, Any]:
+        """Validate complete agent configuration structure.
+
+        Args:
+            config: Agent config dictionary to validate (use this OR config_yaml OR config_file)
+            config_yaml: Agent config YAML string to validate (use this OR config OR config_file)
+            config_file: Path to agent config YAML file (use this OR config OR config_yaml)
+            behaviors_dir: Optional path to behaviors directory for checking behavior existence
+
+        Returns:
+            Dict with validation result
+        """
         try:
             import yaml
 
             # Support dict, YAML string, or file path input
-            config = args.get("config")
-            config_yaml = args.get("config_yaml")
-            config_file = args.get("config_file")
-
             if config_file:
                 # Load from file
                 with open(config_file, 'r', encoding='utf-8') as f:
@@ -391,11 +257,9 @@ class ValidationBehavior(AgentBehavior):
             elif not config:
                 return {"error": "Either 'config', 'config_yaml', or 'config_file' parameter required"}
 
-            behaviors_dir = args.get("behaviors_dir")
-
             # Resolve behaviors_dir relative to workspace
             if behaviors_dir:
-                workspace = agent.workspace if hasattr(agent, 'workspace') else Path.cwd()
+                workspace = self.agent.workspace if hasattr(self.agent, 'workspace') else Path.cwd()
                 behaviors_dir = workspace / behaviors_dir
 
             result = validate_agent_config(config, behaviors_dir)
