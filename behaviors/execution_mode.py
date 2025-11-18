@@ -431,58 +431,15 @@ No text-only responses allowed when working on a task.
     # Tools (Mode Activation + Completion)
     # ============================================
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Provide tools for execution mode.
-
-        Note: mark_complete/mark_failed are provided by ToolDispatcher.
-        We just need to handle the mode deactivation in dispatch_tool.
+    @tool
+    def activate_execution_mode(self) -> dict[str, Any]:
+        """Explicitly activate execution mode for working on tasks. Usually activated automatically by set_goal(), but can be called explicitly if needed.
 
         Returns:
-            Tool definitions for activate_execution_mode
+            Activation result dict with mode status
         """
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "activate_execution_mode",
-                    "description": (
-                        "Explicitly activate execution mode for working on tasks. "
-                        "Usually activated automatically by set_goal(), but can be "
-                        "called explicitly if needed."
-                    ),
-                    "parameters": {
-                        "type": "object",
-                        "properties": {}
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
-        self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Handle execution mode tools.
-
-        Args:
-            agent: Agent instance
-            tool_name: Tool name
-            args: Tool arguments
-
-        Returns:
-            Tool result dict
-
-        Raises:
-            NotImplementedError: If tool not handled by this behavior
-        """
-        if tool_name == "activate_execution_mode":
-            return self.activate(agent)
-
-        return super().dispatch_tool(agent, tool_name, args)
+        # Access agent via self.agent (injected by decorator)
+        return self.activate(self.agent)
 
     def get_instructions(self) -> str:
         """
