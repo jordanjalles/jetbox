@@ -137,12 +137,13 @@ class PlainDisplay(DisplayInterface):
         max_lat = max(recent)
         range_lat = max_lat - min_lat if max_lat > min_lat else 1.0
 
-        # Map to block characters (8 levels)
-        blocks = " ▁▂▃▄▅▆▇█"
+        # Map to block characters (8 levels, all visible)
+        blocks = "▁▂▃▄▅▆▇█"
         histogram = ""
         for lat in recent:
             normalized = (lat - min_lat) / range_lat
-            block_idx = min(int(normalized * 8), 8)
+            # Map to 0-7 range (8 levels)
+            block_idx = min(int(normalized * len(blocks)), len(blocks) - 1)
             histogram += blocks[block_idx]
 
         # Pad if shorter than width
