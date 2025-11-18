@@ -264,6 +264,11 @@ class AgentLifecycle:
         self.agent.display.start()
 
         print(f"[{self.agent.name}] Starting run loop (max_rounds={max_rounds}, model={model})")
+
+        # Show initial "starting" status
+        self.detailed_status = "starting"
+        self._update_display_status(1, max_rounds, model)
+
         return max_rounds, model, temperature
 
     def _get_goal_description(self) -> str | None:
@@ -304,9 +309,10 @@ class AgentLifecycle:
         """
         # Track round start time for latency measurement
         self.round_start_time = time.time()
-        self.detailed_status = "thinking"
 
         # Build context for this round
+        self.detailed_status = "building_context"
+        self._update_display_status(round_no, max_rounds, model)
         context = self.agent.build_context()
 
         # Trigger round start event (called every round before LLM)
@@ -315,10 +321,15 @@ class AgentLifecycle:
         # Call LLM with modified context
         print(f"\n[{self.agent.name}] Round {round_no}/{max_rounds}")
 
-        # Update display status AFTER round header (so it stays at bottom, updating in place)
+        # Update display status to show we're waiting for LLM
+        self.detailed_status = "calling_llm"
         self._update_display_status(round_no, max_rounds, model)
 
         response = self.agent._call_llm_with_context(context, model=model, temperature=temperature)
+
+        # Processing response
+        self.detailed_status = "processing_response"
+        self._update_display_status(round_no, max_rounds, model)
 
         # After LLM call, print newline to move past status bar for next logs
         print()  # Move cursor past status bar

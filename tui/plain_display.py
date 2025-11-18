@@ -224,7 +224,9 @@ class PlainDisplay(DisplayInterface):
             # Line 4: Granular status
             status_emoji = {
                 "starting": "🚀",
-                "thinking": "💭",
+                "building_context": "🔧",
+                "calling_llm": "💭",
+                "processing_response": "⚙️",
                 "writing": "✍️",
                 "reading": "📖",
                 "testing": "🧪",
@@ -233,7 +235,9 @@ class PlainDisplay(DisplayInterface):
                 "error": "❌",
             }
             emoji = status_emoji.get(detailed_status or "", "▶️")
-            line4 = f"[Status]  {emoji} {(detailed_status or status).capitalize()}"
+            # Format status: replace underscores with spaces and capitalize
+            status_text = (detailed_status or status).replace("_", " ").capitalize()
+            line4 = f"[Status]  {emoji} {status_text}"
 
             lines = [line1, line2, line3, line4]
 
