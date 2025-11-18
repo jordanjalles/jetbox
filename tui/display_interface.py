@@ -77,6 +77,7 @@ class DisplayInterface(ABC):
         context_breakdown: Optional[dict[str, int]] = None,
         latency_history: Optional[list[float]] = None,
         detailed_status: Optional[str] = None,
+        spinner_frame: Optional[str] = None,
     ) -> None:
         """
         Update the main status display.
@@ -96,6 +97,8 @@ class DisplayInterface(ABC):
             latency_history: List of recent round latencies in seconds (optional)
             detailed_status: Single-word granular status (optional)
                 e.g., "starting", "thinking", "writing", "testing", "completing"
+            spinner_frame: Current spinner animation frame (optional)
+                e.g., "⠋", "⠙", "⠹", etc.
         """
         pass
 

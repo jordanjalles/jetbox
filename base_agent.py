@@ -493,6 +493,7 @@ class BaseAgent:
         model: str,
         temperature: float,
         timeout: int = 120,
+        progress_callback: callable | None = None,
     ) -> dict[str, Any]:
         """
         Call LLM with provided context and tools.
@@ -505,6 +506,7 @@ class BaseAgent:
             model: Model name (e.g., "gpt-oss:20b")
             temperature: Sampling temperature
             timeout: Timeout in seconds
+            progress_callback: Optional callback called on each streaming chunk
 
         Returns:
             LLM response dict with 'message' key
@@ -529,6 +531,7 @@ class BaseAgent:
                 options=options,
                 tools=tools,
                 inactivity_timeout=timeout,
+                progress_callback=progress_callback,
             )
 
             # Reset timeout counter on successful LLM call

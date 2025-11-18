@@ -45,6 +45,11 @@ class AgentLifecycle:
         self.detailed_status: str = "starting"  # Granular status tracking
         self.last_status_update_time: float = 0.0  # Track when status last updated
         self.min_status_display_time: float = 0.15  # Minimum seconds to show each status
+        self.spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]  # Braille spinner
+        self.spinner_index: int = 0  # Current spinner frame
+        self.current_round_for_display: int = 1  # Track round for display updates
+        self.current_max_rounds_for_display: int = 50  # Track max rounds for display
+        self.current_model_for_display: str = ""  # Track model for display
 
     # ===========================
     # Main entry point
@@ -325,9 +330,22 @@ class AgentLifecycle:
 
         # Update display status to show we're waiting for LLM
         self._set_detailed_status("calling_llm")
+
+        # Store display context for spinner updates
+        self.current_round_for_display = round_no
+        self.current_max_rounds_for_display = max_rounds
+        self.current_model_for_display = model
+
+        # Initial display update
         self._update_display_status(round_no, max_rounds, model)
 
-        response = self.agent._call_llm_with_context(context, model=model, temperature=temperature)
+        # Call LLM with progress callback for spinner
+        response = self.agent._call_llm_with_context(
+            context,
+            model=model,
+            temperature=temperature,
+            progress_callback=self._advance_spinner
+        )
 
         # Processing response
         self._set_detailed_status("processing_response")
@@ -596,6 +614,22 @@ class AgentLifecycle:
         self.detailed_status = new_status
         self.last_status_update_time = time.time()
 
+    def _advance_spinner(self) -> None:
+        """
+        Advance spinner animation and update display.
+
+        Called on each LLM chunk to show activity during long LLM calls.
+        """
+        # Advance spinner frame
+        self.spinner_index = (self.spinner_index + 1) % len(self.spinner_frames)
+
+        # Update display with current spinner
+        self._update_display_status(
+            self.current_round_for_display,
+            self.current_max_rounds_for_display,
+            self.current_model_for_display
+        )
+
     def _calculate_context_breakdown(self) -> dict[str, int]:
         """
         Calculate context composition breakdown from agent state messages.
@@ -647,6 +681,9 @@ class AgentLifecycle:
         # Calculate context breakdown
         context_breakdown = self._calculate_context_breakdown()
 
+        # Get current spinner frame
+        spinner_frame = self.spinner_frames[self.spinner_index] if self.detailed_status == "calling_llm" else None
+
         self.agent.display.update_status(
             goal=self.agent.goal or "No goal set",
             agent_name=self.agent.name,
@@ -660,6 +697,7 @@ class AgentLifecycle:
             context_breakdown=context_breakdown,
             latency_history=self.latency_history,
             detailed_status=self.detailed_status,
+            spinner_frame=spinner_frame,
         )
 
     def _display_completion(self, result: dict[str, Any]) -> None:

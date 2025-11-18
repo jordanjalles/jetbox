@@ -34,6 +34,7 @@ def chat_with_inactivity_timeout(
     inactivity_timeout: int = 30,
     tools: list | None = None,
     max_total_time: int | None = None,
+    progress_callback: callable | None = None,
 ) -> dict[str, Any]:
     """
     Call ollama chat with INACTIVITY timeout and optional TOTAL time limit.
@@ -49,6 +50,7 @@ def chat_with_inactivity_timeout(
         inactivity_timeout: Max seconds without activity (default 30s)
         tools: Optional list of tool specifications for function calling
         max_total_time: Optional maximum total time in seconds (default None = no limit)
+        progress_callback: Optional callback called on each chunk for progress updates
 
     Returns:
         Response dict from ollama
@@ -136,6 +138,15 @@ def chat_with_inactivity_timeout(
                         f"LLM call exceeded max_total_time of {max_total_time}s "
                         f"(elapsed: {elapsed:.1f}s). Context dumped to .agent_context/timeout_dumps/"
                     )
+
+                # Call progress callback if provided
+                if progress_callback:
+                    try:
+                        progress_callback()
+                    except Exception:
+                        # Ignore callback errors - don't let them break LLM call
+                        pass
+
                 continue
             elif msg_type == "done":
                 # Success - return full response

@@ -181,7 +181,7 @@ class PlainDisplay(DisplayInterface):
     def _format_size(self, chars: int) -> str:
         """Format character count as human-readable size (e.g., 12K, 1.5M)."""
         if chars < 1000:
-            return f"{chars}B"
+            return f"{chars}"
         elif chars < 1000000:
             return f"{chars // 1000}K"
         else:
@@ -201,6 +201,7 @@ class PlainDisplay(DisplayInterface):
         context_breakdown: dict[str, int] | None = None,
         latency_history: list[float] | None = None,
         detailed_status: str | None = None,
+        spinner_frame: str | None = None,
     ) -> None:
         """Update multi-line status display at bottom of screen."""
         # Calculate progress percentage
@@ -276,7 +277,13 @@ class PlainDisplay(DisplayInterface):
             emoji = status_emoji.get(detailed_status or "", "▶️")
             # Format status: replace underscores with spaces and capitalize
             status_text = (detailed_status or status).replace("_", " ").capitalize()
-            status_line = f"[Status]  {emoji} {status_text}"
+
+            # Add spinner if provided (only during "calling_llm" state)
+            if spinner_frame:
+                status_line = f"[Status]  {emoji} {status_text} {spinner_frame}"
+            else:
+                status_line = f"[Status]  {emoji} {status_text}"
+
             lines.append(status_line)
 
         # Update status at bottom rows using absolute positioning

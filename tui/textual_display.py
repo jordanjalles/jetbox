@@ -209,6 +209,7 @@ class TextualDisplay(DisplayInterface):
         context_breakdown: dict[str, int] | None = None,
         latency_history: list[float] | None = None,
         detailed_status: str | None = None,
+        spinner_frame: str | None = None,
     ) -> None:
         """Update the status panel (extended parameters ignored for now)."""
         if not self.app:
