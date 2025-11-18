@@ -305,10 +305,11 @@ class AgentLifecycle:
         # Trigger round start event (called every round before LLM)
         context = self.agent.event_system.trigger_round_start(round_no, context)
 
-        # Update display status
+        # Update display status (updates in place)
         self._update_display_status(round_no, max_rounds, model)
 
         # Call LLM with modified context
+        # Print newline first to move past the status bar, then print round info
         print(f"\n[{self.agent.name}] Round {round_no}/{max_rounds}")
         response = self.agent._call_llm_with_context(context, model=model, temperature=temperature)
 

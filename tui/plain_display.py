@@ -26,6 +26,7 @@ class PlainDisplay(DisplayInterface):
             verbose: If True, show all events. If False, show minimal output.
         """
         self.verbose = verbose
+        self.last_status_line = ""  # Track last status for inline updates
 
     def start(self) -> None:
         """No initialization needed for plain display."""
@@ -47,19 +48,17 @@ class PlainDisplay(DisplayInterface):
         tokens_used: int | None = None,
         tokens_max: int | None = None,
     ) -> None:
-        """Print status as a single line with visual distinction."""
+        """Update status line IN PLACE (overwrites previous status)."""
+        # Calculate progress percentage
+        progress = int((current_round / max_rounds) * 100)
+        mins = int(elapsed_time // 60)
+        secs = int(elapsed_time % 60)
+
         if not self.verbose:
             # Minimal mode: just show progress
-            progress = int((current_round / max_rounds) * 100)
-            print(f"\r[{progress:3d}%] Round {current_round}/{max_rounds} - {status}", end="", flush=True)
+            status_line = f"[{progress:3d}%] Round {current_round}/{max_rounds} - {status}"
         else:
-            # Verbose mode: full status line with clear visual marker
-            mins = int(elapsed_time // 60)
-            secs = int(elapsed_time % 60)
-
-            # Calculate progress percentage
-            progress = int((current_round / max_rounds) * 100)
-
+            # Verbose mode: full status line with progress bar
             # Create progress bar (20 chars wide)
             bar_width = 20
             filled = int((progress / 100) * bar_width)
@@ -71,7 +70,11 @@ class PlainDisplay(DisplayInterface):
                 pct = int((tokens_used / tokens_max) * 100)
                 status_line += f" | 🧠 {tokens_used}/{tokens_max} ({pct}%)"
 
-            print(status_line)
+        # Clear previous line and print new status (IN PLACE update)
+        # Use \r to return to start of line, then overwrite with spaces to clear old content
+        clear_line = "\r" + " " * len(self.last_status_line) + "\r"
+        print(clear_line + status_line, end="", flush=True)
+        self.last_status_line = status_line
 
     def log_event(self, event: AgentEvent) -> None:
         """Print event to stdout."""
