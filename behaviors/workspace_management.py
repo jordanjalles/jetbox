@@ -139,118 +139,67 @@ Use these tools to help decide:
 - "Should I work in your current directory or create a new workspace?"
 """
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """
-        Provide workspace management tools.
-
-        Returns:
-            Tool definitions for workspace listing and search
-        """
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "list_workspaces",
-                    "description": "List all isolated workspaces in .agent_workspaces/ directory. Shows workspace names, creation times, and file counts.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "limit": {
-                                "type": "integer",
-                                "description": "Maximum number of workspaces to return (default: 20)"
-                            },
-                            "sort_by": {
-                                "type": "string",
-                                "description": "Sort order: 'newest', 'oldest', 'name' (default: newest)",
-                                "enum": ["newest", "oldest", "name"]
-                            }
-                        }
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "search_workspaces",
-                    "description": "Search for workspaces by name pattern. Useful for finding previous work.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Search query (workspace names containing this string)"
-                            }
-                        },
-                        "required": ["query"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_workspace_info",
-                    "description": "Get detailed information about a specific workspace (files, size, notes).",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "workspace_name": {
-                                "type": "string",
-                                "description": "Name of the workspace directory"
-                            }
-                        },
-                        "required": ["workspace_name"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "find_workspace",
-                    "description": "Find best matching workspace for a project name. Returns the workspace path that best matches the query.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "project_name": {
-                                "type": "string",
-                                "description": "Project name or description to search for"
-                            }
-                        },
-                        "required": ["project_name"]
-                    }
-                }
-            }
-        ]
-
-    def dispatch_tool(
+    @tool
+    def list_workspaces(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
+        limit: int = 20,
+        sort_by: str = "newest"
     ) -> dict[str, Any]:
-        """
-        Handle workspace management tool calls.
+        """List all isolated workspaces in .agent_workspaces/ directory. Shows workspace names, creation times, and file counts.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
+            limit: Maximum number of workspaces to return (default: 20)
+            sort_by: Sort order: 'newest', 'oldest', 'name' (default: newest)
 
         Returns:
-            Tool result dict
+            Dict with workspaces list and count
         """
-        if tool_name == "list_workspaces":
-            return self._list_workspaces(
-                limit=args.get("limit", 20),
-                sort_by=args.get("sort_by", "newest")
-            )
-        elif tool_name == "search_workspaces":
-            return self._search_workspaces(args["query"])
-        elif tool_name == "get_workspace_info":
-            return self._get_workspace_info(args["workspace_name"])
-        elif tool_name == "find_workspace":
-            return self._find_workspace(args["project_name"])
+        return self._list_workspaces(limit, sort_by)
 
-        return super().dispatch_tool(agent, tool_name, args)
+    @tool
+    def search_workspaces(
+        self,
+        query: str
+    ) -> dict[str, Any]:
+        """Search for workspaces by name pattern. Useful for finding previous work.
+
+        Args:
+            query: Search query (workspace names containing this string)
+
+        Returns:
+            Dict with matching workspaces
+        """
+        return self._search_workspaces(query)
+
+    @tool
+    def get_workspace_info(
+        self,
+        workspace_name: str
+    ) -> dict[str, Any]:
+        """Get detailed information about a specific workspace (files, size, notes).
+
+        Args:
+            workspace_name: Name of the workspace directory
+
+        Returns:
+            Dict with workspace details
+        """
+        return self._get_workspace_info(workspace_name)
+
+    @tool
+    def find_workspace(
+        self,
+        project_name: str
+    ) -> dict[str, Any]:
+        """Find best matching workspace for a project name. Returns the workspace path that best matches the query.
+
+        Args:
+            project_name: Project name or description to search for
+
+        Returns:
+            Dict with workspace path and confidence level
+        """
+        return self._find_workspace(project_name)
 
     def _list_workspaces(self, limit: int = 20, sort_by: str = "newest") -> dict[str, Any]:
         """
