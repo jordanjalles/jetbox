@@ -48,9 +48,7 @@ class ScheduledModeBehavior(AgentBehavior):
             Modified context
         """
         # Add scheduled mode instructions to system prompt
-        scheduled_mode_instructions = {
-            "role": "system",
-            "content": """
+        scheduled_mode_instructions = """
 # SCHEDULED MODE
 
 You are running in SCHEDULED MODE. This means:
@@ -63,13 +61,10 @@ You are running in SCHEDULED MODE. This means:
 **When you're done with your task, use the `mark_subtask_complete()` tool to signal completion.**
 
 Focus on executing the assigned task and exiting successfully.
-""",
-        }
+"""
 
-        # Insert after system prompt
-        context.insert(1, scheduled_mode_instructions)
-
-        return context
+        # Insert after system prompt using helper method
+        return self.inject_message_after_system(context, scheduled_mode_instructions)
 
     def on_round_start(
         self, agent, round_number: int, context: list[dict]
@@ -88,15 +83,12 @@ Focus on executing the assigned task and exiting successfully.
 
         # If approaching max rounds, add a nudge
         if round_number >= self.max_rounds - 2:
-            nudge = {
-                "role": "system",
-                "content": f"""
+            nudge_message = f"""
 **REMINDER**: You are in scheduled mode. You've used {round_number}/{self.max_rounds} rounds.
 Please complete your task and call `mark_subtask_complete()` to exit cleanly.
-""",
-            }
-
-            context.append(nudge)
+"""
+            # Append nudge using helper method
+            return self.append_message(context, nudge_message)
 
         return context
 

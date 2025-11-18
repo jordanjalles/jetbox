@@ -100,13 +100,14 @@ class CompactWhenNearFullBehavior(AgentBehavior):
             return context
 
         # Find where messages start (after system prompt and goal injection)
-        messages_start_idx = 1
-        for i, msg in enumerate(context):
-            if i == 0:  # Skip system prompt
-                continue
-            if msg.get('role') == 'user' and ('GOAL:' in msg.get('content', '') or 'DELEGATED GOAL:' in msg.get('content', '')):
-                messages_start_idx = i + 1
-                break
+        # Look for GOAL or DELEGATED GOAL marker
+        goal_matches = self.find_messages_by_content(context, "GOAL:")
+        if goal_matches:
+            # Messages start after the goal message
+            messages_start_idx = goal_matches[0][0] + 1
+        else:
+            # No goal found, messages start after system prompt
+            messages_start_idx = 1
 
         # Extract messages (everything after system + goal)
         messages = context[messages_start_idx:]

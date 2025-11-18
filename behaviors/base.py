@@ -616,6 +616,214 @@ class AgentBehavior(ABC):
         })
         return context
 
+    def inject_message_at(
+        self,
+        context: list[dict[str, Any]],
+        position: int,
+        message: str,
+        role: str = "system"
+    ) -> list[dict[str, Any]]:
+        """
+        Inject a message at a specific position in context.
+
+        Use when you need precise control over message placement beyond
+        the common cases of "after system prompt" (position 1) or "at end".
+
+        Args:
+            context: Current context (list of message dicts)
+            position: Index to insert at:
+                      - 0 = before system prompt
+                      - 1 = after system prompt (same as inject_message_after_system)
+                      - -1 or len(context) = at end (same as append_message)
+                      - negative indices work like list.insert()
+            message: Message content to inject
+            role: Message role - "system" for framework (default),
+                  "user" for actual user messages
+
+        Returns:
+            Modified context with message injected
+
+        Examples:
+            # Insert after second message
+            context = self.inject_message_at(context, 2, "Important note", "system")
+
+            # Insert before last message (using negative index)
+            context = self.inject_message_at(context, -1, "Final reminder", "system")
+
+            # Same as inject_message_after_system
+            context = self.inject_message_at(context, 1, tool_docs)
+        """
+        # Handle empty context
+        if not context:
+            context.append({"role": role, "content": message})
+            return context
+
+        # Normalize negative position
+        if position < 0:
+            position = max(0, len(context) + position + 1)
+
+        # Clamp to valid range
+        position = max(0, min(position, len(context)))
+
+        context.insert(position, {
+            "role": role,
+            "content": message
+        })
+        return context
+
+    def replace_system_prompt(
+        self,
+        context: list[dict[str, Any]],
+        new_prompt: str
+    ) -> list[dict[str, Any]]:
+        """
+        Replace the system prompt (first message) with new content.
+
+        Use when a behavior needs to completely override the base system
+        prompt rather than augment it. Most behaviors should use
+        inject_message_after_system() instead.
+
+        Args:
+            context: Current context (list of message dicts)
+            new_prompt: New system prompt content
+
+        Returns:
+            Modified context with replaced system prompt
+
+        Examples:
+            # Override system prompt for specialized agent
+            context = self.replace_system_prompt(
+                context,
+                "You are a code reviewer. Focus on security issues..."
+            )
+
+            # Restore original system prompt after temporary override
+            context = self.replace_system_prompt(context, original_prompt)
+        """
+        if not context:
+            # No existing system prompt, create one
+            context.append({
+                "role": "system",
+                "content": new_prompt
+            })
+        elif context[0].get("role") == "system":
+            # Replace existing system prompt
+            context[0]["content"] = new_prompt
+        else:
+            # First message is not system, insert at beginning
+            context.insert(0, {
+                "role": "system",
+                "content": new_prompt
+            })
+        return context
+
+    def find_message_by_role(
+        self,
+        context: list[dict[str, Any]],
+        role: str,
+        from_end: bool = False
+    ) -> tuple[int, dict[str, Any]] | None:
+        """
+        Find a message in context by role, optionally searching from end.
+
+        Use for locating specific messages without manual enumeration,
+        especially when you need to find the last occurrence of a role.
+
+        Args:
+            context: Current context (list of message dicts)
+            role: Role to search for ("system", "user", "assistant")
+            from_end: If True, search backwards from end (default: False)
+
+        Returns:
+            (index, message) tuple if found, None otherwise
+
+        Examples:
+            # Find first system message
+            result = self.find_message_by_role(context, "system")
+            if result:
+                idx, msg = result
+                print(f"System prompt at index {idx}: {msg['content'][:50]}...")
+
+            # Find last assistant response
+            result = self.find_message_by_role(context, "assistant", from_end=True)
+            if result:
+                idx, last_response = result
+                # Check if assistant already completed task
+                if "TASK COMPLETE" in last_response.get("content", ""):
+                    return context
+
+            # Check if user goal exists
+            if self.find_message_by_role(context, "user") is None:
+                # No user messages yet, inject goal
+                context = self.inject_message_after_system(context, goal, role="user")
+        """
+        if not context:
+            return None
+
+        messages = (
+            reversed(list(enumerate(context)))
+            if from_end
+            else enumerate(context)
+        )
+
+        for idx, msg in messages:
+            if msg.get("role") == role:
+                return (idx, msg)
+
+        return None
+
+    def find_messages_by_content(
+        self,
+        context: list[dict[str, Any]],
+        search_text: str,
+        case_sensitive: bool = False
+    ) -> list[tuple[int, dict[str, Any]]]:
+        """
+        Find all messages containing specific text.
+
+        Use for detecting whether specific information (e.g., "GOAL:",
+        "DELEGATED GOAL:", tool documentation) has already been injected.
+
+        Args:
+            context: Current context (list of message dicts)
+            search_text: Text to search for in message content
+            case_sensitive: Whether search is case-sensitive (default: False)
+
+        Returns:
+            List of (index, message) tuples for all matches
+
+        Examples:
+            # Check if goal already injected
+            goal_messages = self.find_messages_by_content(context, "GOAL:")
+            if not goal_messages:
+                context = self.inject_message_after_system(context, f"GOAL: {goal}", role="user")
+
+            # Find all messages mentioning "TASK COMPLETE"
+            completions = self.find_messages_by_content(context, "TASK COMPLETE")
+            print(f"Found {len(completions)} completion signals")
+
+            # Case-sensitive search for exact pattern
+            tool_docs = self.find_messages_by_content(
+                context,
+                "Available Tools:",
+                case_sensitive=True
+            )
+        """
+        if not context:
+            return []
+
+        matches = []
+        search_key = search_text if case_sensitive else search_text.lower()
+
+        for idx, msg in enumerate(context):
+            content = msg.get("content", "")
+            content_key = content if case_sensitive else content.lower()
+
+            if search_key in content_key:
+                matches.append((idx, msg))
+
+        return matches
+
     # Tool registration
 
     def get_tools(self) -> list[dict[str, Any]]:
