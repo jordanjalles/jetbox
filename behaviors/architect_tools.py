@@ -110,205 +110,65 @@ class ArchitectToolsBehavior(AgentBehavior):
 
         return context
 
-    def get_tools(self) -> list[dict[str, Any]]:
-        """Return architecture tool definitions."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "write_architecture_doc",
-                    "description": "Write a comprehensive architecture document (overview, components, data flow, implementation notes) to the workspace. Creates a single markdown file in architecture/ directory. Include ALL module details in this one document.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "title": {
-                                "type": "string",
-                                "description": "Document title (e.g., 'Blog System Architecture', 'Todo App Design')"
-                            },
-                            "content": {
-                                "type": "string",
-                                "description": "Markdown content with complete architecture: system overview, all components/modules with their responsibilities and interfaces, data flow, technology choices, and implementation guidance. Keep it in ONE document."
-                            },
-                        },
-                        "required": ["title", "content"]
-                    }
-                }
-            },
-            # DISABLED: write_module_spec - Creates too many files, causing task_executor to get stuck reading
-            # Architecture should be in ONE comprehensive document, not split across multiple module files
-            # {
-            #     "type": "function",
-            #     "function": {
-            #         "name": "write_module_spec",
-            #         "description": "Write a detailed module specification to the workspace. Creates a markdown file in architecture/modules/ directory.",
-            #         "parameters": {
-            #             "type": "object",
-            #             "properties": {
-            #                 "module_name": {
-            #                     "type": "string",
-            #                     "description": "Module identifier (e.g., 'auth-service', 'data-pipeline')"
-            #                 },
-            #                 "responsibility": {
-            #                     "type": "string",
-            #                     "description": "What this module does (clear, concise description)"
-            #                 },
-            #                 "interfaces": {
-            #                     "type": "object",
-            #                     "description": "Module interfaces with inputs, outputs, APIs",
-            #                     "properties": {
-            #                         "inputs": {
-            #                             "type": "array",
-            #                             "items": {"type": "string"},
-            #                             "description": "List of inputs (format: 'name: type - description')"
-            #                         },
-            #                         "outputs": {
-            #                             "type": "array",
-            #                             "items": {"type": "string"},
-            #                             "description": "List of outputs (format: 'name: type - description')"
-            #                         },
-            #                         "apis": {
-            #                             "type": "array",
-            #                             "items": {"type": "string"},
-            #                             "description": "List of APIs (format: 'METHOD /path - description')"
-            #                         }
-            #                     }
-            #                 },
-            #                 "dependencies": {
-            #                     "type": "array",
-            #                     "items": {"type": "string"},
-            #                     "description": "List of dependencies (other modules, external services, databases)"
-            #                 },
-            #                 "technologies": {
-            #                     "type": "object",
-            #                     "description": "Technologies used (language, framework, database, etc.)",
-            #                     "additionalProperties": {"type": "string"}
-            #                 },
-            #                 "implementation_notes": {
-            #                     "type": "string",
-            #                     "description": "Optional: Specific guidance for implementation (edge cases, patterns, etc.)"
-            #                 }
-            #             },
-            #             "required": ["module_name", "responsibility", "interfaces", "dependencies", "technologies"]
-            #         }
-            #     }
-            # },
-            {
-                "type": "function",
-                "function": {
-                    "name": "write_task_list",
-                    "description": "Write a structured task breakdown for the orchestrator. Creates a JSON file in architecture/ directory that the orchestrator can use to delegate tasks to executors.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "tasks": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "id": {"type": "string", "description": "Task ID (e.g., 'T1', 'T2')"},
-                                        "description": {"type": "string", "description": "Task description"},
-                                        "module": {"type": "string", "description": "Module this task belongs to"},
-                                        "priority": {"type": "integer", "description": "Priority (1=highest)"},
-                                        "dependencies": {
-                                            "type": "array",
-                                            "items": {"type": "string"},
-                                            "description": "List of task IDs this depends on"
-                                        },
-                                        "estimated_complexity": {
-                                            "type": "string",
-                                            "enum": ["low", "medium", "high"],
-                                            "description": "Estimated complexity"
-                                        }
-                                    },
-                                    "required": ["id", "description", "module", "priority"]
-                                },
-                                "description": "List of tasks in priority order"
-                            }
-                        },
-                        "required": ["tasks"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "list_architecture_docs",
-                    "description": "List all architecture documents currently in the workspace. Useful to see what's already been created before writing more docs.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "read_architecture_doc",
-                    "description": "Read an existing architecture document from the workspace. Useful for reviewing or updating previous work.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {
-                                "type": "string",
-                                "description": "Relative path to document (e.g., 'architecture/overview.md')"
-                            }
-                        },
-                        "required": ["file_path"]
-                    }
-                }
-            },
-        ]
-
-    def dispatch_tool(
+    @tool
+    def write_architecture_doc(
         self,
-        agent: Any,
-        tool_name: str,
-        args: dict[str, Any]
+        title: str,
+        content: str
     ) -> dict[str, Any]:
-        """
-        Dispatch architecture tool calls.
+        """Write a comprehensive architecture document (overview, components, data flow, implementation notes) to the workspace. Creates a single markdown file in architecture/ directory. Include ALL module details in this one document.
 
         Args:
-            agent: Agent instance
-            tool_name: Tool being called
-            args: Tool arguments
+            title: Document title (e.g., 'Blog System Architecture', 'Todo App Design')
+            content: Markdown content with complete architecture: system overview, all components/modules with their responsibilities and interfaces, data flow, technology choices, and implementation guidance. Keep it in ONE document.
 
         Returns:
-            Tool result dict
+            Dict with file path and success status
         """
-        # Get workspace_manager from agent
-        workspace_manager = getattr(agent, 'workspace_manager', self.workspace_manager)
+        workspace_manager = getattr(self.agent, 'workspace_manager', self.workspace_manager)
+        return self._write_architecture_doc(title, content, workspace_manager=workspace_manager)
 
-        if tool_name == "write_architecture_doc":
-            return self._write_architecture_doc(
-                args.get("title"),
-                args.get("content"),
-                workspace_manager=workspace_manager
-            )
-        elif tool_name == "write_module_spec":
-            return self._write_module_spec(
-                args.get("module_name"),
-                args.get("responsibility"),
-                args.get("interfaces"),
-                args.get("dependencies"),
-                args.get("technologies"),
-                args.get("implementation_notes", ""),
-                workspace_manager=workspace_manager
-            )
-        elif tool_name == "write_task_list":
-            return self._write_task_list(
-                args.get("tasks"),
-                workspace_manager=workspace_manager
-            )
-        elif tool_name == "list_architecture_docs":
-            return self._list_architecture_docs(workspace_manager=workspace_manager)
-        elif tool_name == "read_architecture_doc":
-            return self._read_architecture_doc(
-                args.get("file_path"),
-                workspace_manager=workspace_manager
-            )
-        else:
-            return super().dispatch_tool(agent, tool_name, args)
+    @tool
+    def write_task_list(
+        self,
+        tasks: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Write a structured task breakdown for the orchestrator. Creates a JSON file in architecture/ directory that the orchestrator can use to delegate tasks to executors.
+
+        Args:
+            tasks: List of tasks in priority order. Each task should have: id (e.g., 'T1', 'T2'), description, module, priority (1=highest), dependencies (list of task IDs), estimated_complexity ('low', 'medium', 'high')
+
+        Returns:
+            Dict with file path, task count, and success status
+        """
+        workspace_manager = getattr(self.agent, 'workspace_manager', self.workspace_manager)
+        return self._write_task_list(tasks, workspace_manager=workspace_manager)
+
+    @tool
+    def list_architecture_docs(self) -> dict[str, Any]:
+        """List all architecture documents currently in the workspace. Useful to see what's already been created before writing more docs.
+
+        Returns:
+            Dict with lists of docs, modules, and task breakdown file
+        """
+        workspace_manager = getattr(self.agent, 'workspace_manager', self.workspace_manager)
+        return self._list_architecture_docs(workspace_manager=workspace_manager)
+
+    @tool
+    def read_architecture_doc(
+        self,
+        file_path: str
+    ) -> dict[str, Any]:
+        """Read an existing architecture document from the workspace. Useful for reviewing or updating previous work.
+
+        Args:
+            file_path: Relative path to document (e.g., 'architecture/overview.md')
+
+        Returns:
+            Dict with file content and success status
+        """
+        workspace_manager = getattr(self.agent, 'workspace_manager', self.workspace_manager)
+        return self._read_architecture_doc(file_path, workspace_manager=workspace_manager)
 
     def _slugify(self, text: str) -> str:
         """Convert text to filesystem-safe slug."""
