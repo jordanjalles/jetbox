@@ -1,0 +1,13 @@
+themes to prioritize and expand. if you come across this doc on your own, ultrathink and make a new doc where you elaborate on the steps each of these would entail and prioritize them by effort/risk/value. 
+
+1. enable longer term agent execution. I want to be able to just let the agent keep working towards goals on my gpu at all times. This needs careful thought for elegant architecture that provides transparency, reversibility, and compact summaries of all slices of the workflow (top down, bottom up, logic traces) and many things I haven't even thought of yet.
+
+2. enable dynamic deployment of useful tightly scoped security compliant agents to do useful jobs. home assistant is one example but another example would be an email scanner agent living in the cloud in a docker
+
+3. flexibility to swap out other llm providers than OLLAMA e.g. vllm or cloud
+
+4. multimodal llm support for taking screenshots of the software the agent is creating and reflecting if it works as expected
+
+5. browser navigation
+
+6. enhanced TUI for agent oversight / dashboard / live interaction

@@ -5,22 +5,42 @@ role: "Task Executor with Context Inspection"
 blurb: "Coding agent that executes tasks and captures context snapshots for analysis"
 
 behaviors:
-  - type: SubAgentContextBehavior
-  - type: CompactWhenNearFullBehavior
+  # Tool Calling Syntax
+  - type: ToolCallingSyntaxBehavior
     params:
-      max_tokens: 128000
-  - type: WriteFileToolsBehavior
-  - type: ReadFileToolsBehavior
+      syntax: "json"
+      fallback_syntaxes: ["xml"]
+
+  # Execution Mode
+  - type: ExecutionModeBehavior
+    params:
+      enable_completion_nudging: true
+      min_rounds_before_nudge: 3
+      max_empty_rounds: 3
+
+  # Context Management
+  - type: CompactWhenNearFullBehavior
+
+  # Tool Behaviors
   - type: DirectoryToolsBehavior
+  - type: ReadFileToolsBehavior
+  - type: WriteFileToolsBehavior
   - type: CommandToolsBehavior
     params:
       whitelist: ["python", "pytest", "ruff", "pip", "npm", "node", "git", "ls", "cat", "echo", "mkdir", "rm", "cp", "mv"]
   - type: ServerToolsBehavior
+
+  # Utility Behaviors
+  - type: TimeBoxBehavior
+    params:
+      total_budget_minutes: 15
+      default_nudges: [20, 40, 60, 80]
   - type: LoopDetectionBehavior
   - type: WorkspaceTaskNotesBehavior
-  - type: StatusDisplayBehavior
   - type: ContextInspectorBehavior  # Enable context inspection
-    params: {}
+    params:
+      output_dir: ".context_inspection"
+      save_full_context: true
 
 system_prompt: |
   You are a coding agent that implements software projects.
