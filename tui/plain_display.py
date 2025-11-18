@@ -47,21 +47,29 @@ class PlainDisplay(DisplayInterface):
         tokens_used: int | None = None,
         tokens_max: int | None = None,
     ) -> None:
-        """Print status as a single line."""
+        """Print status as a single line with visual distinction."""
         if not self.verbose:
             # Minimal mode: just show progress
             progress = int((current_round / max_rounds) * 100)
             print(f"\r[{progress:3d}%] Round {current_round}/{max_rounds} - {status}", end="", flush=True)
         else:
-            # Verbose mode: full status line
+            # Verbose mode: full status line with clear visual marker
             mins = int(elapsed_time // 60)
             secs = int(elapsed_time % 60)
 
-            status_line = f"[{agent_name}] Round {current_round}/{max_rounds} | {mins}m{secs:02d}s | {status}"
+            # Calculate progress percentage
+            progress = int((current_round / max_rounds) * 100)
+
+            # Create progress bar (20 chars wide)
+            bar_width = 20
+            filled = int((progress / 100) * bar_width)
+            bar = "█" * filled + "░" * (bar_width - filled)
+
+            status_line = f"📊 [{bar}] {progress:3d}% | Round {current_round}/{max_rounds} | ⏱️  {mins}m{secs:02d}s | {status}"
 
             if tokens_used and tokens_max:
                 pct = int((tokens_used / tokens_max) * 100)
-                status_line += f" | Tokens: {tokens_used}/{tokens_max} ({pct}%)"
+                status_line += f" | 🧠 {tokens_used}/{tokens_max} ({pct}%)"
 
             print(status_line)
 
