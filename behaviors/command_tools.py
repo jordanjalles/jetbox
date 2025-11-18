@@ -177,17 +177,15 @@ class CommandToolsBehavior(AgentBehavior):
 
     # Tool implementation (using @tool decorator)
 
-    @tool(description="Run any bash command with full shell features. Use for testing, linting, complex file operations, searching, etc.")
+    @tool
     def run_bash(
         self,
         command: str,
         timeout: int = 60
     ) -> dict[str, Any]:
-        """
-        Run any bash command in the workspace.
+        """Run any bash command with full shell features. Use for testing, linting, complex file operations, searching, etc.
 
         Full shell access with pipes, redirection, and command chaining.
-        Use this for flexible file operations, testing, linting, etc.
 
         Args:
             command: Full bash command string (e.g., 'pytest tests/ -v', 'grep -r pattern *.py')

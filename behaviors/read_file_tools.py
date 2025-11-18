@@ -86,15 +86,14 @@ class ReadFileToolsBehavior(AgentBehavior):
 
     # Tool implementation (using @tool decorator)
 
-    @tool(description="Read a text file (up to 1MB by default). For large files, adjust max_size or use run_bash with head/tail.")
+    @tool
     def read_file(
         self,
         path: str,
         encoding: str = "utf-8",
         max_size: int = 1_000_000
     ) -> str:
-        """
-        Read a text file (workspace-aware).
+        """Read a text file (up to 1MB by default). For large files, adjust max_size or use run_bash with head/tail.
 
         Args:
             path: File path (relative to workspace)

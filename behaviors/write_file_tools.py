@@ -68,7 +68,7 @@ class WriteFileToolsBehavior(AgentBehavior):
 
     # Tool implementation (using @tool decorator)
 
-    @tool(description="Write/overwrite a text file. Supports append mode, custom encoding, line endings, and overwrite control.")
+    @tool
     def write_file(
         self,
         path: str,
@@ -78,8 +78,7 @@ class WriteFileToolsBehavior(AgentBehavior):
         line_end: str | None = None,
         overwrite: bool = True
     ) -> str:
-        """
-        Write/overwrite a text file (workspace-aware).
+        """Write/overwrite a text file. Supports append mode, custom encoding, line endings, and overwrite control.
 
         Args:
             path: File path (relative to workspace)

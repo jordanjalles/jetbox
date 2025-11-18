@@ -59,14 +59,13 @@ class TimeBoxBehavior(AgentBehavior):
 
     # Tool implementation (using @tool decorator)
 
-    @tool(description="Schedule a message to yourself at a future time percentage. Use this to plan phase transitions, strategic checkpoints, scope adjustments, or remind yourself of tradeoffs as time progresses. You receive automatic time nudges at 25%, 50%, 75%.")
+    @tool
     def schedule_reminder(
         self,
         at_percent: float,
         message: str
     ) -> dict[str, Any]:
-        """
-        Schedule a reminder at a future time percentage.
+        """Schedule a message to yourself at a future time percentage. Use this to plan phase transitions, strategic checkpoints, scope adjustments, or remind yourself of tradeoffs as time progresses. You receive automatic time nudges at 25%, 50%, 75%.
 
         Args:
             at_percent: Percentage (0-100) when this reminder should trigger

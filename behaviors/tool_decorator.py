@@ -44,27 +44,32 @@ from functools import wraps
 from typing import Any, Callable, get_type_hints, get_origin, get_args
 
 
-def tool(description: str) -> Callable:
+def tool(func_or_description=None):
     """
     Decorator for automatic tool registration.
 
     Converts a method into a registered tool by:
     1. Extracting parameter info from type hints
-    2. Parsing docstring for descriptions
+    2. Parsing docstring for descriptions (including tool description)
     3. Generating JSON schema
     4. Marking method as a tool for auto-discovery
 
+    Can be used with or without arguments:
+        @tool  # Uses docstring first line as description
+        @tool()  # Same as above
+        @tool(description="Custom description")  # Explicit override
+
     Args:
-        description: Short description of what the tool does
+        func_or_description: Either the function being decorated (when used as @tool)
+                            or a description string (when used as @tool(description="..."))
 
     Returns:
-        Decorated method with tool metadata attached
+        Decorated method with tool metadata attached (or decorator function)
 
     Example:
-        @tool(description="Read a file from disk")
+        @tool  # Uses docstring first line
         def read_file(self, path: str, encoding: str = "utf-8") -> str:
-            '''
-            Read file contents.
+            '''Read file contents.
 
             Args:
                 path: File path to read
@@ -74,11 +79,28 @@ def tool(description: str) -> Callable:
                 File contents as string
             '''
             # implementation
+
+        @tool(description="Custom description")  # Explicit override
+        def write_file(self, path: str, content: str) -> str:
+            # implementation
     """
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable, description: str | None = None) -> Callable:
         # Extract function signature info
         sig = inspect.signature(func)
         type_hints = get_type_hints(func)
+
+        # Determine tool description
+        if description is None:
+            # Use first line of docstring as description
+            docstring = (func.__doc__ or "").strip()
+            if docstring:
+                # Get first non-empty line (summary line)
+                tool_description = docstring.split('\n')[0].strip()
+            else:
+                # Fallback to function name if no docstring
+                tool_description = func.__name__.replace('_', ' ').title()
+        else:
+            tool_description = description
 
         # Parse docstring for parameter descriptions
         param_docs = _parse_docstring_args(func.__doc__ or "")
@@ -113,7 +135,7 @@ def tool(description: str) -> Callable:
             "type": "function",
             "function": {
                 "name": func.__name__,
-                "description": description,
+                "description": tool_description,
                 "parameters": {
                     "type": "object",
                     "properties": properties,
@@ -146,7 +168,15 @@ def tool(description: str) -> Callable:
 
         return wrapper
 
-    return decorator
+    # Handle both @tool and @tool() / @tool(description="...") syntax
+    if callable(func_or_description):
+        # Called as @tool (no parentheses) - func_or_description is the function
+        return decorator(func_or_description, description=None)
+    else:
+        # Called as @tool() or @tool(description="...")
+        # func_or_description is None or a description string
+        # Return a decorator that will be applied to the function
+        return lambda func: decorator(func, description=func_or_description)
 
 
 def _parse_docstring_args(docstring: str) -> dict[str, str]:

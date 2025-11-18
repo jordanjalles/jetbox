@@ -92,14 +92,13 @@ class ServerToolsBehavior(AgentBehavior):
 
     # Tool implementations (using @tool decorator)
 
-    @tool(description="Start a background server process (e.g., web server). Returns server info.")
+    @tool
     def start_server(
         self,
         cmd: list[str],
         name: str | None = None
     ) -> dict[str, Any]:
-        """
-        Start a background server process.
+        """Start a background server process (e.g., web server). Returns server info.
 
         Args:
             cmd: Command to run (e.g., ['python', '-m', 'http.server', '8000'])
@@ -147,13 +146,12 @@ class ServerToolsBehavior(AgentBehavior):
         else:
             return {"error": "Timeout waiting for orchestrator to start server"}
 
-    @tool(description="Stop a running background server.")
+    @tool
     def stop_server(
         self,
         server_id: str
     ) -> dict[str, Any]:
-        """
-        Stop a running background server.
+        """Stop a running background server.
 
         Args:
             server_id: Server identifier (from start_server or list_servers)
@@ -176,14 +174,13 @@ class ServerToolsBehavior(AgentBehavior):
 
         return response or {"error": "Timeout waiting for response"}
 
-    @tool(description="Check server status and get recent logs.")
+    @tool
     def check_server(
         self,
         server_id: str,
         tail_lines: int = 20
     ) -> dict[str, Any]:
-        """
-        Check server status and get recent logs.
+        """Check server status and get recent logs.
 
         Args:
             server_id: Server identifier
@@ -201,10 +198,9 @@ class ServerToolsBehavior(AgentBehavior):
         response = self._wait_for_server_response(timeout=5.0)
         return response or {"error": "Timeout waiting for response"}
 
-    @tool(description="List all running background servers.")
+    @tool
     def list_servers(self) -> dict[str, Any]:
-        """
-        List all running background servers.
+        """List all running background servers.
 
         Returns:
             Dict with list of server info dicts

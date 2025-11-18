@@ -82,14 +82,13 @@ class DirectoryToolsBehavior(AgentBehavior):
 
     # Tool implementation (using @tool decorator)
 
-    @tool(description="List files in a directory. Can list recursively with depth parameter.")
+    @tool
     def list_dir(
         self,
         path: str = ".",
         depth: int = 0
     ) -> list[str]:
-        """
-        List files in directory (optionally recursive, workspace-aware).
+        """List files in a directory. Can list recursively with depth parameter.
 
         Args:
             path: Directory path (relative to workspace), default '.'
