@@ -21,3 +21,4 @@ docs/
 .agent_workspaces/
 /.context_inspection/
 /debug_snapshots/
+reports/
