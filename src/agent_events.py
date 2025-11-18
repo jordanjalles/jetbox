@@ -133,16 +133,7 @@ class EventSystem:
         Returns:
             Modified context after all behaviors have processed it
         """
-        # Sort behaviors by sequence number (lower values first, higher values last)
-        # Default is 0 for behaviors without get_sequence_number() method
-        # Behaviors with same number maintain config file order (stable sort)
-        # ContextInspectorBehavior (sequence=999) runs last to capture final context
-        sorted_behaviors = sorted(
-            self.agent._behaviors,
-            key=lambda b: b.get_sequence_number() if hasattr(b, 'get_sequence_number') else 0
-        )
-
-        for behavior in sorted_behaviors:
+        for behavior in self._sort_behaviors_by_sequence():
             try:
                 # Try new API first
                 if hasattr(behavior, 'on_round_start') and callable(behavior.on_round_start):
