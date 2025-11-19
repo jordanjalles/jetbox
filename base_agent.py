@@ -144,9 +144,15 @@ class BaseAgent:
               f"untrusted={has_untrusted}, sensitive={has_sensitive}, network={has_network}")
 
         # Initialize TUI display (applies to all agents)
+        # For chatbot/interactive mode, use minimal display (verbose=False)
+        # to avoid alternate screen mode which interferes with input()
         from tui import DisplayFactory
         display_mode = os.environ.get("JETBOX_TUI_MODE", "auto")
-        self.display = DisplayFactory.create(force_mode=display_mode)
+        # Check if likely chatbot mode (no goal, has ChatbotBehavior)
+        # Use verbose=True for task execution, verbose=False for chatbot
+        is_likely_chatbot = (not hasattr(self, 'goal') or not self.goal)
+        verbose_display = not is_likely_chatbot
+        self.display = DisplayFactory.create(force_mode=display_mode, verbose=verbose_display)
 
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)
         self.workspace_manager = None  # For workspace isolation

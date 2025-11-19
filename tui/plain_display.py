@@ -34,9 +34,14 @@ class PlainDisplay(DisplayInterface):
         self.status_bar_lines = 7  # Number of lines reserved for status bar (1 round + 1 context + 4 latency + 1 status)
 
     def start(self) -> None:
-        """Enter alternate screen buffer and redirect stdout for TUI mode."""
+        """Enter alternate screen buffer and redirect stdout for TUI mode (unless in verbose mode)."""
         import sys
         import os
+
+        # Skip alternate screen mode in non-verbose mode (chatbot/interactive mode)
+        if not self.verbose:
+            return
+
         if sys.stdout.isatty():
             # Get terminal height
             try:

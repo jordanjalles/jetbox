@@ -81,15 +81,15 @@ class AgentLifecycle:
             for round_no in range(1, max_rounds + 1):
                 result = self._execute_round(round_no, max_rounds, model, temperature)
                 if result:
-                    # Stop display and return result
-                    self._display_completion(result)
+                    # Stop display BEFORE completion (so summary appears in normal terminal)
                     self.agent.display.stop()
+                    self._display_completion(result)
                     return result
 
             # Max rounds reached without completion
             result = self._handle_max_rounds(max_rounds)
-            self._display_completion(result)
             self.agent.display.stop()
+            self._display_completion(result)
             return result
 
         except RuntimeError as e:
