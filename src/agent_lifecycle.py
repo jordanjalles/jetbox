@@ -146,11 +146,34 @@ class AgentLifecycle:
         self.agent.add_message({"role": "user", "content": user_message})
 
         # Build context
+        self.detailed_status = "building_context"
         context = self.agent.build_context()
 
         # Get model and temperature from config (same logic as _setup_run)
         model = getattr(self.agent, 'model', None) or getattr(self.agent.config.llm, 'model', 'qwen3:8b') if self.agent.config else 'qwen3:8b'
         temperature = getattr(self.agent, 'temperature', None) or getattr(self.agent.config.llm, 'temperature', 0.2) if self.agent.config else 0.2
+
+        # Store display context for spinner
+        self.current_round_for_display = 1
+        self.current_max_rounds_for_display = 1
+        self.current_model_for_display = model
+
+        # Show "calling llm" status
+        self.detailed_status = "calling_llm"
+        context_breakdown = self._calculate_context_breakdown()
+        self.agent.display.update_status(
+            goal="Chat Mode",
+            agent_name=self.agent.name,
+            model=model,
+            current_round=1,
+            max_rounds=1,
+            elapsed_time=0,
+            status="Chatting",
+            context_breakdown=context_breakdown,
+            latency_history=None,
+            detailed_status=self.detailed_status,
+            spinner_frame=None,
+        )
 
         # Call LLM WITHOUT tools (pure chat mode)
         from src.llm_utils import chat_with_inactivity_timeout
@@ -167,7 +190,8 @@ class AgentLifecycle:
                 messages=context,
                 options=options,
                 tools=None,  # NO TOOLS - pure conversation mode
-                inactivity_timeout=30
+                inactivity_timeout=30,
+                progress_callback=self._advance_spinner,
             )
         except Exception as e:
             print(f"\n{self.agent.name}: [Error calling LLM: {e}]\n")
@@ -176,6 +200,24 @@ class AgentLifecycle:
         # Add assistant response to history
         if "message" in response:
             self.agent.add_message(response["message"])
+
+            # Update status to show we're done
+            self.detailed_status = "completing"
+            context_breakdown = self._calculate_context_breakdown()
+            self.agent.display.update_status(
+                goal="Chat Mode",
+                agent_name=self.agent.name,
+                model=model,
+                current_round=1,
+                max_rounds=1,
+                elapsed_time=0,
+                status="Ready",
+                context_breakdown=context_breakdown,
+                latency_history=None,
+                detailed_status="ready",
+                spinner_frame=None,
+            )
+
             # Print assistant response
             content = response["message"].get("content", "")
             if content:

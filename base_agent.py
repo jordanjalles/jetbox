@@ -62,6 +62,7 @@ class BaseAgent:
         from src.workspace_manager import WorkspaceManager
 
         self.name = name
+        self.config_file = config_file  # Store for later reference (e.g., display mode detection)
 
         # Workspace validation and normalization (use WorkspaceManager utility)
         self.workspace = WorkspaceManager.normalize_workspace_path(workspace)
@@ -148,10 +149,10 @@ class BaseAgent:
         # to avoid alternate screen mode which interferes with input()
         from tui import DisplayFactory
         display_mode = os.environ.get("JETBOX_TUI_MODE", "auto")
-        # Check if likely chatbot mode (no goal, has ChatbotBehavior)
-        # Use verbose=True for task execution, verbose=False for chatbot
-        is_likely_chatbot = (not hasattr(self, 'goal') or not self.goal)
-        verbose_display = not is_likely_chatbot
+        # Check if this is a chatbot agent (simple-chatbot in config file)
+        # Use verbose=False only for dedicated chatbot agents
+        is_chatbot = hasattr(self, 'config_file') and 'chatbot' in str(self.config_file).lower()
+        verbose_display = not is_chatbot
         self.display = DisplayFactory.create(force_mode=display_mode, verbose=verbose_display)
 
         # Phase 1 additions: Optional subsystems (can be initialized by subclasses)

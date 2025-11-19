@@ -31,7 +31,7 @@ class PlainDisplay(DisplayInterface):
         self.log_row = 1  # Start logs at row 1 (status will be at bottom)
         self.original_stdout = None  # Store original stdout for restoration
         self.terminal_height = 24  # Default terminal height (will be detected)
-        self.status_bar_lines = 7  # Number of lines reserved for status bar (1 round + 1 context + 4 latency + 1 status)
+        self.status_bar_lines = 8  # Number of lines reserved for status bar (1 header + 1 round + 1 context + 4 latency + 1 status)
 
     def start(self) -> None:
         """Enter alternate screen buffer and redirect stdout for TUI mode (unless in verbose mode)."""
@@ -215,19 +215,59 @@ class PlainDisplay(DisplayInterface):
         secs = int(elapsed_time % 60)
 
         if not self.verbose:
-            # Minimal mode: single line
-            status_line = f"[{progress:3d}%] Round {current_round}/{max_rounds} - {status}"
+            # Minimal mode (chatbot): simple single-line status
+            # Show model, context size, and current activity
+            if context_breakdown:
+                total = sum(context_breakdown.values())
+                total_size = self._format_size(total)
+                ctx_info = f"Context:{total_size}"
+            else:
+                ctx_info = "Context:0"
+
+            # Format detailed status nicely
+            status_emoji = {
+                "starting": "🚀",
+                "building_context": "🔧",
+                "calling_llm": "💭",
+                "processing_response": "⚙️",
+                "writing": "✍️",
+                "reading": "📖",
+                "testing": "🧪",
+                "executing": "⚡",
+                "completing": "✅",
+                "ready": "✓",
+                "error": "❌",
+            }
+            emoji = status_emoji.get(detailed_status or "", "▶️")
+            status_text = (detailed_status or status).replace("_", " ").capitalize()
+
+            # Add spinner if in LLM call
+            if spinner_frame:
+                status_display = f"{emoji} {status_text} {spinner_frame}"
+            else:
+                status_display = f"{emoji} {status_text}"
+
+            status_line = f"[{agent_name}] {ctx_info} | {status_display}"
             lines = [status_line]
         else:
-            # Verbose mode: 7-line status display
+            # Verbose mode: 8-line status display
 
-            # Line 1: Round allowance progress bar
+            # Line 1: Agent name header (bordered style)
+            agent_display_name = agent_name.replace('_', ' ').title()
+            header_width = 70
+            equals_count = (header_width - len(agent_display_name) - 2) // 2
+            header_line = "=" * equals_count + f" {agent_display_name} " + "=" * equals_count
+            # Ensure exact width
+            if len(header_line) < header_width:
+                header_line += "=" * (header_width - len(header_line))
+
+            # Line 2: Round allowance progress bar
             bar_width = 20
             filled = int((progress / 100) * bar_width)
             bar = "█" * filled + "░" * (bar_width - filled)
-            line1 = f"[Round Allowance] [{bar}] {progress:3d}% ({current_round}/{max_rounds}) | ⏱️  {mins}m{secs:02d}s"
+            line2 = f"[Round Allowance] [{bar}] {progress:3d}% ({current_round}/{max_rounds}) | ⏱️  {mins}m{secs:02d}s"
 
-            # Line 2: Context composition breakdown
+            # Line 3: Context composition breakdown
             if context_breakdown:
                 sys_size = self._format_size(context_breakdown.get("system", 0))
                 user_size = self._format_size(context_breakdown.get("user", 0))
@@ -240,12 +280,12 @@ class PlainDisplay(DisplayInterface):
                 max_context = 512000
                 ctx_pct = int((total / max_context) * 100) if max_context else 0
 
-                line2 = f"[Context]  Sys:{sys_size}  User:{user_size}  Asst:{asst_size}  Tool:{tool_size}  Total:{total_size} ({ctx_pct}%)"
+                line3 = f"[Context]  Sys:{sys_size}  User:{user_size}  Asst:{asst_size}  Tool:{tool_size}  Total:{total_size} ({ctx_pct}%)"
             else:
-                line2 = "[Context]  (no data)"
+                line3 = "[Context]  (no data)"
 
-            # Lines 3-6: Latency histogram (4 lines tall)
-            lines = [line1, line2]
+            # Lines 4-7: Latency histogram (4 lines tall)
+            lines = [header_line, line2, line3]
 
             if latency_history:
                 histogram_lines = self._format_latency_histogram(latency_history, width=20, height=4)
@@ -266,7 +306,7 @@ class PlainDisplay(DisplayInterface):
                 lines.append("[Latency]  (no data)")
                 lines.extend([""] * 3)  # Placeholder lines
 
-            # Line 7: Granular status
+            # Line 8: Granular status
             status_emoji = {
                 "starting": "🚀",
                 "building_context": "🔧",
